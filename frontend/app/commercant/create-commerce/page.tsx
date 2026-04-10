@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCategories } from "@/lib/businessApi";
-import { getTagsCulturels } from "@/lib/businessApi";
+import { getCategories, getTagsCulturels } from "@/lib/businessApi";
 import { createCommerce, addTagsToCommerce } from "@/lib/commercesApi";
+import LocationPicker, {
+  type LocationData,
+} from "@/app/components/commercant/LocationPicker";
+import { MapPin } from "lucide-react";
 
 type Categorie = {
   id: string;
@@ -22,8 +25,7 @@ export default function CreateCommercePage() {
   const [nom, setNom] = useState("");
   const [description, setDescription] = useState("");
   const [adresse, setAdresse] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [location, setLocation] = useState<LocationData | null>(null);
   const [categorieId, setCategorieId] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -52,24 +54,18 @@ export default function CreateCommercePage() {
         setCategories(categoriesData);
         setTags(tagsData);
       } catch (err: unknown) {
-        console.error(err);
-
         if (!mounted) return;
-
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Erreur lors du chargement des données.");
-        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Erreur lors du chargement des données."
+        );
       } finally {
-        if (mounted) {
-          setLoadingData(false);
-        }
+        if (mounted) setLoadingData(false);
       }
     }
 
     void loadData();
-
     return () => {
       mounted = false;
     };
@@ -81,6 +77,12 @@ export default function CreateCommercePage() {
         ? prev.filter((id) => id !== tagId)
         : [...prev, tagId]
     );
+  }
+
+  function handleLocationChange(data: LocationData) {
+    setLocation(data);
+    // Auto-fill address field from reverse geocoding; user can override it
+    setAdresse(data.address);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -97,25 +99,19 @@ export default function CreateCommercePage() {
     }
 
     if (!adresse.trim()) {
-      setError("L’adresse est obligatoire.");
+      setError("L'adresse est obligatoire.");
+      return;
+    }
+
+    if (!location) {
+      setError(
+        "Veuillez sélectionner la position de votre commerce sur la carte."
+      );
       return;
     }
 
     if (!categorieId) {
       setError("Veuillez sélectionner une catégorie.");
-      return;
-    }
-
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-
-    if (Number.isNaN(lat) || lat < -90 || lat > 90) {
-      setError("Latitude invalide. Elle doit être comprise entre -90 et 90.");
-      return;
-    }
-
-    if (Number.isNaN(lng) || lng < -180 || lng > 180) {
-      setError("Longitude invalide. Elle doit être comprise entre -180 et 180.");
       return;
     }
 
@@ -127,8 +123,8 @@ export default function CreateCommercePage() {
         nom: nom.trim(),
         description: description.trim(),
         adresse: adresse.trim(),
-        latitude: lat,
-        longitude: lng,
+        latitude: location.lat,
+        longitude: location.lng,
         categorieId,
       });
 
@@ -139,13 +135,11 @@ export default function CreateCommercePage() {
       router.push("/commercant");
       router.refresh();
     } catch (err: unknown) {
-      console.error(err);
-
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Erreur lors de la création du commerce.");
-      }
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la création du commerce."
+      );
     } finally {
       setSaving(false);
     }
@@ -153,8 +147,9 @@ export default function CreateCommercePage() {
 
   return (
     <div className="space-y-8 text-white">
+      {/* Header */}
       <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.35)] backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-400/80">
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-orange-400/80">
           Espace commerçant
         </p>
         <h1 className="mt-2 text-3xl font-bold md:text-4xl">
@@ -169,20 +164,22 @@ export default function CreateCommercePage() {
       <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.25)] backdrop-blur">
         {loadingData ? (
           <div className="space-y-4">
-            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
-            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
-            <div className="h-24 animate-pulse rounded-2xl bg-white/5" />
-            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
-            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-2xl bg-white/5"
+              />
+            ))}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
             {error && (
               <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                 {error}
               </div>
             )}
 
+            {/* Nom + Catégorie */}
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">
@@ -193,7 +190,7 @@ export default function CreateCommercePage() {
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
                   placeholder="Ex: Café Rabat Médina"
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
+                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
                 />
               </div>
 
@@ -204,7 +201,7 @@ export default function CreateCommercePage() {
                 <select
                   value={categorieId}
                   onChange={(e) => setCategorieId(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
+                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
                 >
                   <option value="">Sélectionner une catégorie</option>
                   {categories.map((categorie) => (
@@ -216,6 +213,7 @@ export default function CreateCommercePage() {
               </div>
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-300">
                 Description
@@ -224,54 +222,48 @@ export default function CreateCommercePage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Décrivez votre commerce, son ambiance, ses produits ou services..."
-                rows={5}
-                className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
+                rows={4}
+                className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Adresse
-              </label>
-              <input
-                type="text"
-                value={adresse}
-                onChange={(e) => setAdresse(e.target.value)}
-                placeholder="Ex: Avenue Mohammed V, Rabat"
-                className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
-              />
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
-                  Latitude
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  placeholder="Ex: 34.020882"
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
-                />
+            {/* Location section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-orange-400" />
+                <h2 className="text-base font-semibold text-white">
+                  Localisation du commerce
+                </h2>
               </div>
 
+              <p className="text-sm text-zinc-400">
+                Cliquez sur la carte ou recherchez votre adresse pour placer
+                précisément votre commerce. Vous pouvez aussi utiliser le
+                bouton GPS pour votre position actuelle.
+              </p>
+
+              {/* Interactive map */}
+              <LocationPicker value={location} onChange={handleLocationChange} />
+
+              {/* Address field — auto-filled from map, editable */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">
-                  Longitude
+                  Adresse affichée
+                  <span className="ml-2 text-xs font-normal text-zinc-500">
+                    (auto-remplie depuis la carte, modifiable)
+                  </span>
                 </label>
                 <input
-                  type="number"
-                  step="any"
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  placeholder="Ex: -6.841650"
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
+                  type="text"
+                  value={adresse}
+                  onChange={(e) => setAdresse(e.target.value)}
+                  placeholder="Ex: Avenue Mohammed V, Rabat"
+                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
                 />
               </div>
             </div>
 
+            {/* Tags culturels */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-zinc-300">
                 Tags culturels
@@ -285,7 +277,6 @@ export default function CreateCommercePage() {
                 <div className="flex flex-wrap gap-3">
                   {tags.map((tag) => {
                     const isSelected = selectedTags.includes(tag.id);
-
                     return (
                       <button
                         key={tag.id}
@@ -293,7 +284,7 @@ export default function CreateCommercePage() {
                         onClick={() => toggleTag(tag.id)}
                         className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                           isSelected
-                            ? "border-emerald-400/50 bg-emerald-400/15 text-emerald-300"
+                            ? "border-orange-400/50 bg-orange-400/15 text-orange-300"
                             : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
                         }`}
                       >
@@ -305,20 +296,21 @@ export default function CreateCommercePage() {
               )}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            {/* Actions */}
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-2xl bg-orange-600 px-6 py-3 font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saving ? "Création en cours..." : "Créer mon commerce"}
+                {saving ? "Création en cours…" : "Créer mon commerce"}
               </button>
 
               <button
                 type="button"
                 onClick={() => router.back()}
                 disabled={saving}
-                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Annuler
               </button>

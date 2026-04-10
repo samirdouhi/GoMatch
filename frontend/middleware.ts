@@ -72,9 +72,10 @@ export function middleware(request: NextRequest) {
   const isAuthPage =
     pathname.startsWith("/signin") || pathname.startsWith("/Register");
   const isAdminPage = pathname.startsWith("/admin");
+  const isCommercantPage = pathname.startsWith("/commercant");
 
   if (!token) {
-    if (isAdminPage) {
+    if (isAdminPage || isCommercantPage) {
       return NextResponse.redirect(new URL("/signin", request.url));
     }
 
@@ -99,6 +100,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  if (isCommercantPage && !roles.includes("Commercant")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   if (isAuthPage) {
     if (roles.includes("Admin")) {
       return NextResponse.redirect(new URL("/admin", request.url));
@@ -111,5 +116,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/signin", "/Register"],
+  matcher: ["/admin/:path*", "/commercant/:path*", "/signin", "/Register"],
 };
