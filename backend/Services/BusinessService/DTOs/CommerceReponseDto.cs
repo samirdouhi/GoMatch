@@ -16,6 +16,8 @@ namespace BusinessService.DTOs
 
         public Guid ProprietaireUtilisateurId { get; set; }
 
+        public string ProprietaireEmail { get; set; } = string.Empty;
+
         public bool EstValide { get; set; }
 
         /// <summary>EnAttente | Approuve | Rejete</summary>

@@ -215,7 +215,7 @@ function CommerceCard({
                 <Mail className="h-3 w-3" />Email propriétaire
               </p>
               <p className="text-xs text-zinc-300">
-                {(commerce as Commerce & { proprietaireEmail?: string }).proprietaireEmail ?? <span className="italic text-zinc-600">Non disponible</span>}
+                {commerce.proprietaireEmail || <span className="italic text-zinc-600">Non disponible</span>}
               </p>
             </div>
             <div className="space-y-1">

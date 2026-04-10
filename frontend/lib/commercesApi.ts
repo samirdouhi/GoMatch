@@ -8,6 +8,7 @@ export type Commerce = {
   latitude: number;
   longitude: number;
   proprietaireUtilisateurId: string;
+  proprietaireEmail: string;
   estValide: boolean;
   /** EnAttente | Approuve | Rejete */
   statut: string;

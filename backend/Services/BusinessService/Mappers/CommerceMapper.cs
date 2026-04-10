@@ -17,6 +17,7 @@ namespace BusinessService.Mappers
                 Latitude                  = commerce.Latitude,
                 Longitude                 = commerce.Longitude,
                 ProprietaireUtilisateurId = commerce.ProprietaireUtilisateurId,
+                ProprietaireEmail         = commerce.ProprietaireEmail,
                 EstValide                 = commerce.EstValide,
                 Statut                    = commerce.Statut,
                 RaisonRejet               = commerce.RaisonRejet,
