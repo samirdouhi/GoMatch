@@ -54,6 +54,10 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     return pathname === "/admin" || pathname.startsWith("/admin/");
   }, [pathname]);
 
+  const isCommercantRoute = useMemo(() => {
+    return pathname === "/commercant" || pathname.startsWith("/commercant/");
+  }, [pathname]);
+
   useEffect(() => {
     if (!isOnboarding) return;
 
@@ -91,7 +95,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isCommercantRoute) {
     return <>{children}</>;
   }
 
