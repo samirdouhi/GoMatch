@@ -1,0 +1,31 @@
+﻿namespace BusinessService.DTOs
+{
+    public class CommerceReponseDto
+    {
+        public Guid Id { get; set; }
+
+        public string Nom { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public string Adresse { get; set; } = string.Empty;
+
+        public double Latitude { get; set; }
+
+        public double Longitude { get; set; }
+
+        public Guid ProprietaireUtilisateurId { get; set; }
+
+        public bool EstValide { get; set; }
+
+        public DateTime DateCreation { get; set; }
+
+        public Guid CategorieId { get; set; }
+
+        public string? NomCategorie { get; set; }
+
+        public List<string> TagsCulturels { get; set; } = new();
+
+        public List<HoraireCommerceReponseDto> Horaires { get; set; } = new();
+    }
+}

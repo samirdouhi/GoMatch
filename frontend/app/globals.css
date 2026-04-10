@@ -1,0 +1,354 @@
+/* =========================================================
+   globals.css — GoMatch (Tailwind v4 + shadcn tokens)
+   ========================================================= */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* =========================================================
+   Document basics
+   ========================================================= */
+html,
+body {
+  height: 100%;
+}
+
+/* =========================================================
+   Tailwind v4 – Theme tokens (CSS-first)
+   ========================================================= */
+@theme inline {
+  /* 🇲🇦 Morocco brand colors (utility colors) */
+  --color-morocco-red: #c1272d;
+  --color-morocco-green: #006233;
+  --color-morocco-gold: #c5a059;
+
+  /* shadcn semantic mapping (Tailwind v4 color tokens) */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* Sidebar */
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+/* =========================================================
+   Custom utilities — Premium animated hero background
+   ========================================================= */
+@layer utilities {
+  /* Soft moving gradient layer */
+  .bg-hero-animated {
+    background: linear-gradient(
+      120deg,
+      color-mix(in oklab, var(--color-morocco-red) 22%, transparent),
+      color-mix(in oklab, var(--color-morocco-gold) 16%, transparent),
+      color-mix(in oklab, var(--color-morocco-red) 12%, transparent)
+    );
+    background-size: 200% 200%;
+    animation: heroGradientShift 18s ease-in-out infinite;
+  }
+
+  /* 2 subtle blobs (use pseudo elements) */
+  .bg-hero-blobs {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .bg-hero-blobs::before,
+  .bg-hero-blobs::after {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    z-index: -1;
+    filter: blur(60px);
+    opacity: 0.28;
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Blob 1 (top-left) */
+  .bg-hero-blobs::before {
+    background: radial-gradient(
+      circle at 30% 30%,
+      color-mix(in oklab, var(--color-morocco-red) 70%, transparent),
+      transparent 60%
+    );
+    animation: blobFloat1 20s ease-in-out infinite;
+  }
+
+  /* Blob 2 (bottom-right) */
+  .bg-hero-blobs::after {
+    background: radial-gradient(
+      circle at 70% 70%,
+      color-mix(in oklab, var(--color-morocco-gold) 70%, transparent),
+      transparent 60%
+    );
+    animation: blobFloat2 26s ease-in-out infinite;
+  }
+
+  /* Optional grain overlay (premium feel) */
+  .bg-hero-grain {
+    position: relative;
+  }
+  .bg-hero-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
+  }
+}
+
+/* =========================================================
+   Animations
+   ========================================================= */
+@keyframes heroGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes blobFloat1 {
+  0%, 100% { transform: translate(-2%, -1%) scale(1); }
+  50% { transform: translate(4%, 2%) scale(1.06); }
+}
+
+@keyframes blobFloat2 {
+  0%, 100% { transform: translate(2%, 1%) scale(1); }
+  50% { transform: translate(-4%, -2%) scale(1.08); }
+}
+
+/* Dark mode tuning */
+.dark .bg-hero-animated {
+  background: linear-gradient(
+    120deg,
+    color-mix(in oklab, var(--color-morocco-red) 28%, transparent),
+    color-mix(in oklab, var(--color-morocco-gold) 18%, transparent),
+    color-mix(in oklab, var(--color-morocco-green) 10%, transparent)
+  );
+}
+
+/* Reduce motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .bg-hero-animated { animation: none !important; }
+  .bg-hero-blobs::before,
+  .bg-hero-blobs::after { animation: none !important; }
+}
+
+/* =========================================================
+   shadcn tokens — LIGHT
+   ========================================================= */
+:root {
+  --radius: 0.625rem;
+
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+
+  /* 🟡 Primary (Light) = Gold */
+  --primary: 39 48% 56%;
+  --primary-foreground: 222.2 84% 4.9%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+
+  --ring: 39 48% 56%;
+
+  /* Sidebar */
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 222.2 84% 4.9%;
+  --sidebar-primary: 358 66% 45%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 210 40% 96.1%;
+  --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+  --sidebar-border: 214.3 31.8% 91.4%;
+  --sidebar-ring: 39 48% 56%;
+}
+
+/* =========================================================
+   shadcn tokens — DARK
+   ========================================================= */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  --card: 222.2 84% 6.5%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222.2 84% 6.5%;
+  --popover-foreground: 210 40% 98%;
+
+  /* 🔴 Primary (Dark) = Red */
+  --primary: 358 66% 55%;
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 70%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 45.6%;
+
+  --border: 217.2 32.6% 18%;
+  --input: 217.2 32.6% 18%;
+
+  --ring: 358 66% 55%;
+
+  /* Sidebar */
+  --sidebar: 222.2 84% 6.5%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-primary: 358 66% 55%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 217.2 32.6% 17.5%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-border: 217.2 32.6% 18%;
+  --sidebar-ring: 358 66% 55%;
+}
+
+/* =========================================================
+   Base rules (shadcn + Tailwind v4)
+   ========================================================= */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* =========================================================
+   Forms — ONE definitive fix (autofill + invalid + text color)
+   ========================================================= */
+
+/* Make browser UI choose proper palette for native controls */
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+
+@layer base {
+  input,
+  textarea,
+  select {
+    background-color: transparent !important;
+    color: hsl(var(--foreground)) !important;
+    caret-color: hsl(var(--foreground)) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+    opacity: 1;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    color: hsl(var(--foreground)) !important;
+    caret-color: hsl(var(--foreground)) !important;
+  }
+
+  /* Fix Chrome native validation (email invalid -> white background) */
+  input:invalid,
+  input:user-invalid,
+  textarea:invalid,
+  textarea:user-invalid,
+  select:invalid,
+  select:user-invalid {
+    background-color: transparent !important;
+    color: hsl(var(--foreground)) !important;
+    caret-color: hsl(var(--foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    box-shadow: none !important;
+    outline: none;
+  }
+}
+
+/* Chrome/Safari autofill fix (single source of truth) */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  caret-color: hsl(var(--foreground)) !important;
+  transition: background-color 999999s ease-in-out 0s;
+  box-shadow: 0 0 0px 1000px transparent inset !important;
+}
+@keyframes shine-slow {
+  0% { left: -100%; opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { left: 100%; opacity: 0; }
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glow-amber {
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+}
+
+.neon-border-hover:hover {
+  border-color: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+}

@@ -1,0 +1,20 @@
+# Build
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+
+# Logs
+*.log
+
+# Env
+.env
+
+# Storage (images uploadées)
+**/Storage/
+**/wwwroot/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
