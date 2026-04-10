@@ -60,27 +60,27 @@ const SECTIONS_AUTH: SectionMenu[] = [
   {
     titre: "Navigation",
     elements: [
-      { nom: "Accueil", icone: Home, lien: "/", description: "Page principale" },
-      { nom: "Matchs", icone: Calendar, lien: "/events", description: "Calendrier" },
-      { nom: "Culture", icone: Landmark, lien: "/culture", description: "Patrimoine & histoires" },
-      { nom: "Carte", icone: CarteIcon, lien: "/map", description: "Explorer autour de toi" },
-      { nom: "Que faire ?", icone: Store, lien: "/businesses", description: "Commerces & sorties" },
+      { nom: "Accueil",   icone: Home,      lien: "/",         description: "Page principale"           },
+      { nom: "Matchs CM", icone: Calendar,  lien: "/matches",  description: "Coupe du Monde 2026"       },
+      { nom: "Explorer",  icone: Store,     lien: "/explore",  description: "Commerces locaux validés"  },
+      { nom: "Carte",     icone: CarteIcon, lien: "/map",      description: "Explorer autour de toi"    },
+      { nom: "Culture",   icone: Landmark,  lien: "/culture",  description: "Patrimoine & histoires"    },
     ],
   },
   {
     titre: "Intelligent",
     elements: [
-      { nom: "Assistant", icone: Brain, lien: "/assistant", description: "Aide & conseils", badge: "IA" },
-      { nom: "Recommandations", icone: Sparkles, lien: "/reco", description: "Suggestions" },
+      { nom: "Assistant",        icone: Brain,    lien: "/assistant", description: "Aide & conseils",  badge: "IA" },
+      { nom: "Recommandations",  icone: Sparkles, lien: "/reco",      description: "Suggestions"                  },
     ],
   },
   {
     titre: "Mon espace",
     elements: [
-      { nom: "Profil", icone: User, lien: "/profile", description: "Compte & infos" },
-      { nom: "Favoris", icone: Heart, lien: "/favorites", description: "Lieux enregistrés" },
-      { nom: "Historique", icone: History, lien: "/history", description: "Dernières visites" },
-      { nom: "Paramètres", icone: Settings, lien: "/settings", description: "Préférences" },
+      { nom: "Profil",       icone: User,     lien: "/profile",   description: "Compte & infos"        },
+      { nom: "Favoris",      icone: Heart,    lien: "/favorites", description: "Commerces enregistrés" },
+      { nom: "Historique",   icone: History,  lien: "/history",   description: "Dernières visites"     },
+      { nom: "Paramètres",   icone: Settings, lien: "/settings",  description: "Préférences"           },
     ],
   },
 ];

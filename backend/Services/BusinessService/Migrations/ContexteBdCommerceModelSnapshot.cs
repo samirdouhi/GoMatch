@@ -79,8 +79,24 @@ namespace BusinessService.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("ProprietaireEmail")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasDefaultValue("");
+
                     b.Property<Guid>("ProprietaireUtilisateurId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RaisonRejet")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Statut")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("EnAttente");
 
                     b.HasKey("Id");
 

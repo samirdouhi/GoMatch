@@ -8,7 +8,7 @@ type Props = {
 
 export default function CommercantShell({ children }: Props) {
   return (
-    <div className="h-screen overflow-hidden bg-[#06080d] text-white">
+    <div className="h-screen overflow-hidden bg-[#04060b] text-white">
       <div className="flex h-full">
         <CommercantSidebar />
 
@@ -16,7 +16,7 @@ export default function CommercantShell({ children }: Props) {
           <CommercantTopbar />
 
           <main className="flex-1 overflow-y-auto">
-            <div className="px-6 py-8 lg:px-10">{children}</div>
+            <div className="mx-auto max-w-6xl px-6 py-8 lg:px-8">{children}</div>
           </main>
         </div>
       </div>

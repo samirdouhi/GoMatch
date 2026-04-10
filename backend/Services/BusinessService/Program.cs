@@ -2,6 +2,7 @@ using BusinessService.Data;
 using BusinessService.Middleware;
 using BusinessService.Repositories;
 using BusinessService.Services;
+using BusinessService.Services.External;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,10 +20,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// OpenAPI pour Scalar
+// OpenAPI
 builder.Services.AddOpenApi();
 
-// Base de données
+// Base de donnÃ©es
 builder.Services.AddDbContext<ContexteBdCommerce>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -38,41 +39,44 @@ builder.Services.AddScoped<IServiceHoraireCommerce, ServiceHoraireCommerce>();
 builder.Services.AddScoped<IServiceCategorie, ServiceCategorie>();
 builder.Services.AddScoped<IServiceTagCulturel, ServiceTagCulturel>();
 
+// HTTP client vers AuthService pour les emails
+var authServiceUrl = builder.Configuration["Services:AuthService:BaseUrl"]
+                  ?? "http://localhost:5001";
+
+builder.Services.AddHttpClient<IEmailNotificationClient, EmailNotificationClient>(client =>
+{
+    client.BaseAddress = new Uri(authServiceUrl);
+    client.Timeout     = TimeSpan.FromSeconds(10);
+});
+
 // Authentification JWT
-var jwtKey = builder.Configuration["Jwt:Key"];
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtKey      = builder.Configuration["Jwt:Key"];
+var jwtIssuer   = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
 
 if (string.IsNullOrWhiteSpace(jwtKey))
-{
     throw new InvalidOperationException("Jwt:Key est manquant ou vide dans la configuration.");
-}
 
 if (string.IsNullOrWhiteSpace(jwtIssuer))
-{
     throw new InvalidOperationException("Jwt:Issuer est manquant ou vide dans la configuration.");
-}
 
 if (string.IsNullOrWhiteSpace(jwtAudience))
-{
     throw new InvalidOperationException("Jwt:Audience est manquant ou vide dans la configuration.");
-}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey)),
-            NameClaimType = ClaimTypes.NameIdentifier,
-            RoleClaimType = ClaimTypes.Role
+            ValidIssuer              = jwtIssuer,
+            ValidAudience            = jwtAudience,
+            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            NameClaimType            = ClaimTypes.NameIdentifier,
+            RoleClaimType            = ClaimTypes.Role
         };
     });
 
@@ -80,7 +84,6 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -91,12 +94,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
-
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
