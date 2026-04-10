@@ -1,7 +1,18 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { LocationData } from "./LocationPickerMap";
+
+// Défini ici pour éviter l'import depuis un module chargé dynamiquement
+export type LocationData = {
+  lat: number;
+  lng: number;
+  address: string;
+};
+
+type Props = {
+  value: LocationData | null;
+  onChange: (data: LocationData) => void;
+};
 
 // Load Leaflet only client-side (Leaflet requires window)
 const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
@@ -18,13 +29,7 @@ const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
   ),
 });
 
-export type { LocationData };
-
-type Props = {
-  value: LocationData | null;
-  onChange: (data: LocationData) => void;
-};
-
 export default function LocationPicker({ value, onChange }: Props) {
   return <LocationPickerMap value={value} onChange={onChange} />;
 }
+

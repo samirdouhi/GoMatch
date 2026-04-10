@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-lea
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Navigation, Search, X } from "lucide-react";
 
-export type LocationData = {
+type LocationData = {
   lat: number;
   lng: number;
   address: string;
