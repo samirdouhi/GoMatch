@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getMyAdminProfileStatus } from "@/lib/adminProfileApi";
+import { logoutRequest } from "@/lib/authApi";
 
 const menuItems = [
   {
@@ -98,14 +99,7 @@ export default function AdminSidebar() {
   }, []);
 
   const handleLogout = async () => {
-    document.cookie = "accessToken=; Max-Age=0; path=/";
-    document.cookie = "refreshToken=; Max-Age=0; path=/";
-    document.cookie = "authToken=; Max-Age=0; path=/";
-    document.cookie = "token=; Max-Age=0; path=/";
-    document.cookie = "expiresAtUtc=; Max-Age=0; path=/";
-
-    router.push("/signin");
-    router.refresh();
+    await logoutRequest();
   };
 
   return (
