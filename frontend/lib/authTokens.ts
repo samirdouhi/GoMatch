@@ -72,7 +72,10 @@ export function setAuthTokens(
 
   if (refreshToken) {
     localStorage.setItem(REFRESH_KEY, refreshToken);
-    setCookie(REFRESH_COOKIE, refreshToken, expiresAtUtc);
+    // Le refresh token dure 7 jours côté serveur — son cookie doit avoir la même durée,
+    // pas l'expiry de l'access token (15 min).
+    const refreshCookieExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    setCookie(REFRESH_COOKIE, refreshToken, refreshCookieExpiry);
   }
 
   window.dispatchEvent(new Event("gomatch-auth-changed"));

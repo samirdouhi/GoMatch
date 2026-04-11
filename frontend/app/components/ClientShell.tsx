@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "./AppSideBar";
 import { TopBar } from "./TopBar";
+import TokenKeepAlive from "./TokenKeepAlive";
 
 const LOCALES = ["fr", "en", "ar"] as const;
 type Locale = (typeof LOCALES)[number];
@@ -85,6 +86,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     );
   }
 
+  // TokenKeepAlive est rendu sur toutes les pages non-auth pour maintenir la session active
+
   if (isOnboarding) {
     return (
       <div key={shellKey} className="h-screen overflow-hidden text-foreground bg-transparent">
@@ -96,11 +99,17 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   }
 
   if (isAdminRoute || isCommercantRoute) {
-    return <>{children}</>;
+    return (
+      <>
+        <TokenKeepAlive />
+        {children}
+      </>
+    );
   }
 
   return (
     <div key={shellKey} className="flex h-screen flex-col text-foreground bg-transparent">
+      <TokenKeepAlive />
       <TopBar
         sidebarCollapsed={!sidebarOpen}
         sidebarOpen={sidebarOpen}
