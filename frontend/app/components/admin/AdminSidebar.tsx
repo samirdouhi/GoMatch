@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -58,7 +58,6 @@ const menuItems = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [profileIncomplete, setProfileIncomplete] = useState(false);
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Home,
@@ -120,7 +120,6 @@ const INVITE_LINKS: ElementMenu[] = [
 
 export function AppSidebar({ open, onClose }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [recherche, setRecherche] = useState("");
@@ -128,8 +127,12 @@ export function AppSidebar({ open, onClose }: Props) {
 
   useEffect(() => {
     setMounted(true);
-    setAuthed(readAuthedFromStorage());
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    setAuthed(readAuthedFromStorage());
+  }, [mounted]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
