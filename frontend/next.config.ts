@@ -1,4 +1,12 @@
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "crests.football-data.org",
+      },
+    ],
+  },
   async rewrites() {
     const target = process.env.GATEWAY_API_TARGET;
 

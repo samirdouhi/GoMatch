@@ -1,0 +1,6 @@
+@EventMatchService_HostAddress = http://localhost:5168
+
+GET {{EventMatchService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
