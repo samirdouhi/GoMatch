@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { Match, MatchPhase } from "@/lib/matchesApi";
-import { formatMatchDate, formatShortDate } from "@/lib/matchesApi";
+import { formatMatchDate } from "@/lib/matchesApi";
 import {
   CalendarDays,
   ChevronDown,
@@ -267,7 +267,7 @@ function MatchHeroCard({ match }: { match: Match }) {
               <div className="flex items-center gap-3 text-white">
                 <CalendarDays className="h-4 w-4 text-amber-400" />
                 <span className="font-semibold">
-                  {formatShortDate(match.date)}
+                  {formatMatchDate(match.date)}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-white">
