@@ -77,11 +77,26 @@ export function middleware(request: NextRequest) {
   }
 
   if (isTokenExpired(token)) {
+    // Si le refresh token est encore présent en cookie, on laisse passer :
+    // le client va détecter l'expiry et appeler /auth/refresh silencieusement.
+    const refreshToken =
+      request.cookies.get("refreshToken")?.value ||
+      request.cookies.get("refresh_token")?.value;
+
     if (isAuthPage) {
+      // Sur les pages auth, on nettoie juste les cookies expirés
       const response = NextResponse.next();
-      clearAuthCookies(response);
+      if (!refreshToken) clearAuthCookies(response);
       return response;
     }
+
+    if (refreshToken) {
+      // Access token expiré mais refresh token valide → laisser passer,
+      // le composant TokenKeepAlive ou authFetch gérera le refresh côté client.
+      return NextResponse.next();
+    }
+
+    // Ni access token valide ni refresh token → déconnexion forcée
     const response = NextResponse.redirect(new URL("/signin", request.url));
     clearAuthCookies(response);
     return response;

@@ -1,5 +1,5 @@
 "use client";
- 
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,44 +12,24 @@ import {
   ArrowLeft,
   PlusCircle,
 } from "lucide-react";
-import { logoutRequest } from "@/lib/authApi";
+import { logout } from "@/lib/logout";
 import { useRouter } from "next/navigation";
- 
+
 const menuItems = [
-  {
-    label: "Mon commerce",
-    href: "/commercant",
-    icon: LayoutDashboard,
-    exact: true,
-  },
-  {
-    label: "Créer mon commerce",
-    href: "/commercant/create-commerce",
-    icon: PlusCircle,
-    exact: false,
-  },
-  {
-    label: "Horaires",
-    href: "/commercant/horaires",
-    icon: Clock,
-    exact: false,
-  },
-  {
-    label: "Mon profil",
-    href: "/commercant/profile",
-    icon: UserCircle2,
-    exact: false,
-  },
+  { label: "Mon commerce",        href: "/commercant",                 icon: LayoutDashboard, exact: true  },
+  { label: "Créer mon commerce",  href: "/commercant/create-commerce", icon: PlusCircle,      exact: false },
+  { label: "Horaires",            href: "/commercant/horaires",        icon: Clock,           exact: false },
+  { label: "Mon profil",          href: "/commercant/profile",         icon: UserCircle2,     exact: false },
 ];
- 
+
 export default function CommercantSidebar() {
   const pathname = usePathname();
   const router   = useRouter();
- 
+
   const handleLogout = async () => {
-    await logoutRequest();
+    await logout();
   };
- 
+
   return (
     <aside className="hidden h-full w-72 shrink-0 border-r border-white/[0.07] bg-[#04060b] text-white lg:flex lg:flex-col">
       {/* En-tête */}
@@ -60,7 +40,6 @@ export default function CommercantSidebar() {
             Espace Commerçant
           </span>
         </div>
- 
         <div className="mt-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">
             <Store className="h-5 w-5" />
@@ -71,7 +50,7 @@ export default function CommercantSidebar() {
           </div>
         </div>
       </div>
- 
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">
@@ -82,7 +61,7 @@ export default function CommercantSidebar() {
           const isActive = item.exact
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + "/");
- 
+
           return (
             <Link
               key={item.href}
@@ -98,10 +77,9 @@ export default function CommercantSidebar() {
             </Link>
           );
         })}
- 
-        {/* Séparateur */}
+
         <div className="my-4 h-px bg-white/[0.06]" />
- 
+
         {/* Retour espace touriste */}
         <button
           type="button"
@@ -112,7 +90,7 @@ export default function CommercantSidebar() {
           <span>Espace touriste</span>
         </button>
       </nav>
- 
+
       {/* Bas de sidebar */}
       <div className="border-t border-white/[0.07] p-4">
         <button

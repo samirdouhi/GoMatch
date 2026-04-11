@@ -14,13 +14,13 @@ import { logout } from "@/lib/logout";
 
 type TopBarProps = {
   sidebarCollapsed?: boolean;
-  sidebarOpen?: boolean; // ✅ Ajouté pour corriger l'erreur de type
+  sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
 };
 
 const NAV_ITEMS = [
   { label: "Accueil", href: "/", icon: Home },
-  { label: "Matchs", href: "/events", icon: Calendar },
+  { label: "Matchs", href: "/matches", icon: Calendar },
   { label: "Culture", href: "/culture", icon: Landmark },
   { label: "Carte", href: "/carte", icon: CarteIcon },
 ];
@@ -57,8 +57,6 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 
   const handleLogout = async () => {
     await logout();
-    window.dispatchEvent(new Event("gomatch-auth-changed"));
-    router.push("/signin");
   };
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -68,10 +66,10 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
       <header className="sticky top-0 z-[110] w-full bg-black/40 backdrop-blur-3xl">
         <div className="mx-auto max-w-[1600px] px-4 sm:px-8">
           <div className="grid grid-cols-3 h-20 items-center">
-            
+
             {/* GAUCHE : BURGER & LOGO */}
             <div className="flex items-center gap-4 justify-self-start">
-              <button 
+              <button
                 onClick={onToggleSidebar}
                 className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:border-[#facc15] transition-all"
               >
@@ -82,7 +80,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                 <div className="relative h-10 w-10 md:h-11 md:w-11">
                   <Image src="/LogoGoMatch2030.png" alt="Logo" fill className="object-contain" priority />
                 </div>
-                <motion.h1 
+                <motion.h1
                   className="hidden md:block text-xl font-[1000] tracking-tighter italic uppercase bg-clip-text text-transparent bg-gradient-to-r from-[#facc15] via-white to-[#facc15] bg-[length:200%_auto]"
                   animate={{ backgroundPosition: ["0% center", "200% center"] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
@@ -112,11 +110,11 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 
             {/* DROITE : DYNAMIQUE (AIDE OU NOTIF) & PROFIL */}
             <div className="flex items-center gap-4 justify-self-end">
-              
+
               {authed ? (
                 /* MODE CONNECTÉ : BOUTON NOTIFICATION */
                 <div className="relative" ref={notifRef}>
-                  <button 
+                  <button
                     onClick={() => setNotifOpen(!notifOpen)}
                     className={`p-2.5 rounded-xl border transition-all ${notifOpen ? "border-[#facc15] bg-[#facc15]/10 shadow-[0_0_15px_#facc15]" : "border-white/5 bg-white/5 hover:border-[#facc15]/50"}`}
                   >
@@ -124,7 +122,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                   </button>
                   <AnimatePresence>
                     {notifOpen && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 12 }} exit={{ opacity: 0, y: 15 }}
                         className="absolute right-0 top-full w-72 rounded-2xl border border-white/10 bg-black/95 p-4 shadow-2xl backdrop-blur-3xl z-[150]"
                       >
@@ -136,7 +134,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                 </div>
               ) : (
                 /* MODE INVITÉ : BOUTON AIDE */
-                <Link 
+                <Link
                   href="/aide"
                   className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-white/40 hover:text-[#facc15] hover:border-[#facc15]/50 transition-all"
                 >
@@ -148,12 +146,12 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
               <div className="relative" ref={moreRef}>
                 {!authed ? (
                   <Link href="/signin">
-                    <motion.div 
+                    <motion.div
                       className="relative bg-[#facc15] px-6 py-2.5 rounded-xl overflow-hidden shadow-lg flex items-center justify-center min-w-[120px]"
                       whileHover="hover"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <motion.div 
+                      <motion.div
                         className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12"
                         variants={{ hover: { x: ["-100%", "150%"] } }}
                         transition={{ duration: 0.6 }}
@@ -173,7 +171,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 
                 <AnimatePresence>
                   {moreOpen && authed && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 12 }} exit={{ opacity: 0, y: 15 }}
                       className="absolute right-0 top-full w-64 rounded-2xl border border-white/10 bg-[#0a0a0a] p-2 shadow-2xl z-[150]"
                     >
@@ -218,10 +216,3 @@ function MenuLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon;
     </Link>
   );
 }
-
-
-
-
-
-
-

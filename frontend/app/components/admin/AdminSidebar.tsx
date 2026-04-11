@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -16,21 +16,20 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getMyAdminProfileStatus } from "@/lib/adminProfileApi";
-import { logoutRequest } from "@/lib/authApi";          // ← AJOUT
+import { logout } from "@/lib/logout";
 
 const menuItems = [
-  { label: "Dashboard",             href: "/admin",               icon: LayoutDashboard },
-  { label: "Demandes commerçants",  href: "/admin/commercants",   icon: Store },
-  { label: "Commerces",             href: "/admin/commerces",     icon: Building2 },
-  { label: "Catégories",            href: "/admin/categories",    icon: Tags },
-  { label: "Tags culturels",        href: "/admin/tagsculturels", icon: Tags },
-  { label: "Utilisateurs",          href: "/admin/utilisateurs",  icon: Users },
-  { label: "Statistiques",          href: "/admin/statistiques",  icon: BarChart3 },
+  { label: "Dashboard",            href: "/admin",               icon: LayoutDashboard },
+  { label: "Demandes commerçants", href: "/admin/commercants",   icon: Store           },
+  { label: "Commerces",            href: "/admin/commerces",     icon: Building2       },
+  { label: "Catégories",           href: "/admin/categories",    icon: Tags            },
+  { label: "Tags culturels",       href: "/admin/tagsculturels", icon: Tags            },
+  { label: "Utilisateurs",         href: "/admin/utilisateurs",  icon: Users           },
+  { label: "Statistiques",         href: "/admin/statistiques",  icon: BarChart3       },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [profileIncomplete, setProfileIncomplete] = useState(false);
 
@@ -62,9 +61,8 @@ export default function AdminSidebar() {
     };
   }, []);
 
-  // ✅ CORRIGÉ : logoutRequest() nettoie cookies + localStorage + appelle l'API
   const handleLogout = async () => {
-    await logoutRequest();
+    await logout();
   };
 
   return (
