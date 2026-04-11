@@ -158,16 +158,8 @@ export function AppSidebar({ open, onClose }: Props) {
   }, [mounted]);
 
   async function handleLogout() {
-    try {
-      await logout();
-    } catch {
-      // noop
-    } finally {
-      window.dispatchEvent(new Event("gomatch-auth-changed"));
-      onClose();
-      router.replace("/signin");
-      router.refresh();
-    }
+    onClose();
+    await logout(); // révoque le refresh token côté serveur, vide tokens + redirige vers /signin
   }
 
   const inviteFiltered = useMemo(() => {

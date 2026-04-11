@@ -12,7 +12,7 @@ import {
   ArrowLeft,
   PlusCircle,
 } from "lucide-react";
-import { logoutRequest } from "@/lib/authApi";
+import { logout } from "@/lib/logout";
 import { useRouter } from "next/navigation";
 
 const menuItems = [
@@ -47,7 +47,7 @@ export default function CommercantSidebar() {
   const router   = useRouter();
 
   const handleLogout = async () => {
-    await logoutRequest();
+    await logout();
   };
 
   return (

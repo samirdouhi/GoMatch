@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getMyAdminProfileStatus } from "@/lib/adminProfileApi";
-import { logoutRequest } from "@/lib/authApi";
+import { logout } from "@/lib/logout";
 
 const menuItems = [
   {
@@ -99,7 +99,7 @@ export default function AdminSidebar() {
   }, []);
 
   const handleLogout = async () => {
-    await logoutRequest();
+    await logout();
   };
 
   return (

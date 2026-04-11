@@ -56,9 +56,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
-    window.dispatchEvent(new Event("gomatch-auth-changed"));
-    router.push("/signin");
+    await logout(); // révoque le refresh token côté serveur, vide tokens + redirige vers /signin
   };
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
