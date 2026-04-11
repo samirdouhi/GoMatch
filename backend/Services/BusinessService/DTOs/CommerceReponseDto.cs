@@ -16,7 +16,14 @@
 
         public Guid ProprietaireUtilisateurId { get; set; }
 
+        public string? ProprietaireEmail { get; set; }
+
         public bool EstValide { get; set; }
+
+        /// <summary>EnAttente | Approuve | Rejete</summary>
+        public string Statut { get; set; } = string.Empty;
+
+        public string? RaisonRejet { get; set; }
 
         public DateTime DateCreation { get; set; }
 

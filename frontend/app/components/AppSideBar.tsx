@@ -61,7 +61,7 @@ const SECTIONS_AUTH: SectionMenu[] = [
     titre: "Navigation",
     elements: [
       { nom: "Accueil", icone: Home, lien: "/", description: "Page principale" },
-      { nom: "Matchs", icone: Calendar, lien: "/events", description: "Calendrier" },
+      { nom: "Matchs", icone: Calendar, lien: "/matches", description: "Calendrier" },
       { nom: "Culture", icone: Landmark, lien: "/culture", description: "Patrimoine & histoires" },
       { nom: "Carte", icone: CarteIcon, lien: "/map", description: "Explorer autour de toi" },
       { nom: "Que faire ?", icone: Store, lien: "/businesses", description: "Commerces & sorties" },

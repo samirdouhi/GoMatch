@@ -1,0 +1,27 @@
+# FRONTEND
+frontend/node_modules/
+frontend/.next/
+frontend/.env*
+!frontend/.env.example
+
+# BACKEND (.NET)
+**/bin/
+**/obj/
+.vs/
+**/.vs/
+
+# ENV
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# LOGS
+*.log
+
+# STORAGE
+backend/**/Storage/
+backend/**/wwwroot/uploads/
+
+# OS
+.DS_Store
+Thumbs.db

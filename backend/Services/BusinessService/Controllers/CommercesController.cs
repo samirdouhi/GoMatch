@@ -11,10 +11,14 @@ namespace BusinessService.Controllers
     public class CommercesController : ControllerBase
     {
         private readonly IServiceCommerce _service;
+        private readonly ILogger<CommercesController> _logger;
 
-        public CommercesController(IServiceCommerce service)
+        public CommercesController(
+            IServiceCommerce service,
+            ILogger<CommercesController> logger)
         {
             _service = service;
+            _logger = logger;
         }
 
         [AllowAnonymous]
@@ -22,6 +26,22 @@ namespace BusinessService.Controllers
         public async Task<IActionResult> ObtenirTout()
         {
             var commerces = await _service.ObtenirToutAsync();
+            return Ok(commerces);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin/all")]
+        public async Task<IActionResult> ObtenirToutAdmin()
+        {
+            var commerces = await _service.ObtenirToutAdminAsync();
+            return Ok(commerces);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin/en-attente")]
+        public async Task<IActionResult> ObtenirEnAttente()
+        {
+            var commerces = await _service.ObtenirEnAttenteAsync();
             return Ok(commerces);
         }
 
@@ -37,28 +57,63 @@ namespace BusinessService.Controllers
             return Ok(commerce);
         }
 
-        // ✅ CREATE FIX
         [Authorize]
         [HttpPost]
         public async Task<IActionResult> Creer([FromBody] CreerCommerceRequeteDto requete)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userIdClaim =
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("userId");
 
-            var resultat = await _service.CreerAsync(requete, userId);
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new
+                {
+                    message = "Identifiant utilisateur introuvable dans le token."
+                });
+            }
 
-            return CreatedAtAction(
-                nameof(ObtenirParId),
-                new { id = resultat.Id },
-                resultat
-            );
+            var email =
+                User.FindFirstValue(ClaimTypes.Email)
+                ?? User.FindFirstValue("email")
+                ?? User.FindFirstValue("preferred_username")
+                ?? string.Empty;
+
+            _logger.LogInformation(
+                "Création commerce - userId: {UserId}, email token: {Email}",
+                userId,
+                email);
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new
+                {
+                    message = "Email introuvable dans le token. Veuillez vous reconnecter avant de créer un commerce."
+                });
+            }
+
+            var resultat = await _service.CreerAsync(requete, userId, email);
+
+            return CreatedAtAction(nameof(ObtenirParId), new { id = resultat.Id }, resultat);
         }
 
-        // ✅ OWNERSHIP
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> Modifier(Guid id, [FromBody] ModifierCommerceRequeteDto requete)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userIdClaim =
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("userId");
+
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new
+                {
+                    message = "Identifiant utilisateur introuvable dans le token."
+                });
+            }
 
             var resultat = await _service.ModifierAsync(id, requete, userId);
 
@@ -68,12 +123,22 @@ namespace BusinessService.Controllers
             return Ok(resultat);
         }
 
-        // ✅ OWNERSHIP
         [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Supprimer(Guid id)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userIdClaim =
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("userId");
+
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new
+                {
+                    message = "Identifiant utilisateur introuvable dans le token."
+                });
+            }
 
             var succes = await _service.SupprimerAsync(id, userId);
 
@@ -83,12 +148,22 @@ namespace BusinessService.Controllers
             return NoContent();
         }
 
-        // ✅ OWNERSHIP
         [Authorize]
         [HttpPost("{commerceId}/tags")]
         public async Task<IActionResult> AjouterTags(Guid commerceId, [FromBody] List<Guid> tagIds)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userIdClaim =
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("userId");
+
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new
+                {
+                    message = "Identifiant utilisateur introuvable dans le token."
+                });
+            }
 
             var resultat = await _service.AjouterTagsAsync(commerceId, tagIds, userId);
 
@@ -109,7 +184,6 @@ namespace BusinessService.Controllers
                 return BadRequest("Le rayon doit être supérieur à 0.");
 
             var resultat = await _service.ObtenirCommercesProchesAsync(latitude, longitude, rayonKm);
-
             return Ok(resultat);
         }
 
@@ -125,15 +199,14 @@ namespace BusinessService.Controllers
                 return BadRequest("Au moins un filtre est requis.");
 
             var resultat = await _service.RechercherAsync(nom, categorie, tag, estValide);
-
             return Ok(resultat);
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/valider")]
-        public async Task<IActionResult> Valider(Guid id)
+        public async Task<IActionResult> Valider(Guid id, CancellationToken ct)
         {
-            var resultat = await _service.ValiderAsync(id);
+            var resultat = await _service.ValiderAsync(id, ct);
 
             if (resultat == null)
                 return NotFound();
@@ -143,9 +216,13 @@ namespace BusinessService.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/rejeter")]
-        public async Task<IActionResult> Rejeter(Guid id)
+        public async Task<IActionResult> Rejeter(
+            Guid id,
+            [FromBody] RejeterCommerceRequeteDto? requete,
+            CancellationToken ct)
         {
-            var resultat = await _service.RejeterAsync(id);
+            var raison = requete?.Raison ?? string.Empty;
+            var resultat = await _service.RejeterAsync(id, raison, ct);
 
             if (resultat == null)
                 return NotFound();
@@ -157,12 +234,15 @@ namespace BusinessService.Controllers
         [HttpGet("me")]
         public async Task<IActionResult> ObtenirMonCommerce()
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim =
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("userId");
 
-            if (string.IsNullOrEmpty(userIdClaim))
+            if (!Guid.TryParse(userIdClaim, out var utilisateurId))
+            {
                 return Unauthorized(new { message = "Utilisateur non authentifié." });
-
-            var utilisateurId = Guid.Parse(userIdClaim);
+            }
 
             var commerce = await _service.ObtenirMonCommerceAsync(utilisateurId);
 

@@ -39,6 +39,8 @@ public sealed class EmailController : ControllerBase
         return Ok(new { message = "Email de confirmation renvoyé avec succès." });
     }
 
+    // Validation profil commerçant
+
     [HttpPost("merchant-approved")]
     public async Task<IActionResult> SendMerchantApprovedEmail(
         [FromBody] MerchantApprovedEmailRequestDto dto,
@@ -67,10 +69,11 @@ public sealed class EmailController : ControllerBase
 
         return Ok(new { message = "Email de refus commerçant envoyé avec succès." });
     }
+
     [HttpPost("merchant-submission-received")]
     public async Task<IActionResult> SendMerchantSubmissionReceivedEmail(
-    [FromBody] SendMerchantSubmissionReceivedEmailRequestDto dto,
-    CancellationToken ct)
+        [FromBody] SendMerchantSubmissionReceivedEmailRequestDto dto,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(dto.To))
             return BadRequest(new { message = "L'adresse email est obligatoire." });
@@ -81,10 +84,11 @@ public sealed class EmailController : ControllerBase
 
         return Ok(new { message = "Email de réception de demande commerçant envoyé." });
     }
+
     [HttpPost("merchant-email-verification")]
     public async Task<IActionResult> SendMerchantEmailVerification(
-    [FromBody] MerchantEmailVerificationRequestDto dto,
-    CancellationToken ct)
+        [FromBody] MerchantEmailVerificationRequestDto dto,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(dto.To))
             return BadRequest(new { message = "L'adresse email est obligatoire." });
@@ -99,5 +103,49 @@ public sealed class EmailController : ControllerBase
             ct);
 
         return Ok(new { message = "Email de vérification commerçant envoyé." });
+    }
+
+    // Validation commerce
+
+    [HttpPost("commerce-submission-received")]
+    public async Task<IActionResult> SendCommerceSubmissionReceivedEmail(
+        [FromBody] CommerceSubmissionReceivedEmailRequestDto dto,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.To))
+            return BadRequest(new { message = "L'adresse email est obligatoire." });
+
+        await _service.SendCommerceSubmissionReceivedEmailAsync(dto.To, dto.FullName);
+
+        return Ok(new { message = "Email de réception du commerce envoyé." });
+    }
+
+    [HttpPost("commerce-approved")]
+    public async Task<IActionResult> SendCommerceApprovedEmail(
+        [FromBody] CommerceApprovedEmailRequestDto dto,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.To))
+            return BadRequest(new { message = "Le destinataire est obligatoire." });
+
+        await _service.SendCommerceApprovedEmailAsync(dto.To, dto.FullName);
+
+        return Ok(new { message = "Email d'approbation du commerce envoyé avec succès." });
+    }
+
+    [HttpPost("commerce-rejected")]
+    public async Task<IActionResult> SendCommerceRejectedEmail(
+        [FromBody] CommerceRejectedEmailRequestDto dto,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.To))
+            return BadRequest(new { message = "Le destinataire est obligatoire." });
+
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+            return BadRequest(new { message = "La raison du rejet est obligatoire." });
+
+        await _service.SendCommerceRejectedEmailAsync(dto.To, dto.Reason, dto.FullName);
+
+        return Ok(new { message = "Email de rejet du commerce envoyé avec succès." });
     }
 }

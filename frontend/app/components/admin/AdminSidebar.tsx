@@ -16,43 +16,16 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getMyAdminProfileStatus } from "@/lib/adminProfileApi";
+import { logoutRequest } from "@/lib/authApi";          // ← AJOUT
 
 const menuItems = [
-  {
-    label: "Dashboard",
-    href: "/admin",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Demandes commerçants",
-    href: "/admin/commercants",
-    icon: Store,
-  },
-  {
-    label: "Commerces",
-    href: "/admin/commerces",
-    icon: Building2,
-  },
-  {
-    label: "Catégories",
-    href: "/admin/categories",
-    icon: Tags,
-  },
-  {
-    label: "Tags culturels",
-    href: "/admin/tagsculturels",
-    icon: Tags,
-  },
-  {
-    label: "Utilisateurs",
-    href: "/admin/utilisateurs",
-    icon: Users,
-  },
-  {
-    label: "Statistiques",
-    href: "/admin/statistiques",
-    icon: BarChart3,
-  },
+  { label: "Dashboard",             href: "/admin",               icon: LayoutDashboard },
+  { label: "Demandes commerçants",  href: "/admin/commercants",   icon: Store },
+  { label: "Commerces",             href: "/admin/commerces",     icon: Building2 },
+  { label: "Catégories",            href: "/admin/categories",    icon: Tags },
+  { label: "Tags culturels",        href: "/admin/tagsculturels", icon: Tags },
+  { label: "Utilisateurs",          href: "/admin/utilisateurs",  icon: Users },
+  { label: "Statistiques",          href: "/admin/statistiques",  icon: BarChart3 },
 ];
 
 export default function AdminSidebar() {
@@ -68,11 +41,9 @@ export default function AdminSidebar() {
       try {
         const status = await getMyAdminProfileStatus();
         if (!mounted) return;
-
         setProfileIncomplete(!status.isComplete);
       } catch {
         if (!mounted) return;
-
         setProfileIncomplete(true);
       }
     }
@@ -83,29 +54,17 @@ export default function AdminSidebar() {
 
     void loadProfileStatus();
 
-    window.addEventListener(
-      "admin-profile-status-changed",
-      handleStatusChanged
-    );
+    window.addEventListener("admin-profile-status-changed", handleStatusChanged);
 
     return () => {
       mounted = false;
-      window.removeEventListener(
-        "admin-profile-status-changed",
-        handleStatusChanged
-      );
+      window.removeEventListener("admin-profile-status-changed", handleStatusChanged);
     };
   }, []);
 
+  // ✅ CORRIGÉ : logoutRequest() nettoie cookies + localStorage + appelle l'API
   const handleLogout = async () => {
-    document.cookie = "accessToken=; Max-Age=0; path=/";
-    document.cookie = "refreshToken=; Max-Age=0; path=/";
-    document.cookie = "authToken=; Max-Age=0; path=/";
-    document.cookie = "token=; Max-Age=0; path=/";
-    document.cookie = "expiresAtUtc=; Max-Age=0; path=/";
-
-    router.push("/signin");
-    router.refresh();
+    await logoutRequest();
   };
 
   return (
@@ -117,11 +76,8 @@ export default function AdminSidebar() {
             Admin Panel
           </span>
         </div>
-
         <h2 className="mt-4 text-xl font-black tracking-tight">GOMATCH</h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Espace d’administration sécurisé
-        </p>
+        <p className="mt-1 text-sm text-zinc-400">Espace administration sécurisé</p>
       </div>
 
       <nav className="flex-1 space-y-2 overflow-y-auto p-4">
@@ -152,8 +108,7 @@ export default function AdminSidebar() {
         <Link
           href="/admin/profile"
           className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-            pathname === "/admin/profile" ||
-            pathname.startsWith("/admin/profile/")
+            pathname === "/admin/profile" || pathname.startsWith("/admin/profile/")
               ? "bg-white text-slate-950"
               : "text-zinc-300 hover:bg-white/[0.05] hover:text-white"
           }`}
@@ -162,7 +117,6 @@ export default function AdminSidebar() {
             <UserCircle2 className="h-4 w-4" />
             <span>Profil</span>
           </span>
-
           {profileIncomplete && (
             <span className="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-red-300">
               <AlertCircle className="h-3 w-3" />

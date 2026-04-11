@@ -7,11 +7,13 @@ import { MerchantSection } from "./components/MerchantSection";
 import { Footer } from "./components/Footer";
 import { FloatingAssistantButton } from "./components/FloatingAssistantButton";
 import { ThemeSurface } from "./components/ThemeSurface";
-
+import AuthRedirect from "./components/AuthRedirect";   // ← AJOUT
 
 export default function Page() {
   return (
     <ThemeSurface>
+      {/* Redirige silencieusement l'admin vers /admin si un token valide est présent */}
+      <AuthRedirect />                                   {/* ← AJOUT */}
       <Hero />
       <MatchSection />
       <MatchPlansSection />
@@ -23,5 +25,3 @@ export default function Page() {
     </ThemeSurface>
   );
 }
-
-

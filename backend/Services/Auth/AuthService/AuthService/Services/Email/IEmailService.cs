@@ -18,6 +18,7 @@ public interface IEmailService
         ResendConfirmationEmailRequestDto dto,
         CancellationToken ct);
 
+    // Validation profil commerçant
     Task SendMerchantApprovedEmailAsync(
         string to,
         string? fullName = null);
@@ -26,13 +27,28 @@ public interface IEmailService
         string to,
         string reason,
         string? fullName = null);
+
     Task SendMerchantSubmissionReceivedEmailAsync(
-    string to,
-    string? fullName = null);
+        string to,
+        string? fullName = null);
 
     Task SendMerchantEmailVerificationAsync(
-    string to,
-    string token,
-    string? fullName,
-    CancellationToken ct);
+        string to,
+        string token,
+        string? fullName,
+        CancellationToken ct);
+
+    // Validation commerce
+    Task SendCommerceSubmissionReceivedEmailAsync(
+        string to,
+        string? fullName = null);
+
+    Task SendCommerceApprovedEmailAsync(
+        string to,
+        string? fullName = null);
+
+    Task SendCommerceRejectedEmailAsync(
+        string to,
+        string reason,
+        string? fullName = null);
 }

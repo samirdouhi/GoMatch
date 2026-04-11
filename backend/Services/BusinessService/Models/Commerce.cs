@@ -1,4 +1,6 @@
-﻿namespace BusinessService.Models
+﻿using BusinessService.Enums;
+
+namespace BusinessService.Models
 {
     public class Commerce
     {
@@ -16,7 +18,17 @@
 
         public Guid ProprietaireUtilisateurId { get; set; }
 
+        /// <summary>Email du propriétaire stocké à la création pour les notifications.</summary>
+        public string ProprietaireEmail { get; set; } = string.Empty;
+
+        /// <summary>EstValide reste pour rétro-compatibilité : true ssi Statut == Approuve.</summary>
         public bool EstValide { get; set; } = false;
+
+        /// <summary>Statut workflow : EnAttente | Approuve | Rejete</summary>
+        public string Statut { get; set; } = StatutCommerce.EnAttente;
+
+        /// <summary>Raison du rejet (optionnelle).</summary>
+        public string? RaisonRejet { get; set; }
 
         public DateTime DateCreation { get; set; } = DateTime.UtcNow;
 

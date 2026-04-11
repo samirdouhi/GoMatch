@@ -1,4 +1,5 @@
 ﻿using BusinessService.DTOs;
+using BusinessService.Enums;
 using BusinessService.Models;
 
 namespace BusinessService.Mappers
@@ -16,7 +17,10 @@ namespace BusinessService.Mappers
                 Latitude = commerce.Latitude,
                 Longitude = commerce.Longitude,
                 ProprietaireUtilisateurId = commerce.ProprietaireUtilisateurId,
+                ProprietaireEmail = commerce.ProprietaireEmail,
                 EstValide = commerce.EstValide,
+                Statut = commerce.Statut,
+                RaisonRejet = commerce.RaisonRejet,
                 DateCreation = commerce.DateCreation,
                 CategorieId = commerce.CategorieId,
                 NomCategorie = commerce.Categorie?.Nom,
@@ -41,7 +45,10 @@ namespace BusinessService.Mappers
             };
         }
 
-        public static Commerce ToEntity(CreerCommerceRequeteDto request, Guid proprietaireUtilisateurId)
+        public static Commerce ToEntity(
+            CreerCommerceRequeteDto request,
+            Guid proprietaireUtilisateurId,
+            string proprietaireEmail)
         {
             return new Commerce
             {
@@ -53,7 +60,9 @@ namespace BusinessService.Mappers
                 Longitude = request.Longitude,
                 CategorieId = request.CategorieId,
                 ProprietaireUtilisateurId = proprietaireUtilisateurId,
+                ProprietaireEmail = proprietaireEmail,
                 EstValide = false,
+                Statut = StatutCommerce.EnAttente,
                 DateCreation = DateTime.UtcNow
             };
         }

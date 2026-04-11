@@ -1,4 +1,5 @@
-﻿using BusinessService.Models;
+﻿using BusinessService.Enums;
+using BusinessService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,8 +34,21 @@ namespace BusinessService.Data.Configuration
             builder.Property(c => c.ProprietaireUtilisateurId)
                 .IsRequired();
 
+            builder.Property(c => c.ProprietaireEmail)
+                .IsRequired()
+                .HasMaxLength(250)
+                .HasDefaultValue(string.Empty);
+
             builder.Property(c => c.EstValide)
                 .HasDefaultValue(false);
+
+            builder.Property(c => c.Statut)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue(StatutCommerce.EnAttente);
+
+            builder.Property(c => c.RaisonRejet)
+                .HasMaxLength(500);
 
             builder.Property(c => c.DateCreation)
                 .IsRequired();

@@ -4,9 +4,21 @@ namespace BusinessService.Services
 {
     public interface IServiceCommerce
     {
+        /// <summary>Retourne uniquement les commerces validés (usage public).</summary>
         Task<IEnumerable<CommerceReponseDto>> ObtenirToutAsync();
+
+        /// <summary>Retourne tous les commerces quel que soit le statut (usage admin).</summary>
+        Task<IEnumerable<CommerceReponseDto>> ObtenirToutAdminAsync();
+
+        /// <summary>Retourne les commerces en attente de validation.</summary>
+        Task<IEnumerable<CommerceReponseDto>> ObtenirEnAttenteAsync();
+
         Task<CommerceReponseDto?> ObtenirParIdAsync(Guid id);
-        Task<CommerceReponseDto> CreerAsync(CreerCommerceRequeteDto requete, Guid proprietaireUtilisateurId);
+
+        Task<CommerceReponseDto> CreerAsync(
+            CreerCommerceRequeteDto requete,
+            Guid proprietaireUtilisateurId,
+            string proprietaireEmail);
 
         Task<CommerceReponseDto?> ModifierAsync(
             Guid id,
@@ -31,8 +43,9 @@ namespace BusinessService.Services
             string? tag,
             bool? estValide);
 
-        Task<CommerceReponseDto?> ValiderAsync(Guid id);
-        Task<CommerceReponseDto?> RejeterAsync(Guid id);
+        Task<CommerceReponseDto?> ValiderAsync(Guid id, CancellationToken ct = default);
+        Task<CommerceReponseDto?> RejeterAsync(Guid id, string raison, CancellationToken ct = default);
+
         Task<CommerceReponseDto?> ObtenirMonCommerceAsync(Guid utilisateurId);
     }
 }

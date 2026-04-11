@@ -13,15 +13,14 @@ public sealed class EmailService : IEmailService
 {
     private readonly SmtpOptions _smtp;
     private readonly IUserRepository _users;
-  
+
     public EmailService(
         IOptions<SmtpOptions> smtp,
         IUserRepository users,
-         IConfiguration configuration)
+        IConfiguration configuration)
     {
         _smtp = smtp.Value;
         _users = users;
-       
     }
 
     public async Task SendAsync(string to, string subject, string body)
@@ -202,6 +201,128 @@ public sealed class EmailService : IEmailService
         await SendAsync(to, subject, body);
     }
 
+    public async Task SendMerchantSubmissionReceivedEmailAsync(
+        string to,
+        string? fullName = null)
+    {
+        var safeName = string.IsNullOrWhiteSpace(fullName) ? "cher utilisateur" : WebUtility.HtmlEncode(fullName.Trim());
+
+        var subject = "Demande commerçant reçue - GoMatch";
+
+        var body = $"""
+        <div style='font-family:Arial,sans-serif;line-height:1.6;color:#111'>
+            <h2 style='color:#f59e0b;'>Demande reçue</h2>
+            <p>Bonjour {safeName},</p>
+            <p>Nous confirmons la bonne réception de votre demande de compte commerçant sur <strong>GoMatch</strong>.</p>
+            <p>Votre dossier est actuellement en cours d’examen par notre équipe. Vous recevrez une réponse de notre support dans un délai maximum de <strong>24 heures</strong>.</p>
+            <p>Nous vous informerons par email dès que votre demande sera traitée.</p>
+            <p>Merci pour votre confiance.</p>
+            <p><strong>L’équipe GoMatch</strong></p>
+        </div>
+        """;
+
+        await SendAsync(to, subject, body);
+    }
+
+    public async Task SendMerchantEmailVerificationAsync(
+        string to,
+        string token,
+        string? fullName,
+        CancellationToken ct)
+    {
+        var safeName = string.IsNullOrWhiteSpace(fullName)
+            ? "cher utilisateur"
+            : WebUtility.HtmlEncode(fullName.Trim());
+
+        var confirmationUrl =
+            $"http://localhost:3000/merchant/confirm-email?token={Uri.EscapeDataString(token)}";
+
+        var subject = "Vérifiez votre email professionnel - GoMatch";
+
+        var body = $"""
+        <div style='font-family:Arial,sans-serif;line-height:1.6;color:#111'>
+            <h2 style='color:#f59e0b;'>Vérification de votre email professionnel</h2>
+            <p>Bonjour {safeName},</p>
+            <p>Avant d’envoyer votre demande commerçant à notre équipe, nous devons vérifier votre adresse email professionnelle.</p>
+            <p>Cliquez sur le bouton ci-dessous pour confirmer votre adresse :</p>
+            <p style='margin:24px 0;'>
+                <a href='{confirmationUrl}'
+                   style='background:#f59e0b;color:#111;padding:12px 20px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;'>
+                    Confirmer mon email professionnel
+                </a>
+            </p>
+            <p>Ce lien expire dans 24 heures.</p>
+            <p><strong>L’équipe GoMatch</strong></p>
+        </div>
+        """;
+
+        await SendAsync(to, subject, body);
+    }
+
+    // Nouveaux emails pour le commerce
+
+    public async Task SendCommerceSubmissionReceivedEmailAsync(
+        string to,
+        string? fullName = null)
+    {
+        var greeting = BuildGreeting(fullName);
+
+        var subject = "Votre commerce est en cours de vérification - GoMatch";
+        var body = $"""
+        <h2>Commerce reçu</h2>
+        <p>Bonjour {greeting},</p>
+        <p>Nous confirmons la bonne réception de votre demande d’ajout de commerce sur <strong>GoMatch</strong>.</p>
+        <p>Votre commerce est actuellement en cours de vérification par notre équipe.</p>
+        <p>Vous recevrez une réponse dans un délai maximum de <strong>24 heures</strong>.</p>
+        <p><strong>L’équipe GoMatch</strong></p>
+        """;
+
+        await SendAsync(to, subject, body);
+    }
+
+    public async Task SendCommerceApprovedEmailAsync(
+        string to,
+        string? fullName = null)
+    {
+        var greeting = BuildGreeting(fullName);
+
+        var subject = "Votre commerce a été approuvé - GoMatch";
+        var body = $"""
+        <h2>Commerce approuvé</h2>
+        <p>Bonjour {greeting},</p>
+        <p>Bonne nouvelle : votre commerce a été validé par l’équipe <strong>GoMatch</strong>.</p>
+        <p>Il est maintenant visible sur la plateforme.</p>
+        <p>Vous pouvez continuer à enrichir votre fiche commerce depuis votre espace commerçant.</p>
+        <p><strong>L’équipe GoMatch</strong></p>
+        """;
+
+        await SendAsync(to, subject, body);
+    }
+
+    public async Task SendCommerceRejectedEmailAsync(
+        string to,
+        string reason,
+        string? fullName = null)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ValidationException("La raison du rejet est obligatoire.", "AUTH.COMMERCE_REJECTION_REASON_REQUIRED");
+
+        var greeting = BuildGreeting(fullName);
+        var safeReason = WebUtility.HtmlEncode(reason.Trim());
+
+        var subject = "Votre commerce a été rejeté - GoMatch";
+        var body = $"""
+        <h2>Commerce rejeté</h2>
+        <p>Bonjour {greeting},</p>
+        <p>Votre demande d’ajout de commerce n’a pas pu être validée pour le moment.</p>
+        <p><strong>Raison :</strong> {safeReason}</p>
+        <p>Vous pouvez corriger les informations puis soumettre à nouveau votre commerce.</p>
+        <p><strong>L’équipe GoMatch</strong></p>
+        """;
+
+        await SendAsync(to, subject, body);
+    }
+
     private static string BuildFrontendConfirmUrl(string confirmationToken)
     {
         var encodedToken = Uri.EscapeDataString(confirmationToken);
@@ -213,85 +334,5 @@ public sealed class EmailService : IEmailService
         return string.IsNullOrWhiteSpace(fullName)
             ? "Monsieur / Madame"
             : WebUtility.HtmlEncode(fullName.Trim());
-    }
-
-    public async Task SendMerchantSubmissionReceivedEmailAsync(
-    string to,
-    string? fullName = null)
-    {
-        var safeName = string.IsNullOrWhiteSpace(fullName) ? "cher utilisateur" : fullName.Trim();
-
-        var subject = "Demande commerçant reçue - GoMatch";
-
-        var body = $@"
-        <div style='font-family:Arial,sans-serif;line-height:1.6;color:#111'>
-            <h2 style='color:#f59e0b;'>Demande reçue</h2>
-
-            <p>Bonjour {safeName},</p>
-
-            <p>
-                Nous confirmons la bonne réception de votre demande de compte commerçant sur <strong>GoMatch</strong>.
-            </p>
-
-            <p>
-                Votre dossier est actuellement en cours d’examen par notre équipe.
-                Vous recevrez une réponse de notre support dans un délai maximum de <strong>24 heures</strong>.
-            </p>
-
-            <p>
-                Nous vous informerons par email dès que votre demande sera traitée.
-            </p>
-
-            <p>Merci pour votre confiance.</p>
-
-            <p><strong>L’équipe GoMatch</strong></p>
-        </div>";
-
-        await SendAsync(to, subject, body);
-    }
-    public async Task SendMerchantEmailVerificationAsync(
-    string to,
-    string token,
-    string? fullName,
-    CancellationToken ct)
-    {
-        var safeName = string.IsNullOrWhiteSpace(fullName)
-            ? "cher utilisateur"
-            : fullName.Trim();
-
-        var confirmationUrl =
-     $"http://localhost:3000/merchant/confirm-email?token={Uri.EscapeDataString(token)}";
-
-        var subject = "Vérifiez votre email professionnel - GoMatch";
-
-        var body = $@"
-        <div style='font-family:Arial,sans-serif;line-height:1.6;color:#111'>
-            <h2 style='color:#f59e0b;'>Vérification de votre email professionnel</h2>
-
-            <p>Bonjour {safeName},</p>
-
-            <p>
-                Avant d’envoyer votre demande commerçant à notre équipe, nous devons vérifier votre adresse email professionnelle.
-            </p>
-
-            <p>
-                Cliquez sur le bouton ci-dessous pour confirmer votre adresse :
-            </p>
-
-            <p style='margin:24px 0;'>
-                <a href='{confirmationUrl}'
-                   style='background:#f59e0b;color:#111;padding:12px 20px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;'>
-                    Confirmer mon email professionnel
-                </a>
-            </p>
-
-            <p>
-                Ce lien expire dans 24 heures.
-            </p>
-
-            <p><strong>L’équipe GoMatch</strong></p>
-        </div>";
-
-        await SendAsync(to, subject, body);
     }
 }

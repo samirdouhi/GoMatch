@@ -19,11 +19,9 @@ function decodeJwtPayload(token: string): DecodedJwt | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
     const json = atob(padded);
-
     return JSON.parse(json) as DecodedJwt;
   } catch {
     return null;
@@ -33,7 +31,6 @@ function decodeJwtPayload(token: string): DecodedJwt | null {
 function getRolesFromToken(token: string): string[] {
   const decoded = decodeJwtPayload(token);
   if (!decoded) return [];
-
   const roles = [
     ...normalizeRoles(decoded.roles),
     ...normalizeRoles(decoded.role),
@@ -41,14 +38,12 @@ function getRolesFromToken(token: string): string[] {
       decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
     ),
   ];
-
   return [...new Set(roles.filter(Boolean))];
 }
 
 function isTokenExpired(token: string): boolean {
   const decoded = decodeJwtPayload(token);
   if (!decoded?.exp) return false;
-
   const now = Math.floor(Date.now() / 1000);
   return decoded.exp <= now;
 }
@@ -72,12 +67,12 @@ export function middleware(request: NextRequest) {
   const isAuthPage =
     pathname.startsWith("/signin") || pathname.startsWith("/Register");
   const isAdminPage = pathname.startsWith("/admin");
+  const isCommercantPage = pathname.startsWith("/commercant");
 
   if (!token) {
-    if (isAdminPage) {
+    if (isAdminPage || isCommercantPage) {
       return NextResponse.redirect(new URL("/signin", request.url));
     }
-
     return NextResponse.next();
   }
 
@@ -87,7 +82,6 @@ export function middleware(request: NextRequest) {
       clearAuthCookies(response);
       return response;
     }
-
     const response = NextResponse.redirect(new URL("/signin", request.url));
     clearAuthCookies(response);
     return response;
@@ -99,11 +93,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  if (isCommercantPage && !roles.includes("Commercant")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   if (isAuthPage) {
     if (roles.includes("Admin")) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
-
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -111,5 +108,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/signin", "/Register"],
+  matcher: ["/admin/:path*", "/commercant/:path*", "/signin", "/Register"],
 };
