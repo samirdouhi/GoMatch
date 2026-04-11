@@ -5,6 +5,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "crests.football-data.org",
       },
+      {
+        protocol: "https",
+        hostname: "flagcdn.com",
+      },
     ],
   },
   async rewrites() {

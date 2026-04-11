@@ -77,19 +77,45 @@ function getStatusBadgeClasses(status: string) {
   }
 }
 
-function TeamFlag({ crest, emoji, size = 64 }: { crest: string; emoji: string; size?: number }) {
-  if (crest) {
+const FLAG_CODE_MAP: Record<string, string> = {
+  ENG: "gb-eng",
+  SCO: "gb-sct",
+  WAL: "gb-wls",
+  NIR: "gb-nir",
+};
+
+function getFlagUrl(code: string): string {
+  if (!code || code === "TBD" || code.length < 2) return "";
+  const mapped = FLAG_CODE_MAP[code.toUpperCase()] ?? code.toLowerCase().slice(0, 2);
+  return `https://flagcdn.com/w40/${mapped}.png`;
+}
+
+function TeamFlag({
+  crest,
+  code,
+  emoji,
+  size = 64,
+}: {
+  crest: string;
+  code: string;
+  emoji: string;
+  size?: number;
+}) {
+  const src = crest || getFlagUrl(code);
+
+  if (src) {
     return (
       <Image
-        src={crest}
+        src={src}
         alt={emoji}
         width={size}
-        height={size}
+        height={Math.round(size * 0.75)}
         className="object-contain"
         unoptimized
       />
     );
   }
+
   return <span style={{ fontSize: size * 0.6 }}>{emoji}</span>;
 }
 
@@ -220,13 +246,13 @@ function MatchHeroCard({ match }: { match: Match }) {
               Prochain match
             </p>
             <div className="mt-3 flex items-end gap-3">
-              <TeamFlag crest={match.crestEquipe1} emoji={match.drapeau1} size={32} />
+              <TeamFlag crest={match.crestEquipe1} code={match.codeEquipe1} emoji={match.drapeau1} size={32} />
               <span className="text-xl font-black text-white">
                 {match.equipe1}
               </span>
             </div>
             <div className="mt-2 flex items-end gap-3">
-              <TeamFlag crest={match.crestEquipe2} emoji={match.drapeau2} size={32} />
+              <TeamFlag crest={match.crestEquipe2} code={match.codeEquipe2} emoji={match.drapeau2} size={32} />
               <span className="text-xl font-black text-white">
                 {match.equipe2}
               </span>
@@ -277,7 +303,7 @@ function MatchHeroCard({ match }: { match: Match }) {
           <div className="mt-6 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                <TeamFlag crest={match.crestEquipe1} emoji={match.drapeau1} size={48} />
+                <TeamFlag crest={match.crestEquipe1} code={match.codeEquipe1} emoji={match.drapeau1} size={48} />
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
@@ -301,7 +327,7 @@ function MatchHeroCard({ match }: { match: Match }) {
                 </p>
               </div>
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                <TeamFlag crest={match.crestEquipe2} emoji={match.drapeau2} size={48} />
+                <TeamFlag crest={match.crestEquipe2} code={match.codeEquipe2} emoji={match.drapeau2} size={48} />
               </div>
             </div>
           </div>
@@ -576,7 +602,7 @@ export default function MatchesPageClient({ initialMatches }: Props) {
                   <div className="grid items-center gap-6 md:grid-cols-[1fr_auto_1fr]">
                     <div className="flex items-center gap-4">
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                        <TeamFlag crest={match.crestEquipe1} emoji={match.drapeau1} size={48} />
+                        <TeamFlag crest={match.crestEquipe1} code={match.codeEquipe1} emoji={match.drapeau1} size={48} />
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
@@ -602,7 +628,7 @@ export default function MatchesPageClient({ initialMatches }: Props) {
                         </h2>
                       </div>
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                        <TeamFlag crest={match.crestEquipe2} emoji={match.drapeau2} size={48} />
+                        <TeamFlag crest={match.crestEquipe2} code={match.codeEquipe2} emoji={match.drapeau2} size={48} />
                       </div>
                     </div>
                   </div>
