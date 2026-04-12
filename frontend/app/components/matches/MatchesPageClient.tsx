@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import type { Match, MatchPhase } from "@/lib/matchesApi";
-import { formatMatchDate, formatShortDate } from "@/lib/matchesApi";
+import { formatMatchDate } from "@/lib/matchesApi";
 import {
   CalendarDays,
   ChevronDown,
   Clock3,
   MapPin,
   Search,
-  Trophy,
   X,
   ArrowRight,
 } from "lucide-react";
@@ -76,15 +76,63 @@ function getStatusBadgeClasses(status: string) {
   }
 }
 
+const FLAG_CODE_MAP: Record<string, string> = {
+  ENG: "gb-eng",
+  SCO: "gb-sct",
+  WAL: "gb-wls",
+  NIR: "gb-nir",
+};
+
+function getFlagUrl(code: string): string {
+  if (!code || code === "TBD" || code.length < 2) return "";
+  const mapped = FLAG_CODE_MAP[code.toUpperCase()] ?? code.toLowerCase().slice(0, 2);
+  return `https://flagcdn.com/w80/${mapped}.png`;
+}
+
+function TeamBadge({
+  crest,
+  flag,
+  code,
+  team,
+}: {
+  crest: string;
+  flag: string;
+  code: string;
+  team: string;
+}) {
+  const imgSrc = crest || getFlagUrl(code);
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 shadow-inner ring-1 ring-zinc-800 overflow-hidden">
+        {imgSrc ? (
+          <Image
+            src={imgSrc}
+            alt={team}
+            width={72}
+            height={54}
+            className="object-contain"
+            unoptimized
+          />
+        ) : (
+          <span className="text-lg font-black text-zinc-200">{code}</span>
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+          Équipe
+        </p>
+        <p className="truncate text-xl font-black text-white">{team}</p>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
-    <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-10 text-center shadow-[0_0_40px_rgba(0,0,0,0.35)] backdrop-blur">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800">
-        <Trophy className="h-6 w-6 text-amber-400" />
-      </div>
-      <h3 className="mt-4 text-lg font-semibold text-white">
-        Aucun match trouvé
-      </h3>
+    <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-10 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur">
+      <h3 className="text-lg font-semibold text-white">Aucun match trouvé</h3>
       <p className="mt-2 text-sm text-zinc-400">
         Essaie de modifier les filtres pour afficher plus de résultats.
       </p>
@@ -92,12 +140,7 @@ function EmptyState() {
   );
 }
 
-function CustomSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: CustomSelectProps) {
+function CustomSelect({ label, value, options, onChange }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,13 +153,11 @@ function CustomSelect({
         setOpen(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selected =
-    options.find((option) => option.value === value) ?? options[0];
+  const selected = options.find((option) => option.value === value) ?? options[0];
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -127,19 +168,16 @@ function CustomSelect({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-2xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-left text-sm text-white outline-none transition hover:border-amber-400"
+        className="flex w-full items-center justify-between rounded-2xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-left text-sm text-white transition hover:border-amber-400"
       >
         <span>{selected?.label}</span>
-        <ChevronDown
-          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
-        />
+        <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <div className="absolute z-50 mt-2 max-h-64 w-full overflow-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-2 shadow-2xl">
           {options.map((option) => {
             const isActive = option.value === value;
-
             return (
               <button
                 key={option.value}
@@ -164,171 +202,98 @@ function CustomSelect({
   );
 }
 
-function MatchHeroCard({ match }: { match: Match }) {
+function MatchCalendarCard({ match }: { match: Match }) {
   return (
-    <div className="relative overflow-hidden rounded-[32px] border border-zinc-800 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.14),transparent_35%),linear-gradient(180deg,#0b0b0f_0%,#09090b_100%)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)] md:p-8">
-      <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:36px_36px]" />
-
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="mb-3 inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
-            {match.ville} · {match.phase}
+    <article className="overflow-hidden rounded-[30px] border border-zinc-800 bg-[linear-gradient(180deg,#09090b_0%,#070709_100%)] shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+      <div className="border-b border-zinc-800 px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+              Calendrier {match.ville}
+            </p>
           </div>
 
-          <h2 className="max-w-3xl text-3xl font-black uppercase tracking-tight text-white md:text-5xl">
-            {match.equipe1} <span className="text-amber-400">vs</span>{" "}
-            {match.equipe2}
-          </h2>
-
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 md:text-base">
-            Suivez le match, consultez les informations clés et préparez votre
-            journée autour du stade avec les meilleures options avant et après
-            la rencontre.
-          </p>
-        </div>
-
-        <div
-          className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] ${getStatusBadgeClasses(
-            match.status
-          )}`}
-        >
-          {match.status}
+          <span
+            className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${getStatusBadgeClasses(
+              match.status
+            )}`}
+          >
+            {match.status}
+          </span>
         </div>
       </div>
 
-      <div className="relative mt-8 grid gap-6 lg:grid-cols-[1fr_420px]">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-5 backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-              Prochain match
-            </p>
-            <div className="mt-3 flex items-end gap-3">
-              <span className="text-3xl">{match.drapeau1}</span>
-              <span className="text-xl font-black text-white">
-                {match.equipe1}
-              </span>
-            </div>
-            <div className="mt-2 flex items-end gap-3">
-              <span className="text-3xl">{match.drapeau2}</span>
-              <span className="text-xl font-black text-white">
-                {match.equipe2}
-              </span>
-            </div>
-          </div>
+      <div className="p-6 md:p-7">
+        <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+          <TeamBadge
+            crest={match.crestEquipe1}
+            flag={match.drapeau1}
+            code={match.codeEquipe1}
+            team={match.equipe1}
+          />
 
-          <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-5 backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-              Calendrier
-            </p>
-            <div className="mt-3 space-y-2">
-              <div className="flex items-center gap-3 text-white">
-                <CalendarDays className="h-4 w-4 text-amber-400" />
-                <span className="font-semibold">
-                  {formatShortDate(match.date)}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-white">
-                <Clock3 className="h-4 w-4 text-amber-400" />
-                <span className="font-semibold">{match.heure}</span>
-              </div>
-              <div className="flex items-center gap-3 text-white">
-                <MapPin className="h-4 w-4 text-amber-400" />
-                <span className="font-semibold">
-                  {match.stade} · {match.ville}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="md:col-span-2 flex flex-wrap gap-3 pt-1">
-            <button className="inline-flex items-center gap-2 rounded-2xl bg-amber-400 px-5 py-3 text-sm font-bold text-black transition hover:bg-amber-300">
-              Planifier ma journée
-              <ArrowRight className="h-4 w-4" />
-            </button>
-
-            <button className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-900/70 px-5 py-3 text-sm font-bold text-white transition hover:border-zinc-500 hover:bg-zinc-800">
-              Avant / Après match
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-6 backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-            Calendrier {match.ville}
-          </p>
-
-          <div className="mt-6 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                {match.drapeau1}
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                  Domicile
-                </p>
-                <p className="text-2xl font-black text-white">{match.equipe1}</p>
-              </div>
-            </div>
-
+          <div className="flex justify-center">
             <div className="rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-bold text-zinc-300">
               VS
             </div>
-
-            <div className="flex items-center gap-4">
-              <div>
-                <p className="text-right text-xs uppercase tracking-[0.18em] text-zinc-500">
-                  Extérieure
-                </p>
-                <p className="text-right text-2xl font-black text-white">
-                  {match.equipe2}
-                </p>
-              </div>
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                {match.drapeau2}
-              </div>
-            </div>
           </div>
 
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center gap-4 text-zinc-200">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900">
-                <CalendarDays className="h-5 w-5 text-amber-400" />
-              </div>
-              <span className="font-medium">{formatMatchDate(match.date)}</span>
-            </div>
+          <div className="flex justify-start lg:justify-end">
+            <TeamBadge
+              crest={match.crestEquipe2}
+              flag={match.drapeau2}
+              code={match.codeEquipe2}
+              team={match.equipe2}
+            />
+          </div>
+        </div>
 
-            <div className="flex items-center gap-4 text-zinc-200">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900">
-                <Clock3 className="h-5 w-5 text-amber-400" />
-              </div>
-              <span className="font-medium">{match.heure}</span>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="flex items-center gap-4 rounded-2xl bg-zinc-900/90 p-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950">
+              <CalendarDays className="h-5 w-5 text-amber-400" />
             </div>
-
-            <div className="flex items-center gap-4 text-zinc-200">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900">
-                <MapPin className="h-5 w-5 text-amber-400" />
-              </div>
-              <span className="font-medium">
-                {match.stade} · {match.ville}
-              </span>
-            </div>
+            <span className="font-medium text-zinc-100">
+              {formatMatchDate(match.date)}
+            </span>
           </div>
 
-          <button className="mt-8 w-full rounded-2xl bg-red-500 px-5 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-red-400">
+          <div className="flex items-center gap-4 rounded-2xl bg-zinc-900/90 p-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950">
+              <Clock3 className="h-5 w-5 text-amber-400" />
+            </div>
+            <span className="font-medium text-zinc-100">{match.heure}</span>
+          </div>
+
+          <div className="flex items-center gap-4 rounded-2xl bg-zinc-900/90 p-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950">
+              <MapPin className="h-5 w-5 text-amber-400" />
+            </div>
+            <span className="font-medium text-zinc-100">
+              {match.stade} · {match.ville}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <button className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 text-sm font-black text-black transition hover:bg-amber-300">
+            Planifier ma journée
+            <ArrowRight className="h-4 w-4" />
+          </button>
+
+          <button className="rounded-2xl bg-red-500 px-5 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-red-400">
             Avant / Après match
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
 export default function MatchesPageClient({ initialMatches }: Props) {
   const [search, setSearch] = useState("");
   const [selectedCity, setSelectedCity] = useState("Toutes");
-  const [selectedPhase, setSelectedPhase] = useState<MatchPhase | "Toutes">(
-    "Toutes"
-  );
+  const [selectedPhase, setSelectedPhase] = useState<MatchPhase | "Toutes">("Toutes");
   const [selectedStatus, setSelectedStatus] = useState("Tous");
   const [selectedTeam, setSelectedTeam] = useState("Toutes");
 
@@ -388,25 +353,9 @@ export default function MatchesPageClient({ initialMatches }: Props) {
         match.equipe1 === selectedTeam ||
         match.equipe2 === selectedTeam;
 
-      return (
-        matchesSearch &&
-        matchesCity &&
-        matchesPhase &&
-        matchesStatus &&
-        matchesTeam
-      );
+      return matchesSearch && matchesCity && matchesPhase && matchesStatus && matchesTeam;
     });
-  }, [
-    initialMatches,
-    search,
-    selectedCity,
-    selectedPhase,
-    selectedStatus,
-    selectedTeam,
-  ]);
-
-  const featuredMatch = filteredMatches[0] ?? null;
-  const remainingMatches = filteredMatches.slice(1);
+  }, [initialMatches, search, selectedCity, selectedPhase, selectedStatus, selectedTeam]);
 
   return (
     <main className="min-h-screen bg-[#050608] px-4 py-8 text-white md:px-8">
@@ -422,8 +371,7 @@ export default function MatchesPageClient({ initialMatches }: Props) {
 
           <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-400">
             Consulte les rencontres, filtre par ville, phase, statut ou équipe,
-            et explore le calendrier avec une vue premium inspirée d’un univers
-            événementiel moderne.
+            puis prépare ton expérience autour du match.
           </p>
         </section>
 
@@ -513,137 +461,15 @@ export default function MatchesPageClient({ initialMatches }: Props) {
           </div>
         </section>
 
-        {featuredMatch ? (
-          <div className="mb-8">
-            <MatchHeroCard match={featuredMatch} />
-          </div>
+        {filteredMatches.length === 0 ? (
+          <EmptyState />
         ) : (
-          <div className="mb-8">
-            <EmptyState />
-          </div>
+          <section className="grid gap-6">
+            {filteredMatches.map((match) => (
+              <MatchCalendarCard key={match.id} match={match} />
+            ))}
+          </section>
         )}
-
-        <section className="grid gap-5 lg:grid-cols-2">
-          {remainingMatches.length === 0 ? (
-            featuredMatch ? null : <EmptyState />
-          ) : (
-            remainingMatches.map((match) => (
-              <article
-                key={match.id}
-                className="overflow-hidden rounded-[28px] border border-zinc-800 bg-zinc-950/70 shadow-[0_20px_50px_rgba(0,0,0,0.30)] backdrop-blur"
-              >
-                <div className="border-b border-zinc-800 px-5 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-200">
-                        {match.phase}
-                      </span>
-                      {match.groupe && (
-                        <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-300">
-                          Groupe {match.groupe}
-                        </span>
-                      )}
-                    </div>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${getStatusBadgeClasses(
-                        match.status
-                      )}`}
-                    >
-                      {match.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="px-5 py-6">
-                  <div className="grid items-center gap-6 md:grid-cols-[1fr_auto_1fr]">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                        {match.drapeau1}
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                          Domicile
-                        </p>
-                        <h2 className="mt-1 text-xl font-black text-white">
-                          {match.equipe1}
-                        </h2>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-bold text-zinc-300">
-                      VS
-                    </div>
-
-                    <div className="flex items-center justify-start gap-4 md:justify-end">
-                      <div className="text-left md:text-right">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                          Extérieure
-                        </p>
-                        <h2 className="mt-1 text-xl font-black text-white">
-                          {match.equipe2}
-                        </h2>
-                      </div>
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-4xl">
-                        {match.drapeau2}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl bg-zinc-900 p-4">
-                      <div className="flex items-center gap-2 text-zinc-500">
-                        <CalendarDays className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wider">
-                          Date
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-white">
-                        {formatMatchDate(match.date)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-zinc-900 p-4">
-                      <div className="flex items-center gap-2 text-zinc-500">
-                        <Clock3 className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wider">
-                          Heure
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-white">
-                        {match.heure || "Non renseignée"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-zinc-900 p-4">
-                      <div className="flex items-center gap-2 text-zinc-500">
-                        <Trophy className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wider">
-                          Stade
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-white">
-                        {match.stade || "Non renseigné"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-zinc-900 p-4">
-                      <div className="flex items-center gap-2 text-zinc-500">
-                        <MapPin className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wider">
-                          Ville
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-white">
-                        {match.ville || "Non renseignée"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ))
-          )}
-        </section>
       </div>
     </main>
   );

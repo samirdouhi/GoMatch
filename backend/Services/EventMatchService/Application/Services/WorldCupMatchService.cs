@@ -13,21 +13,24 @@ public sealed class WorldCupMatchService : IWorldCupMatchService
     private readonly FootballDataOptions _options;
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<WorldCupMatchService> _logger;
+    private readonly IMatchLocationEnricher _matchLocationEnricher;
 
     public WorldCupMatchService(
         IFootballDataClient footballDataClient,
         IOptions<FootballDataOptions> options,
         IMemoryCache memoryCache,
-        ILogger<WorldCupMatchService> logger)
+        ILogger<WorldCupMatchService> logger,
+        IMatchLocationEnricher matchLocationEnricher)
     {
         _footballDataClient = footballDataClient;
         _options = options.Value;
         _memoryCache = memoryCache;
         _logger = logger;
+        _matchLocationEnricher = matchLocationEnricher;
     }
 
     public async Task<IReadOnlyList<MatchItem>> GetWorldCupMatchesAsync(
-      CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         var cacheKey = $"worldcup_matches_{_options.SeasonYear}";
 
@@ -42,17 +45,24 @@ public sealed class WorldCupMatchService : IWorldCupMatchService
                 _options.SeasonYear,
                 cancellationToken);
 
-            return response.Matches
+            var rawMatches = response.Matches
                 .Select(match => MatchMapper.ToDomain(
                     match,
                     response.Competition,
                     _options.CompetitionCode))
                 .OrderBy(match => match.UtcDate)
                 .ToList();
+
+            var enrichedMatches = _matchLocationEnricher.EnrichMany(rawMatches)
+                .OrderBy(match => match.UtcDate)
+                .ToList();
+
+            return enrichedMatches;
         });
 
         return cachedMatches ?? Array.Empty<MatchItem>();
     }
+
     public async Task<IReadOnlyList<MatchItem>> GetWorldCupMatchesByStatusAsync(
         string status,
         CancellationToken cancellationToken = default)

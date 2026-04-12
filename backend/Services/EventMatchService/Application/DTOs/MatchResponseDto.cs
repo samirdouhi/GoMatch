@@ -1,6 +1,6 @@
-﻿namespace EventMatchService.Domain.Models;
+﻿namespace EventMatchService.Application.DTOs;
 
-public sealed class MatchItem
+public sealed class MatchResponseDto
 {
     public int Id { get; set; }
     public string CompetitionCode { get; set; } = string.Empty;
@@ -19,11 +19,9 @@ public sealed class MatchItem
 
     public string Venue { get; set; } = string.Empty;
 
-    // Enrichissement GoMatch
     public string? City { get; set; }
     public string? StadiumName { get; set; }
     public string? Address { get; set; }
-
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
 
@@ -31,5 +29,5 @@ public sealed class MatchItem
     public string LocationSource { get; set; } = "api";
     public bool IsExperienceMatch { get; set; }
 
-    public List<FanZone> FanZones { get; set; } = new();
+    public List<FanZoneDto> FanZones { get; set; } = new();
 }

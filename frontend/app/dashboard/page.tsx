@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import {
-  Trophy,
   Star,
   ArrowUpRight,
   Newspaper,
@@ -22,9 +22,17 @@ import {
   RefreshCcw,
   X,
   MailCheck,
+  CalendarDays,
+  MapPin,
+  ArrowRight,
 } from "lucide-react";
 import { authFetch } from "@/lib/authApi";
 import { getAccessToken } from "@/lib/authTokens";
+import {
+  getUpcomingMatches,
+  formatMatchDate,
+  type Match,
+} from "@/lib/matchesApi";
 
 type UserProfileSummary = {
   userId: string;
@@ -88,6 +96,34 @@ function parseJsonArray(value?: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+function normalizeTeamName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/['’.-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const FLAG_CODE_MAP: Record<string, string> = {
+  ENG: "gb-eng",
+  SCO: "gb-sct",
+  WAL: "gb-wls",
+  NIR: "gb-nir",
+};
+
+function getFlagUrl(code?: string): string {
+  const normalized = (code ?? "").trim().toUpperCase();
+  if (!normalized || normalized === "TBD" || normalized.length < 2) return "";
+
+  const mapped =
+    FLAG_CODE_MAP[normalized] ?? normalized.toLowerCase().slice(0, 2);
+
+  return `https://flagcdn.com/w80/${mapped}.png`;
 }
 
 function getMerchantStatusMeta(status: MerchantStatus) {
@@ -183,6 +219,169 @@ const DynamicSpaceBackground = () => {
   );
 };
 
+function FollowedMatchMiniCard({
+  match,
+  onPlanMatch,
+}: {
+  match: Match;
+  onPlanMatch: (match: Match) => void;
+}) {
+  const homeFlag = getFlagUrl(match.codeEquipe1);
+  const awayFlag = getFlagUrl(match.codeEquipe2);
+
+  return (
+    <motion.article
+      whileHover={{ y: -4, scale: 1.01 }}
+      className="rounded-[1.8rem] border border-white/5 bg-[#0f0f10] p-5 shadow-xl transition"
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/30">
+          {match.isExperienceMatch ? "Match expérience" : "Match suivi"}
+        </p>
+
+        <div className="flex items-center gap-2">
+          {match.locationSource === "gomatch_override" && (
+            <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-300">
+              Maroc
+            </span>
+          )}
+
+          <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-yellow-300">
+            {match.status}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <MiniTeam
+          name={match.equipe1}
+          crest={match.crestEquipe1}
+          flagUrl={homeFlag}
+          code={match.codeEquipe1}
+          align="left"
+        />
+
+        <div className="flex justify-center">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-black text-white/70">
+            VS
+          </div>
+        </div>
+
+        <MiniTeam
+          name={match.equipe2}
+          crest={match.crestEquipe2}
+          flagUrl={awayFlag}
+          code={match.codeEquipe2}
+          align="right"
+        />
+      </div>
+
+      <div className="mt-5 space-y-2.5">
+        <MiniInfo icon={CalendarDays} text={formatMatchDate(match.date)} />
+        <MiniInfo icon={Clock3} text={match.heure || "Heure non renseignée"} />
+        <MiniInfo
+          icon={MapPin}
+          text={`${match.ville || "Ville"}${match.stade ? ` · ${match.stade}` : ""}`}
+        />
+      </div>
+
+      {match.isExperienceMatch ? (
+        <>
+          {!!match.fanZones?.length && (
+            <div className="mt-4">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
+                Fan zones
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {match.fanZones.slice(0, 2).map((zone) => (
+                  <span
+                    key={zone.name}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] text-white/75"
+                  >
+                    {zone.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => onPlanMatch(match)}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-black transition hover:scale-[1.02]"
+          >
+            Planifier ma journée
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </>
+      ) : (
+        <div className="mt-5 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-center text-xs text-white/45">
+          Recommandations bientôt disponibles
+        </div>
+      )}
+    </motion.article>
+  );
+}
+
+function MiniTeam({
+  name,
+  crest,
+  flagUrl,
+  code,
+  align,
+}: {
+  name: string;
+  crest?: string;
+  flagUrl?: string;
+  code?: string;
+  align: "left" | "right";
+}) {
+  const imgSrc = crest || flagUrl || "";
+  const isRight = align === "right";
+
+  return (
+    <div className={`min-w-0 ${isRight ? "text-right" : "text-left"}`}>
+      <div className={`mb-2 flex ${isRight ? "justify-end" : "justify-start"}`}>
+        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800">
+          {imgSrc ? (
+            <Image
+              src={imgSrc}
+              alt={name}
+              width={44}
+              height={44}
+              className="object-contain"
+              unoptimized
+            />
+          ) : (
+            <span className="text-xs font-black text-zinc-200">
+              {code || "TBD"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <p className="line-clamp-2 text-sm font-black leading-tight text-white">
+        {name}
+      </p>
+    </div>
+  );
+}
+
+function MiniInfo({
+  icon: Icon,
+  text,
+}: {
+  icon: LucideIcon;
+  text: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-[#facc15]" />
+      <span className="truncate text-xs text-white/75">{text}</span>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -202,6 +401,9 @@ export default function DashboardPage() {
 
   const [showRequestBanner, setShowRequestBanner] = useState(true);
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(true);
+
+  const [followedMatches, setFollowedMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
 
   const merchantRequest = searchParams.get("merchantRequest");
   const emailParam = searchParams.get("email");
@@ -228,6 +430,7 @@ export default function DashboardPage() {
         if (!profileRes.ok) {
           setLoadError("Impossible de charger le profil utilisateur.");
           setIsLoading(false);
+          setMatchesLoading(false);
           return;
         }
 
@@ -261,10 +464,37 @@ export default function DashboardPage() {
           return;
         }
 
+        const followedTeams = parseJsonArray(profileData?.equipesSuiviesJson);
+        const normalizedFollowedTeams = followedTeams.map(normalizeTeamName);
+
+        if (normalizedFollowedTeams.length > 0) {
+          try {
+            const upcomingMatches = await getUpcomingMatches();
+
+            const filtered = upcomingMatches.filter((match) => {
+              const team1 = normalizeTeamName(match.equipe1);
+              const team2 = normalizeTeamName(match.equipe2);
+
+              return (
+                normalizedFollowedTeams.includes(team1) ||
+                normalizedFollowedTeams.includes(team2)
+              );
+            });
+
+            setFollowedMatches(filtered);
+          } catch {
+            setFollowedMatches([]);
+          }
+        } else {
+          setFollowedMatches([]);
+        }
+
         setIsLoading(false);
+        setMatchesLoading(false);
       } catch {
         setLoadError("Erreur réseau lors du chargement du dashboard.");
         setIsLoading(false);
+        setMatchesLoading(false);
       }
     }
 
@@ -282,7 +512,9 @@ export default function DashboardPage() {
   );
 
   const firstName =
-    profile?.userProfile?.prenom || merchantProfile?.userProfile?.prenom || "Champion";
+    profile?.userProfile?.prenom ||
+    merchantProfile?.userProfile?.prenom ||
+    "Champion";
 
   const merchantMeta = getMerchantStatusMeta(merchantStatus);
   const StatusIcon = merchantMeta.icon;
@@ -350,38 +582,38 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-full bg-[#050505] flex items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-[#050505]">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-2 border-[#facc15] border-t-transparent rounded-full shadow-[0_0_15px_#facc15]"
+          className="h-12 w-12 rounded-full border-2 border-[#facc15] border-t-transparent shadow-[0_0_15px_#facc15]"
         />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#facc15]/30 relative pb-20">
+    <main className="relative min-h-screen bg-[#050505] pb-20 font-sans text-white selection:bg-[#facc15]/30">
       <DynamicSpaceBackground />
 
-      <div className="w-full px-6 py-10 lg:px-16 lg:py-12 max-w-[1600px] mx-auto space-y-10">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-10 px-6 py-10 lg:px-16 lg:py-12">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="relative"
         >
-          <div className="flex items-center gap-4 mb-4">
+          <div className="mb-4 flex items-center gap-4">
             <span className="h-px w-12 bg-[#facc15]" />
-            <span className="text-[#facc15] text-[10px] font-black uppercase tracking-[0.5em]">
+            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#facc15]">
               Espace Premium
             </span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-[1000] tracking-tighter italic uppercase leading-[0.9] mb-4">
+          <h1 className="mb-4 text-5xl font-[1000] uppercase italic leading-[0.9] tracking-tighter md:text-7xl">
             {getGreeting(firstName)}
           </h1>
 
-          <p className="text-white/40 text-xs md:text-sm font-medium max-w-2xl leading-relaxed">
+          <p className="max-w-2xl text-xs font-medium leading-relaxed text-white/40 md:text-sm">
             {merchantMeta.description}
           </p>
         </motion.div>
@@ -403,8 +635,10 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-sm leading-relaxed text-white/85">
                   Un email de confirmation a été envoyé à{" "}
-                  <span className="font-semibold text-yellow-200">{emailParam}</span>.
-                  Veuillez confirmer votre email professionnel pour transmettre
+                  <span className="font-semibold text-yellow-200">
+                    {emailParam}
+                  </span>
+                  . Veuillez confirmer votre email professionnel pour transmettre
                   votre demande à l’équipe GoMatch.
                 </p>
               </div>
@@ -420,15 +654,15 @@ export default function DashboardPage() {
               <X className="h-4 w-4" />
             </button>
 
-            <div className="pr-12 flex items-start gap-3">
+            <div className="flex items-start gap-3 pr-12">
               <MailCheck className="mt-0.5 h-5 w-5 text-green-300" />
               <div>
                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-green-300">
                   Email professionnel vérifié
                 </p>
                 <p className="text-sm leading-relaxed text-white/85">
-                  Votre email professionnel a été confirmé avec succès.
-                  Votre demande commerçant est maintenant en cours d’analyse.
+                  Votre email professionnel a été confirmé avec succès. Votre
+                  demande commerçant est maintenant en cours d’analyse.
                 </p>
               </div>
             </div>
@@ -441,7 +675,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <StatCard
             title="Profil complété"
             value={profile?.inscriptionTerminee ? "100%" : "60%"}
@@ -461,7 +695,7 @@ export default function DashboardPage() {
             color="#facc15"
           />
           <StatCard
-            title="Pays suivis"
+            title="Équipes suivies"
             value={String(teams.length)}
             detail={`${teams.length} sélection(s) dans votre parcours`}
             icon={MapPinned}
@@ -469,14 +703,14 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <motion.div
             whileHover={{ scale: 1.01 }}
             className={`xl:col-span-2 rounded-[2.5rem] border ${merchantMeta.border} ${merchantMeta.bg} p-8 shadow-xl`}
           >
             <div className="flex items-start justify-between gap-6">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 mb-3">
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
                   Statut du compte
                 </p>
                 <div className="flex items-center gap-3">
@@ -486,14 +720,14 @@ export default function DashboardPage() {
                   </h2>
                 </div>
 
-                <p className="mt-4 max-w-2xl text-sm text-white/65 leading-relaxed">
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/65">
                   {merchantMeta.description}
                 </p>
 
                 {merchantStatus === "Rejected" &&
                   merchantProfile?.rejectionReason && (
                     <div className="mt-5 rounded-2xl border border-red-400/20 bg-black/20 p-4">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-red-300 mb-2">
+                      <p className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-red-300">
                         Raison du refus
                       </p>
                       <p className="text-sm text-white/70">
@@ -513,7 +747,7 @@ export default function DashboardPage() {
                   )}
               </div>
 
-              <div className="hidden md:flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
+              <div className="hidden h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5 md:flex">
                 <StatusIcon className={`h-8 w-8 ${merchantMeta.color}`} />
               </div>
             </div>
@@ -523,11 +757,11 @@ export default function DashboardPage() {
             whileHover={{ scale: 1.01 }}
             className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl"
           >
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 mb-3">
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
               Prochaine action
             </p>
 
-            <h3 className="text-2xl font-black uppercase italic tracking-tight mb-3">
+            <h3 className="mb-3 text-2xl font-black uppercase italic tracking-tight">
               {merchantStatus === "Approved"
                 ? "Développer votre activité"
                 : merchantStatus === "Pending"
@@ -537,7 +771,7 @@ export default function DashboardPage() {
                 : "Passer au niveau supérieur"}
             </h3>
 
-            <p className="text-sm text-white/50 leading-relaxed mb-6">
+            <p className="mb-6 text-sm leading-relaxed text-white/50">
               {merchantStatus === "Approved"
                 ? "Accédez à votre futur espace commerçant et commencez à gérer votre présence."
                 : merchantStatus === "Pending"
@@ -559,10 +793,7 @@ export default function DashboardPage() {
                   return;
                 }
 
-                if (merchantStatus === "Rejected" || !merchantStatus) {
-                  router.push("/dashboard/become-merchant");
-                  return;
-                }
+                router.push("/dashboard/become-merchant");
               }}
               className="w-full rounded-2xl bg-gradient-to-r from-yellow-400 to-orange-500 px-5 py-4 text-sm font-black uppercase tracking-widest text-black transition hover:scale-[1.02]"
             >
@@ -577,12 +808,77 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl">
+          <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
+                Vos équipes suivies
+              </p>
+              <h3 className="text-2xl font-black uppercase italic tracking-tight">
+                Matchs à venir
+              </h3>
+            </div>
+
+            <button
+              onClick={() => router.push("/matches")}
+              className="self-start rounded-2xl border border-[#facc15]/30 bg-[#facc15]/10 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-[#facc15] transition hover:bg-[#facc15] hover:text-black"
+            >
+              Voir tous les matchs
+            </button>
+          </div>
+
+          {matchesLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="h-10 w-10 rounded-full border-2 border-[#facc15] border-t-transparent"
+              />
+            </div>
+          ) : teams.length === 0 ? (
+            <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] px-6 py-8 text-center">
+              <p className="text-lg font-bold text-white">
+                Aucune équipe suivie
+              </p>
+              <p className="mt-2 text-sm text-white/45">
+                Ajoute des équipes dans ton profil pour voir ici leurs prochains
+                matchs.
+              </p>
+            </div>
+          ) : followedMatches.length === 0 ? (
+            <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] px-6 py-8 text-center">
+              <p className="text-lg font-bold text-white">
+                Aucun match à venir
+              </p>
+              <p className="mt-2 text-sm text-white/45">
+                Il n’y a pas encore de match programmé pour les équipes que tu
+                suis.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {followedMatches.slice(0, 6).map((match) => (
+                <FollowedMatchMiniCard
+                  key={match.id}
+                  match={match}
+                  onPlanMatch={(selectedMatch) =>
+                    router.push(`/dashboard/match-day?matchId=${selectedMatch.id}`)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <Panel title="Résumé du profil" icon={User}>
             <div className="space-y-3 text-sm text-white/70">
               <Row label="Prénom" value={profile?.userProfile?.prenom || "-"} />
               <Row label="Nom" value={profile?.userProfile?.nom || "-"} />
-              <Row label="Langue" value={profile?.userProfile?.langue || "-"} />
+              <Row
+                label="Langue"
+                value={profile?.userProfile?.langue || "-"}
+              />
               <Row label="Nationalité" value={profile?.nationalite || "-"} />
               <Row
                 label="Rôle actif"
@@ -598,7 +894,7 @@ export default function DashboardPage() {
           <Panel title="Préférences" icon={Languages}>
             <div className="space-y-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
                   Centres d’intérêt
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -620,8 +916,8 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">
-                  Pays suivis
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                  Équipes suivies
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {teams.length > 0 ? (
@@ -635,7 +931,7 @@ export default function DashboardPage() {
                     ))
                   ) : (
                     <span className="text-sm text-white/40">
-                      Aucun pays suivi enregistré.
+                      Aucune équipe suivie enregistrée.
                     </span>
                   )}
                 </div>
@@ -659,9 +955,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl">
-          <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
                 Accès rapides
               </p>
               <h3 className="text-2xl font-black uppercase italic tracking-tight">
@@ -670,7 +966,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
@@ -684,10 +980,10 @@ export default function DashboardPage() {
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#facc15]/10 text-[#facc15]">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h4 className="text-base font-black uppercase tracking-tight mb-2">
+                  <h4 className="mb-2 text-base font-black uppercase tracking-tight">
                     {action.title}
                   </h4>
-                  <p className="text-sm text-white/45 leading-relaxed">
+                  <p className="text-sm leading-relaxed text-white/45">
                     {action.desc}
                   </p>
                 </motion.button>
@@ -696,44 +992,44 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="relative group p-[1px] rounded-[2.5rem] overflow-hidden">
+        <div className="group relative overflow-hidden rounded-[2.5rem] p-[1px]">
           <div className="absolute inset-0 bg-transparent">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-              className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,transparent_0%,#facc15_25%,transparent_50%,#facc15_75%,transparent_100%)] opacity-20"
+              className="absolute left-1/2 top-1/2 h-[150%] w-[150%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,transparent_0%,#facc15_25%,transparent_50%,#facc15_75%,transparent_100%)] opacity-20"
             />
           </div>
 
-          <div className="relative bg-[#0A0A0A]/80 rounded-[2.45rem] p-8 lg:p-12 backdrop-blur-3xl border border-white/5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+          <div className="relative rounded-[2.45rem] border border-white/5 bg-[#0A0A0A]/80 p-8 backdrop-blur-3xl lg:p-12">
+            <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div>
-                <h3 className="text-3xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                <h3 className="flex items-center gap-3 text-3xl font-black uppercase italic tracking-tighter">
                   <Newspaper className="text-[#facc15]" /> Actualités GOMATCH
                 </h3>
               </div>
-              <button className="bg-white/5 hover:bg-[#facc15] hover:text-black transition-all px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 self-start">
+              <button className="self-start rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-[#facc15] hover:text-black">
                 Tout explorer
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
               <motion.div
                 whileHover={{ y: -5 }}
-                className="lg:col-span-7 aspect-[16/10] rounded-[2rem] bg-zinc-900 overflow-hidden relative group cursor-pointer border border-white/10 shadow-2xl"
+                className="group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900 shadow-2xl lg:col-span-7"
               >
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000')] bg-cover bg-center transition-all duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                <div className="absolute top-6 left-6">
-                  <span className="bg-[#facc15] text-black text-[9px] font-[1000] px-4 py-1.5 rounded-lg uppercase tracking-tighter flex items-center gap-2 shadow-lg">
+                <div className="absolute left-6 top-6">
+                  <span className="flex items-center gap-2 rounded-lg bg-[#facc15] px-4 py-1.5 text-[9px] font-[1000] uppercase tracking-tighter text-black shadow-lg">
                     <Zap size={12} fill="currentColor" /> Live
                   </span>
                 </div>
                 <div className="absolute bottom-8 left-8 right-8">
-                  <p className="text-[#facc15] text-[10px] font-black uppercase tracking-[0.3em] mb-2">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-[#facc15]">
                     Grand Stade de Casablanca
                   </p>
-                  <h4 className="text-3xl md:text-4xl font-black tracking-tighter uppercase italic leading-none group-hover:text-[#facc15] transition-colors">
+                  <h4 className="text-3xl font-black uppercase italic leading-none tracking-tighter transition-colors group-hover:text-[#facc15] md:text-4xl">
                     L&apos;avancement des travaux
                     <br />
                     en direct du chantier
@@ -741,7 +1037,7 @@ export default function DashboardPage() {
                 </div>
               </motion.div>
 
-              <div className="lg:col-span-5 flex flex-col justify-between py-2 space-y-4">
+              <div className="flex flex-col justify-between space-y-4 py-2 lg:col-span-5">
                 <NewsItem
                   title="Nouvelle procédure de billetterie FIFA"
                   category="Mise à jour"
@@ -785,7 +1081,7 @@ function Panel({
       whileHover={{ scale: 1.01 }}
       className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl"
     >
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#facc15]/10 text-[#facc15]">
           <Icon className="h-5 w-5" />
         </div>
@@ -802,7 +1098,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-2">
       <span className="text-white/35">{label}</span>
-      <span className="font-semibold text-white/80 text-right">{value}</span>
+      <span className="text-right font-semibold text-white/80">{value}</span>
     </div>
   );
 }
@@ -817,19 +1113,19 @@ function StatCard({
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="bg-[#111] border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden group transition-all duration-500 hover:border-[#facc15]/40 shadow-xl"
+      className="group relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl transition-all duration-500 hover:border-[#facc15]/40"
     >
-      <div className="absolute -right-4 -top-4 bg-white/5 p-10 rounded-full group-hover:bg-[#facc15]/10 transition-colors">
+      <div className="absolute -right-4 -top-4 rounded-full bg-white/5 p-10 transition-colors group-hover:bg-[#facc15]/10">
         <Icon
           size={40}
-          className="text-white/5 group-hover:text-[#facc15]/20 transition-colors"
+          className="text-white/5 transition-colors group-hover:text-[#facc15]/20"
         />
       </div>
-      <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+      <p className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
         <Icon size={12} style={{ color }} /> {title}
       </p>
       <div className="relative z-10">
-        <span className="text-6xl font-[1000] tracking-tighter italic group-hover:text-[#facc15] transition-colors duration-500">
+        <span className="text-6xl font-[1000] italic tracking-tighter transition-colors duration-500 group-hover:text-[#facc15]">
           {value}
         </span>
       </div>
@@ -843,23 +1139,23 @@ function StatCard({
 
 function NewsItem({ title, category, date }: NewsItemProps) {
   return (
-    <div className="flex items-center gap-6 p-5 rounded-2xl hover:bg-white/5 transition-all duration-300 cursor-pointer border border-transparent hover:border-white/10 group">
-      <div className="h-14 w-14 rounded-xl bg-[#facc15]/5 flex-shrink-0 flex items-center justify-center border border-white/5 group-hover:border-[#facc15]/50 transition-all">
+    <div className="group flex cursor-pointer items-center gap-6 rounded-2xl border border-transparent p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/5">
+      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-white/5 bg-[#facc15]/5 transition-all group-hover:border-[#facc15]/50">
         <ArrowUpRight
           size={20}
-          className="text-white/20 group-hover:text-[#facc15] transition-all"
+          className="text-white/20 transition-all group-hover:text-[#facc15]"
         />
       </div>
       <div className="flex-1">
-        <div className="flex justify-between items-center mb-1">
-          <p className="text-[9px] text-[#facc15] font-black tracking-widest uppercase">
+        <div className="mb-1 flex items-center justify-between">
+          <p className="text-[9px] font-black uppercase tracking-widest text-[#facc15]">
             {category}
           </p>
-          <span className="text-[9px] text-white/20 font-bold uppercase">
+          <span className="text-[9px] font-bold uppercase text-white/20">
             {date}
           </span>
         </div>
-        <p className="text-sm font-bold text-white/70 group-hover:text-white transition-colors leading-tight">
+        <p className="text-sm font-bold leading-tight text-white/70 transition-colors group-hover:text-white">
           {title}
         </p>
       </div>

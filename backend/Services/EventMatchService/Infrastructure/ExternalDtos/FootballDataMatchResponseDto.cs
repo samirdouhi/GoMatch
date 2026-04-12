@@ -1,6 +1,6 @@
 ﻿namespace EventMatchService.Application.DTOs;
 
-public sealed class MatchResponseDto
+public sealed class FootballDataMatchResponseDto
 {
     public int Id { get; set; }
     public string CompetitionCode { get; set; } = string.Empty;

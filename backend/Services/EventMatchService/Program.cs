@@ -1,6 +1,7 @@
 using EventMatchService.Application.Services;
 using EventMatchService.Common.Exceptions;
 using EventMatchService.Infrastructure.Clients;
+using EventMatchService.Infrastructure.Data;
 using EventMatchService.Infrastructure.Options;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Extensions.Options;
@@ -33,7 +34,12 @@ builder.Services.AddHttpClient<IFootballDataClient, FootballDataClient>((sp, cli
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+// Services métier existants
 builder.Services.AddScoped<IWorldCupMatchService, WorldCupMatchService>();
+
+// Nouveaux services d'enrichissement
+builder.Services.AddSingleton<IMatchLocationOverrideProvider, StaticMatchLocationOverrideProvider>();
+builder.Services.AddScoped<IMatchLocationEnricher, MatchLocationEnricher>();
 
 var app = builder.Build();
 

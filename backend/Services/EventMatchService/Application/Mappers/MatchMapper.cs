@@ -28,7 +28,19 @@ public static class MatchMapper
                 : "N/A",
             HomeScore = dto.Score?.FullTime?.Home,
             AwayScore = dto.Score?.FullTime?.Away,
-            Venue = dto.Area?.Name ?? string.Empty
+
+            // On garde ton comportement actuel pour ne rien casser
+            Venue = dto.Area?.Name ?? string.Empty,
+
+            City = null,
+            StadiumName = null,
+            Address = null,
+            Latitude = null,
+            Longitude = null,
+            IsOfficialLocation = false,
+            LocationSource = "api",
+            IsExperienceMatch = false,
+            FanZones = new List<FanZone>()
         };
     }
 
@@ -47,7 +59,25 @@ public static class MatchMapper
             MatchdayLabel = match.MatchdayLabel,
             HomeScore = match.HomeScore,
             AwayScore = match.AwayScore,
-            Venue = match.Venue
+            Venue = match.Venue,
+
+            City = match.City,
+            StadiumName = match.StadiumName,
+            Address = match.Address,
+            Latitude = match.Latitude,
+            Longitude = match.Longitude,
+            IsOfficialLocation = match.IsOfficialLocation,
+            LocationSource = match.LocationSource,
+            IsExperienceMatch = match.IsExperienceMatch,
+            FanZones = match.FanZones
+                .Select(fz => new FanZoneDto
+                {
+                    Name = fz.Name,
+                    Address = fz.Address,
+                    Latitude = fz.Latitude,
+                    Longitude = fz.Longitude
+                })
+                .ToList()
         };
     }
 }
