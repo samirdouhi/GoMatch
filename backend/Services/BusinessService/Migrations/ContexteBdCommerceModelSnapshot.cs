@@ -169,50 +169,6 @@ namespace BusinessService.Migrations
                     b.ToTable("CommerceTagCulturel", (string)null);
                 });
 
-            modelBuilder.Entity("BusinessService.Models.PhotoCommerce", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CheminFichier")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid>("CommerceId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DateAjout")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<string>("NomFichier")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("nvarchar(260)");
-
-                    b.Property<int>("Ordre")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<long>("TailleFichier")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("TypeContenu")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CommerceId");
-
-                    b.ToTable("PhotosCommerces", (string)null);
-                });
-
             modelBuilder.Entity("BusinessService.Models.Commerce", b =>
                 {
                     b.HasOne("BusinessService.Models.Categorie", "Categorie")
@@ -228,17 +184,6 @@ namespace BusinessService.Migrations
                 {
                     b.HasOne("BusinessService.Models.Commerce", "Commerce")
                         .WithMany("Horaires")
-                        .HasForeignKey("CommerceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Commerce");
-                });
-
-            modelBuilder.Entity("BusinessService.Models.PhotoCommerce", b =>
-                {
-                    b.HasOne("BusinessService.Models.Commerce", "Commerce")
-                        .WithMany("Photos")
                         .HasForeignKey("CommerceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -269,7 +214,6 @@ namespace BusinessService.Migrations
             modelBuilder.Entity("BusinessService.Models.Commerce", b =>
                 {
                     b.Navigation("Horaires");
-                    b.Navigation("Photos");
                 });
 #pragma warning restore 612, 618
         }
