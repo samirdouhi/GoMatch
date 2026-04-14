@@ -1,23 +1,219 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCategories, getTagsCulturels } from "@/lib/businessApi";
-import { createCommerce, addTagsToCommerce } from "@/lib/commercesApi";
+import {
+  createCommerce,
+  addTagsToCommerce,
+  uploadPhoto,
+  deletePhoto,
+  getPhotos,
+  photoUrl,
+  type Commerce,
+  type PhotoCommerce,
+} from "@/lib/commercesApi";
 import LocationPicker, {
   type LocationData,
 } from "@/app/components/commercant/LocationPicker";
-import { MapPin } from "lucide-react";
+import {
+  MapPin,
+  Camera,
+  ImagePlus,
+  Loader2,
+  Trash2,
+  CheckCircle2,
+  ArrowRight,
+} from "lucide-react";
 
-type Categorie = {
-  id: string;
-  nom: string;
-};
+type Categorie = { id: string; nom: string };
+type TagCulturel = { id: string; nom: string };
 
-type TagCulturel = {
-  id: string;
-  nom: string;
-};
+// ── Étape 2 : upload photos ───────────────────────────────────────────────────
+
+function PhotoUploadStep({
+  commerce,
+  onFinish,
+}: {
+  commerce: Commerce;
+  onFinish: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [photos, setPhotos] = useState<PhotoCommerce[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getPhotos(commerce.id)
+      .then((data) => { if (mounted) { setPhotos(data); setLoading(false); } })
+      .catch(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+  }, [commerce.id]);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Fichier trop volumineux (max 10 Mo).");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const photo = await uploadPhoto(commerce.id, file);
+      setPhotos((prev) => [...prev, photo]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur upload.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function handleDelete(photoId: string) {
+    try {
+      await deletePhoto(commerce.id, photoId);
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur suppression.");
+    }
+  }
+
+  return (
+    <div className="space-y-8 text-white">
+      {/* Succès */}
+      <div className="rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-6 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0" />
+          <div>
+            <h1 className="text-xl font-bold text-white">Commerce créé avec succès !</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              <span className="font-semibold text-white">{commerce.nom}</span> a été soumis pour validation.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Upload photos */}
+      <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Camera className="h-5 w-5 text-orange-400" />
+            <div>
+              <h2 className="font-semibold text-white">Ajouter des photos</h2>
+              <p className="text-xs text-zinc-500">
+                Optionnel · Max 10 photos · jpg / png / webp · 10 Mo
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading || photos.length >= 10}
+            className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+            {uploading ? "Upload…" : "Ajouter"}
+          </button>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </div>
+
+        {error && (
+          <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {error}
+          </p>
+        )}
+
+        {loading ? (
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="aspect-square animate-pulse rounded-2xl bg-white/[0.04]" />
+            ))}
+          </div>
+        ) : photos.length === 0 ? (
+          <div className="mt-5 rounded-2xl border border-dashed border-white/[0.07] py-10 text-center">
+            <Camera className="mx-auto h-10 w-10 text-zinc-700" />
+            <p className="mt-3 text-sm text-zinc-500">Aucune photo ajoutée</p>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="mt-3 text-sm font-medium text-orange-400 hover:underline"
+            >
+              Ajouter la première photo
+            </button>
+          </div>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {photos.map((photo) => (
+              <div
+                key={photo.id}
+                className="group relative aspect-square overflow-hidden rounded-2xl bg-zinc-900"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoUrl(photo.urlImage)}
+                  alt={photo.nomFichier}
+                  className="h-full w-full object-cover transition group-hover:scale-105"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleDelete(photo.id)}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-xl bg-black/60 text-red-400 opacity-0 backdrop-blur transition hover:bg-red-500/20 group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                {photo.ordre === 0 && (
+                  <span className="absolute bottom-2 left-2 rounded-lg bg-orange-500/80 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                    Principale
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => { router.push("/commercant"); router.refresh(); }}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-6 py-3 font-semibold text-white transition hover:bg-orange-500"
+        >
+          Accéder au tableau de bord
+          <ArrowRight className="h-4 w-4" />
+        </button>
+
+        {photos.length === 0 && (
+          <button
+            type="button"
+            onClick={() => { router.push("/commercant"); router.refresh(); }}
+            className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-zinc-200 transition hover:bg-white/10"
+          >
+            Passer cette étape
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Étape 1 : formulaire de création ─────────────────────────────────────────
 
 export default function CreateCommercePage() {
   const router = useRouter();
@@ -36,6 +232,9 @@ export default function CreateCommercePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Après création, on passe à l'étape 2
+  const [createdCommerce, setCreatedCommerce] = useState<Commerce | null>(null);
+
   useEffect(() => {
     let mounted = true;
 
@@ -50,7 +249,6 @@ export default function CreateCommercePage() {
         ]);
 
         if (!mounted) return;
-
         setCategories(categoriesData);
         setTags(tagsData);
       } catch (err: unknown) {
@@ -66,54 +264,28 @@ export default function CreateCommercePage() {
     }
 
     void loadData();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   function toggleTag(tagId: string) {
     setSelectedTags((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     );
   }
 
   function handleLocationChange(data: LocationData) {
     setLocation(data);
-    // Auto-fill address field from reverse geocoding; user can override it
     setAdresse(data.address);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!nom.trim()) {
-      setError("Le nom du commerce est obligatoire.");
-      return;
-    }
-
-    if (!description.trim()) {
-      setError("La description est obligatoire.");
-      return;
-    }
-
-    if (!adresse.trim()) {
-      setError("L'adresse est obligatoire.");
-      return;
-    }
-
-    if (!location) {
-      setError(
-        "Veuillez sélectionner la position de votre commerce sur la carte."
-      );
-      return;
-    }
-
-    if (!categorieId) {
-      setError("Veuillez sélectionner une catégorie.");
-      return;
-    }
+    if (!nom.trim()) { setError("Le nom du commerce est obligatoire."); return; }
+    if (!description.trim()) { setError("La description est obligatoire."); return; }
+    if (!adresse.trim()) { setError("L'adresse est obligatoire."); return; }
+    if (!location) { setError("Veuillez sélectionner la position de votre commerce sur la carte."); return; }
+    if (!categorieId) { setError("Veuillez sélectionner une catégorie."); return; }
 
     try {
       setSaving(true);
@@ -132,8 +304,8 @@ export default function CreateCommercePage() {
         await addTagsToCommerce(commerce.id, selectedTags);
       }
 
-      router.push("/commercant");
-      router.refresh();
+      // Passer à l'étape 2 : upload des photos
+      setCreatedCommerce(commerce);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -145,6 +317,17 @@ export default function CreateCommercePage() {
     }
   }
 
+  // Étape 2
+  if (createdCommerce) {
+    return (
+      <PhotoUploadStep
+        commerce={createdCommerce}
+        onFinish={() => { router.push("/commercant"); router.refresh(); }}
+      />
+    );
+  }
+
+  // Étape 1
   return (
     <div className="space-y-8 text-white">
       {/* Header */}
@@ -152,12 +335,10 @@ export default function CreateCommercePage() {
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-orange-400/80">
           Espace commerçant
         </p>
-        <h1 className="mt-2 text-3xl font-bold md:text-4xl">
-          Créer mon commerce
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold md:text-4xl">Créer mon commerce</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400 md:text-base">
-          Ajoutez les informations principales de votre commerce pour le rendre
-          visible sur la plateforme GoMatch.
+          Ajoutez les informations principales de votre commerce pour le rendre visible sur la
+          plateforme GoMatch.
         </p>
       </div>
 
@@ -165,10 +346,7 @@ export default function CreateCommercePage() {
         {loadingData ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="h-12 animate-pulse rounded-2xl bg-white/5"
-              />
+              <div key={i} className="h-12 animate-pulse rounded-2xl bg-white/5" />
             ))}
           </div>
         ) : (
@@ -182,9 +360,7 @@ export default function CreateCommercePage() {
             {/* Nom + Catégorie */}
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
-                  Nom du commerce
-                </label>
+                <label className="text-sm font-medium text-zinc-300">Nom du commerce</label>
                 <input
                   type="text"
                   value={nom}
@@ -195,9 +371,7 @@ export default function CreateCommercePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
-                  Catégorie
-                </label>
+                <label className="text-sm font-medium text-zinc-300">Catégorie</label>
                 <select
                   value={categorieId}
                   onChange={(e) => setCategorieId(e.target.value)}
@@ -215,9 +389,7 @@ export default function CreateCommercePage() {
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Description
-              </label>
+              <label className="text-sm font-medium text-zinc-300">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -227,25 +399,20 @@ export default function CreateCommercePage() {
               />
             </div>
 
-            {/* Location section */}
+            {/* Localisation */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-orange-400" />
-                <h2 className="text-base font-semibold text-white">
-                  Localisation du commerce
-                </h2>
+                <h2 className="text-base font-semibold text-white">Localisation du commerce</h2>
               </div>
 
               <p className="text-sm text-zinc-400">
-                Cliquez sur la carte ou recherchez votre adresse pour placer
-                précisément votre commerce. Vous pouvez aussi utiliser le
-                bouton GPS pour votre position actuelle.
+                Cliquez sur la carte ou recherchez votre adresse pour placer précisément votre
+                commerce. Vous pouvez aussi utiliser le bouton GPS pour votre position actuelle.
               </p>
 
-              {/* Interactive map */}
               <LocationPicker value={location} onChange={handleLocationChange} />
 
-              {/* Address field — auto-filled from map, editable */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">
                   Adresse affichée
@@ -265,9 +432,7 @@ export default function CreateCommercePage() {
 
             {/* Tags culturels */}
             <div className="space-y-3">
-              <label className="text-sm font-medium text-zinc-300">
-                Tags culturels
-              </label>
+              <label className="text-sm font-medium text-zinc-300">Tags culturels</label>
 
               {tags.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-zinc-400">

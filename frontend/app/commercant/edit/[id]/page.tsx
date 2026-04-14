@@ -1,21 +1,176 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCategories, getTagsCulturels } from "@/lib/businessApi";
 import {
-  getCommerceById,
+  getMyCommerce,
   updateCommerce,
   addTagsToCommerce,
+  getPhotos,
+  uploadPhoto,
+  deletePhoto,
+  photoUrl,
   type Commerce,
+  type PhotoCommerce,
 } from "@/lib/commercesApi";
 import LocationPicker, {
   type LocationData,
 } from "@/app/components/commercant/LocationPicker";
-import { MapPin, ArrowLeft } from "lucide-react";
+import {
+  MapPin,
+  ArrowLeft,
+  Camera,
+  ImagePlus,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 
 type Categorie = { id: string; nom: string };
 type TagCulturel = { id: string; nom: string };
+
+// ── Photos section ────────────────────────────────────────────────────────────
+
+function PhotosSection({ commerceId }: { commerceId: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [photos, setPhotos] = useState<PhotoCommerce[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getPhotos(commerceId)
+      .then((data) => {
+        if (mounted) { setPhotos(data); setLoading(false); }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [commerceId]);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setPhotoError("Fichier trop volumineux (max 10 Mo).");
+      return;
+    }
+    setUploading(true);
+    setPhotoError(null);
+    try {
+      const photo = await uploadPhoto(commerceId, file);
+      setPhotos((prev) => [...prev, photo]);
+    } catch (err: unknown) {
+      setPhotoError(err instanceof Error ? err.message : "Erreur upload.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function handleDelete(photoId: string) {
+    try {
+      await deletePhoto(commerceId, photoId);
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    } catch (err: unknown) {
+      setPhotoError(err instanceof Error ? err.message : "Erreur suppression.");
+    }
+  }
+
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Camera className="h-5 w-5 text-orange-400" />
+          <div>
+            <h2 className="font-semibold text-white">Photos du commerce</h2>
+            <p className="text-xs text-zinc-500">Max 10 photos · jpg / png / webp · 10 Mo</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading || photos.length >= 10}
+          className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ImagePlus className="h-4 w-4" />
+          )}
+          {uploading ? "Upload…" : "Ajouter"}
+        </button>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleUpload}
+        />
+      </div>
+
+      {photoError && (
+        <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {photoError}
+        </p>
+      )}
+
+      {loading ? (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="aspect-square animate-pulse rounded-2xl bg-white/[0.04]" />
+          ))}
+        </div>
+      ) : photos.length === 0 ? (
+        <div className="mt-5 rounded-2xl border border-dashed border-white/[0.07] py-10 text-center">
+          <Camera className="mx-auto h-10 w-10 text-zinc-700" />
+          <p className="mt-3 text-sm text-zinc-500">Aucune photo ajoutée</p>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="mt-3 text-sm font-medium text-orange-400 hover:underline"
+          >
+            Ajouter la première photo
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {photos.map((photo) => (
+            <div
+              key={photo.id}
+              className="group relative aspect-square overflow-hidden rounded-2xl bg-zinc-900"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoUrl(photo.urlImage)}
+                alt={photo.nomFichier}
+                className="h-full w-full object-cover transition group-hover:scale-105"
+              />
+              <button
+                type="button"
+                onClick={() => handleDelete(photo.id)}
+                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-xl bg-black/60 text-red-400 opacity-0 backdrop-blur transition hover:bg-red-500/20 group-hover:opacity-100"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+              {photo.ordre === 0 && (
+                <span className="absolute bottom-2 left-2 rounded-lg bg-orange-500/80 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                  Principale
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Page principale ───────────────────────────────────────────────────────────
 
 export default function EditCommercePage() {
   const router = useRouter();
@@ -47,7 +202,7 @@ export default function EditCommercePage() {
         setError(null);
 
         const [commerceData, categoriesData, tagsData] = await Promise.all([
-          getCommerceById(id),
+          getMyCommerce(),
           getCategories(),
           getTagsCulturels(),
         ]);
@@ -55,7 +210,7 @@ export default function EditCommercePage() {
         if (!mounted) return;
 
         if (!commerceData) {
-          setError("Commerce introuvable.");
+          router.replace("/commercant/create-commerce");
           return;
         }
 
@@ -87,10 +242,8 @@ export default function EditCommercePage() {
     }
 
     void load();
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
+    return () => { mounted = false; };
+  }, [id, router]);
 
   function toggleTag(tagId: string) {
     setSelectedTags((prev) =>
@@ -111,12 +264,13 @@ export default function EditCommercePage() {
     if (!adresse.trim()) return setError("L'adresse est obligatoire.");
     if (!location) return setError("Veuillez placer votre commerce sur la carte.");
     if (!categorieId) return setError("Veuillez sélectionner une catégorie.");
+    if (!commerce) return;
 
     try {
       setSaving(true);
       setError(null);
 
-      await updateCommerce(id, {
+      await updateCommerce(commerce.id, {
         nom: nom.trim(),
         description: description.trim(),
         adresse: adresse.trim(),
@@ -127,7 +281,7 @@ export default function EditCommercePage() {
 
       // Ajoute les nouveaux tags (le backend ignore les doublons)
       if (selectedTags.length > 0) {
-        await addTagsToCommerce(id, selectedTags);
+        await addTagsToCommerce(commerce.id, selectedTags);
       }
 
       router.push("/commercant");
@@ -159,6 +313,7 @@ export default function EditCommercePage() {
 
   return (
     <div className="space-y-8 text-white">
+      {/* Header */}
       <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-6 backdrop-blur">
         <button
           type="button"
@@ -177,6 +332,7 @@ export default function EditCommercePage() {
         </p>
       </div>
 
+      {/* Formulaire */}
       <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
         <form onSubmit={handleSubmit} className="space-y-8">
           {error && (
@@ -302,6 +458,9 @@ export default function EditCommercePage() {
           </div>
         </form>
       </div>
+
+      {/* Photos */}
+      {commerce && <PhotosSection commerceId={commerce.id} />}
     </div>
   );
 }
