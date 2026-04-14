@@ -9,12 +9,14 @@ import {
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
+
 import type { MapItem, MapItemType } from "./types";
 import MapAutoFit from "./MapAutoFit";
 import MapFocusOnSelection from "./MapFocusOnSelection";
 import MapRouteLayer from "./MapRouteLayer";
 import MapStartPointMarker from "./MapStartPointMarker";
 import MapClickToSetStartPoint from "./MapClickToSetStartPoint";
+import MapUserLiveMarker from "./MapUserLiveMarker";
 
 type ExperienceMapProps = {
   center?: [number, number];
@@ -29,6 +31,9 @@ type ExperienceMapProps = {
   routeDistanceLabel?: string;
   routeDurationLabel?: string;
   startPoint?: [number, number] | null;
+  liveUserPosition?: [number, number] | null;
+  liveUserAccuracy?: number | null;
+  navigationMode?: "live" | "manual";
   onSelectStartPoint?: (position: [number, number]) => void;
 };
 
@@ -244,11 +249,17 @@ export default function ExperienceMap({
   routeDistanceLabel,
   routeDurationLabel,
   startPoint = null,
+  liveUserPosition = null,
+  liveUserAccuracy = null,
+  navigationMode = "live",
   onSelectStartPoint,
 }: ExperienceMapProps) {
   const filteredItems = items.filter((item) =>
     visibleTypes.includes(item.type)
   );
+
+  const initialCenter = liveUserPosition ?? startPoint ?? center;
+  const autoFitEnabled = navigationMode !== "live";
 
   return (
     <div
@@ -256,15 +267,16 @@ export default function ExperienceMap({
       className="overflow-hidden rounded-2xl border border-white/10 shadow-lg"
     >
       <MapContainer
-        center={center}
+        center={initialCenter}
         zoom={zoom}
         scrollWheelZoom
         style={{ height: "100%", width: "100%" }}
       >
         <MapAutoFit
           items={filteredItems}
-          defaultCenter={center}
+          defaultCenter={initialCenter}
           defaultZoom={zoom}
+          enabled={autoFitEnabled}
         />
 
         <MapFocusOnSelection
@@ -274,7 +286,10 @@ export default function ExperienceMap({
         />
 
         {onSelectStartPoint ? (
-          <MapClickToSetStartPoint onSelectStartPoint={onSelectStartPoint} />
+          <MapClickToSetStartPoint
+            enabled={navigationMode === "manual"}
+            onSelectStartPoint={onSelectStartPoint}
+          />
         ) : null}
 
         <TileLayer
@@ -282,7 +297,16 @@ export default function ExperienceMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {startPoint ? <MapStartPointMarker position={startPoint} /> : null}
+        {liveUserPosition ? (
+          <MapUserLiveMarker
+            position={liveUserPosition}
+            accuracyMeters={liveUserAccuracy}
+          />
+        ) : null}
+
+        {navigationMode === "manual" && startPoint ? (
+          <MapStartPointMarker position={startPoint} />
+        ) : null}
 
         <MapRouteLayer
           segments={routeSegments}

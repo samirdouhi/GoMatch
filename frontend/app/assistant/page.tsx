@@ -26,11 +26,47 @@ type ChatMessage = {
   ts: number;
 };
 
+type ChatContext = {
+  lastIntent?: string;
+  lastTopic?: string;
+};
+
 type ChatSession = {
   id: string;
   title: string;
   createdAt: number;
   messages: ChatMessage[];
+  context?: ChatContext;
+};
+
+type RecommendationItem = {
+  commerce: {
+    id: string;
+    nom: string;
+    description?: string;
+    adresse?: string;
+    latitude?: number;
+    longitude?: number;
+    distanceKm?: number;
+    nomCategorie?: string;
+    tagsCulturels?: string[];
+  };
+  score: number;
+  distanceKm: number;
+  matchedPreferences: string[];
+  reasons?: string[];
+};
+
+type RecommendationResponse = {
+  mode?: string;
+  message?: string;
+  userPreferences: string[];
+  mappedCategories: string[];
+  mappedTags: string[];
+  matchesTodayCount: number;
+  upcomingMatchesCount: number;
+  searchedRadiusKm?: number;
+  recommendations: RecommendationItem[];
 };
 
 const quickPrompts = [
@@ -55,14 +91,273 @@ function formatTime(ts: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// ✅ Changement des couleurs des boutons (Thème GoMatch Gold/Coral)
+function parseAvailableMinutes(text: string) {
+  const lower = text.toLowerCase();
+
+  const hourMatch = lower.match(/(\d+)\s*h/);
+  if (hourMatch) return Number(hourMatch[1]) * 60;
+
+  const minMatch = lower.match(/(\d+)\s*min/);
+  if (minMatch) return Number(minMatch[1]);
+
+  if (lower.includes("journée") || lower.includes("journee")) return 8 * 60;
+
+  return 120;
+}
+
+function parseBudget(text: string) {
+  const lower = text.toLowerCase();
+
+  const madMatch = lower.match(/(\d+)\s*(mad|dh|dhs)/);
+  if (madMatch) return Number(madMatch[1]);
+
+  const euroMatch = lower.match(/(\d+)\s*(euro|euros|€)/);
+  if (euroMatch) return Number(euroMatch[1]) * 10.8;
+
+  const budgetMatch = lower.match(/budget\s*(\d+)/);
+  if (budgetMatch) return Number(budgetMatch[1]);
+
+  return 150;
+}
+
+function getStoredAccessToken(): string {
+  if (typeof window === "undefined") return "";
+
+  return (
+    localStorage.getItem("gomatch_access_token") ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("jwt") ||
+    localStorage.getItem("access_token") ||
+    ""
+  );
+}
+
+function detectIntent(message: string) {
+  const text = message.toLowerCase();
+
+  return {
+    wantsFood:
+      /faim|manger|mange|restaurant|resto|street food|streetfood|snack|bouffer|déjeuner|dejeuner|diner|dîner|repas/.test(
+        text
+      ),
+    wantsCoffee: /cafe|café|coffee|boisson|thé|the/.test(text),
+    wantsCulture:
+      /culture|mus[eé]e|patrimoine|tradition|monument|architecture|medina|médina/.test(
+        text
+      ),
+    wantsShopping:
+      /shopping|acheter|boutique|souvenir|artisanat|march[eé]|souk/.test(text),
+    wantsQuick:
+      /rapide|vite|press[eé]|petite faim|léger|leger|sur le pouce/.test(text),
+    wantsChill: /calme|poser|tranquille|chill|ambiance|romantique/.test(text),
+    beforeMatch:
+      /avant match|avant le match|2h avant|1h avant|avant de regarder le match/.test(
+        text
+      ),
+    afterMatch: /apr[eè]s match|apr[eè]s le match/.test(text),
+    withFamily: /famille|familial|enfants|parents/.test(text),
+    lowBudget: /pas cher|petit budget|budget serr[eé]|cheap|économique|economique/.test(text),
+  };
+}
+
+function getCategoryLabel(category?: string) {
+  if (!category) return "Lieu";
+  return category;
+}
+
+function buildFollowUpQuestion(intent: ReturnType<typeof detectIntent>) {
+  if (intent.wantsFood && intent.wantsQuick) {
+    return "Tu préfères un snack rapide ou un vrai petit repas avant le match ?";
+  }
+
+  if (intent.wantsFood && intent.withFamily) {
+    return "Tu veux plutôt une adresse familiale tranquille ou un endroit plus animé ?";
+  }
+
+  if (intent.wantsCoffee) {
+    return "Tu veux un café rapide ou un endroit plus calme pour te poser un peu ?";
+  }
+
+  if (intent.wantsCulture) {
+    return "Tu veux plutôt une visite rapide ou une balade culturelle plus tranquille ?";
+  }
+
+  if (intent.wantsShopping) {
+    return "Tu cherches plutôt de l’artisanat local ou quelque chose de plus moderne ?";
+  }
+
+  return "Tu veux que je t’affine ça selon ton budget, la distance ou l’ambiance que tu cherches ?";
+}
+
+function describeRecommendation(
+  item: RecommendationItem,
+  intent: ReturnType<typeof detectIntent>,
+  index: number
+) {
+  const commerce = item.commerce;
+  const name = commerce.nom || "Lieu";
+  const category = getCategoryLabel(commerce.nomCategorie);
+  const distance = Number(item.distanceKm ?? commerce.distanceKm ?? 0);
+  const matched = item.matchedPreferences ?? [];
+  const reasons = item.reasons ?? [];
+
+  let text = `👉 ${name}`;
+
+  if (index === 0) {
+    text += " — c’est probablement le meilleur choix pour toi maintenant.";
+  }
+
+  text += `\n• Type : ${category}`;
+  text += `\n• Distance : ${distance.toFixed(1)} km`;
+
+  if (matched.length > 0) {
+    text += `\n• Pourquoi : ça correspond à ${matched.join(", ")}`;
+  } else if (reasons.length > 0) {
+    text += `\n• Pourquoi : ${reasons.join(", ")}`;
+  } else {
+    text += `\n• Pourquoi : option pertinente près de toi`;
+  }
+
+  if (intent.wantsQuick && distance <= 2) {
+    text += `\n• Bon point : c’est pratique si tu veux éviter de perdre du temps.`;
+  }
+
+  if (intent.wantsChill) {
+    text += `\n• Ambiance : ça peut être une bonne option pour te poser un peu.`;
+  }
+
+  if (commerce.adresse) {
+    text += `\n• Adresse : ${commerce.adresse}`;
+  }
+
+  return text;
+}
+
+function generateSmartResponse(
+  userMessage: string,
+  data: RecommendationResponse
+) {
+  const intent = detectIntent(userMessage);
+  const recs = data.recommendations ?? [];
+  const mode = data.mode;
+  const backendMessage = data.message;
+
+  let intro = "";
+
+  if (intent.beforeMatch) {
+    intro += "Parfait 👌 tu as un peu de temps avant le match. ";
+  } else if (intent.afterMatch) {
+    intro += "Très bien 👌 je vais te proposer quelque chose pour après le match. ";
+  } else {
+    intro += "D’accord 👌 ";
+  }
+
+  if (intent.wantsFood && intent.wantsQuick) {
+    intro += "Comme tu as une petite faim, j’ai cherché des options pratiques et proches de toi.\n\n";
+  } else if (intent.wantsFood) {
+    intro += "J’ai cherché des endroits où tu peux manger autour de toi.\n\n";
+  } else if (intent.wantsCoffee) {
+    intro += "J’ai cherché des cafés intéressants autour de toi.\n\n";
+  } else if (intent.wantsCulture) {
+    intro += "J’ai cherché des idées culturelles pertinentes autour de toi.\n\n";
+  } else if (intent.wantsShopping) {
+    intro += "J’ai cherché des adresses intéressantes autour de toi.\n\n";
+  } else {
+    intro += "J’ai regardé ce qui semble le plus pertinent autour de toi.\n\n";
+  }
+
+  if (!recs.length) {
+    return (
+      intro +
+      "Je n’ai pas trouvé de correspondance vraiment utile pour le moment.\n\n" +
+      "Tu peux me préciser un peu plus ce que tu veux : manger vite, café calme, endroit familial, sortie culturelle ou shopping ?"
+    );
+  }
+
+  let contextBlock = "";
+
+  if (mode === "fallback_out_of_area") {
+    contextBlock +=
+      "Je n’ai pas trouvé assez d’options vraiment pertinentes autour de ta position actuelle, donc je te propose les meilleures alternatives disponibles dans la zone couverte.\n\n";
+  } else if (mode === "fallback") {
+    contextBlock +=
+      "Je n’ai pas trouvé de correspondance parfaite, mais voici les options les plus proches de ton besoin.\n\n";
+  } else if (backendMessage) {
+    contextBlock += `${backendMessage}\n\n`;
+  }
+
+  const top = recs.slice(0, 3);
+  const suggestions = top
+    .map((item, index) => describeRecommendation(item, intent, index))
+    .join("\n\n");
+
+  const followUp = buildFollowUpQuestion(intent);
+
+  return `${intro}${contextBlock}${suggestions}\n\n${followUp}`;
+}
+
+async function getCurrentPosition(): Promise<{ latitude: number; longitude: number }> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("La géolocalisation n’est pas disponible sur cet appareil."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          reject(
+            new Error(
+              "Accès à la localisation refusé. Autorise la localisation pour localhost dans ton navigateur."
+            )
+          );
+          return;
+        }
+
+        if (error.code === error.POSITION_UNAVAILABLE) {
+          reject(
+            new Error(
+              "Position indisponible. Vérifie que la localisation est activée."
+            )
+          );
+          return;
+        }
+
+        if (error.code === error.TIMEOUT) {
+          reject(
+            new Error(
+              "La récupération de la position a expiré. Réessaie après avoir activé la localisation."
+            )
+          );
+          return;
+        }
+
+        reject(new Error("Impossible de récupérer ta position."));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  });
+}
+
 const btnPrimary =
   "inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FACC15] px-4 py-2 text-xs font-black text-black " +
   "shadow-sm ring-1 ring-white/15 hover:bg-white hover:text-black transition-all duration-200";
 
 const btnPrimaryLg =
   "inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FACC15] px-4 py-3 text-sm font-black text-black " +
-  "shadow-sm ring-1 ring-white/15 hover:bg-white hover:text-black transition-all duration-200";
+  "shadow-sm ring-1 ring-white/15 hover:bg-white hover:text-black transition-all duration-200 disabled:opacity-60";
 
 const btnSoft =
   "inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-black text-white " +
@@ -103,7 +398,9 @@ function AssistantSidebar(props: {
               <MessageSquare className="h-5 w-5 text-white/80" />
             </span>
             <div>
-              <div className="text-sm font-black text-white uppercase tracking-tight">Assistant GoMatch</div>
+              <div className="text-sm font-black text-white uppercase tracking-tight">
+                Assistant GoMatch
+              </div>
               <div className="text-xs text-white/60">Historique</div>
             </div>
           </div>
@@ -144,7 +441,13 @@ function AssistantSidebar(props: {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className={`text-sm font-black truncate ${active ? "text-[#FACC15]" : "text-white"}`}>{s.title}</div>
+                  <div
+                    className={`text-sm font-black truncate ${
+                      active ? "text-[#FACC15]" : "text-white"
+                    }`}
+                  >
+                    {s.title}
+                  </div>
                   <div className="mt-1 flex items-center gap-2 text-xs text-white/60">
                     <Clock className="h-3.5 w-3.5" />
                     {new Date(s.createdAt).toLocaleDateString()}
@@ -168,7 +471,9 @@ function AssistantSidebar(props: {
         })}
 
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs font-black uppercase text-white/70 tracking-widest">Inspirations</div>
+          <div className="text-xs font-black uppercase text-white/70 tracking-widest">
+            Inspirations
+          </div>
           <div className="mt-2 grid gap-2">
             {quickPrompts.map((p) => (
               <button
@@ -205,7 +510,7 @@ export default function AssistantPage() {
           id: uid(),
           role: "assistant",
           content:
-            "Salut 👋 Dis-moi : **ville**, **heure du match**, **budget**, **distance max**, et ce que tu veux (culture/food/shopping). Je te propose un plan clair ✅",
+            "Salut 👋 Dis-moi ce que tu veux faire et je vais interroger le moteur de recommandation GoMatch avec ta position réelle.",
           ts: Date.now(),
         },
       ],
@@ -236,6 +541,12 @@ export default function AssistantPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeSession?.messages?.length, isTyping]);
 
+  function updateActiveSession(updater: (session: ChatSession) => ChatSession) {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === activeSession?.id ? updater(s) : s))
+    );
+  }
+
   function createNewChat() {
     const s: ChatSession = {
       id: uid(),
@@ -246,7 +557,7 @@ export default function AssistantPage() {
           id: uid(),
           role: "assistant",
           content:
-            "Nouveau chat ✅ Donne-moi ton contexte et je te propose un plan (spots + itinéraire).",
+            "Nouveau chat ✅ Donne-moi ton contexte et je vais chercher des recommandations réelles.",
           ts: Date.now(),
         },
       ],
@@ -281,7 +592,7 @@ export default function AssistantPage() {
               id: uid(),
               role: "assistant",
               content:
-                "Salut 👋 Dis-moi : **ville**, **heure du match**, **budget**, **distance max**, et ce que tu veux.",
+                "Salut 👋 Dis-moi ce que tu veux faire et je vais chercher des recommandations réelles.",
               ts: Date.now(),
             },
           ],
@@ -293,9 +604,55 @@ export default function AssistantPage() {
     });
   }
 
-  function send(text: string) {
+  async function fetchRecommendations(prompt: string): Promise<RecommendationResponse> {
+    const accessToken = getStoredAccessToken();
+
+    if (!accessToken) {
+      throw new Error("Aucun token trouvé. Connecte-toi d'abord.");
+    }
+
+    let position;
+
+    try {
+      position = await getCurrentPosition();
+    } catch {
+      position = {
+        latitude: 34.02,
+        longitude: -6.83,
+      };
+    }
+
+    const payload = {
+      latitude: position.latitude,
+      longitude: position.longitude,
+      available_minutes: parseAvailableMinutes(prompt),
+      budget: parseBudget(prompt),
+      access_token: accessToken,
+    };
+
+    const gatewayBase =
+      process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:5266";
+
+    const response = await fetch(`${gatewayBase}/reco/recommend`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Erreur lors de l’appel au service de recommandation.");
+    }
+
+    return (await response.json()) as RecommendationResponse;
+  }
+
+  async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || !activeSession) return;
+    if (!trimmed || !activeSession || isTyping) return;
 
     const userMsg: ChatMessage = {
       id: uid(),
@@ -304,43 +661,71 @@ export default function AssistantPage() {
       ts: Date.now(),
     };
 
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id !== activeSession.id) return s;
-        const nextTitle =
-          s.title === "Nouveau chat" ? makeTitleFrom(trimmed) : s.title;
-        return { ...s, title: nextTitle, messages: [...s.messages, userMsg] };
-      })
-    );
+    const intent = detectIntent(trimmed);
+
+    updateActiveSession((s) => {
+      const nextTitle = s.title === "Nouveau chat" ? makeTitleFrom(trimmed) : s.title;
+
+      return {
+        ...s,
+        title: nextTitle,
+        context: {
+          lastIntent: intent.wantsFood
+            ? "food"
+            : intent.wantsCoffee
+            ? "coffee"
+            : intent.wantsCulture
+            ? "culture"
+            : intent.wantsShopping
+            ? "shopping"
+            : "generic",
+          lastTopic: trimmed,
+        },
+        messages: [...s.messages, userMsg],
+      };
+    });
 
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const data = await fetchRecommendations(trimmed);
+
+      const aiMsg: ChatMessage = {
+        id: uid(),
+        role: "assistant",
+        ts: Date.now(),
+        content: generateSmartResponse(trimmed, data),
+      };
+
+      updateActiveSession((s) => ({
+        ...s,
+        messages: [...s.messages, aiMsg],
+      }));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
+
       const aiMsg: ChatMessage = {
         id: uid(),
         role: "assistant",
         ts: Date.now(),
         content:
-          "✅ Proposition (exemple)\n\n" +
-          "1) **Café traditionnel**\n" +
-          "2) **Artisanat local**\n" +
-          "3) Retour vers le stade\n\n" +
-          "Donne-moi : **ville + budget + distance max** et je te donne 3 spots précis.",
+          "Je n’ai pas pu récupérer les recommandations réelles.\n\n" +
+          `Détail : ${message}`,
       };
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSession.id ? { ...s, messages: [...s.messages, aiMsg] } : s
-        )
-      );
+      updateActiveSession((s) => ({
+        ...s,
+        messages: [...s.messages, aiMsg],
+      }));
+    } finally {
       setIsTyping(false);
-    }, 650);
+    }
   }
 
   return (
     <main className="relative h-full min-h-0 overflow-hidden">
-      {/* Fond Thème Sombre & Or */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[#0e0e10]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(250,204,21,0.12),rgba(0,0,0,0)_55%)]" />
@@ -376,7 +761,9 @@ export default function AssistantPage() {
             />
             <div className="absolute left-0 top-0 h-full w-[86%] max-w-[360px] border-r border-white/10 bg-black/90 backdrop-blur-xl">
               <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                <div className="text-sm font-black text-white uppercase tracking-tight">Historique</div>
+                <div className="text-sm font-black text-white uppercase tracking-tight">
+                  Historique
+                </div>
                 <button
                   type="button"
                   className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 flex items-center justify-center text-white/80 hover:bg-white/10"
@@ -460,7 +847,12 @@ export default function AssistantPage() {
                           ].join(" ")}
                         >
                           <div className="whitespace-pre-line">{m.content}</div>
-                          <div className={["mt-2 text-[11px] font-bold uppercase opacity-50", isUser ? "text-white" : "text-white/70"].join(" ")}>
+                          <div
+                            className={[
+                              "mt-2 text-[11px] font-bold uppercase opacity-50",
+                              isUser ? "text-white" : "text-white/70",
+                            ].join(" ")}
+                          >
                             {formatTime(m.ts)}
                           </div>
                         </div>
@@ -475,7 +867,9 @@ export default function AssistantPage() {
                           <span className="h-2 w-2 rounded-full bg-white/70 animate-bounce" />
                           <span className="h-2 w-2 rounded-full bg-[#FACC15] animate-bounce [animation-delay:120ms]" />
                           <span className="h-2 w-2 rounded-full bg-white/70 animate-bounce [animation-delay:240ms]" />
-                          <span className="ml-2 text-xs font-black uppercase tracking-widest text-white/40">Recherche...</span>
+                          <span className="ml-2 text-xs font-black uppercase tracking-widest text-white/40">
+                            Recherche...
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -486,9 +880,7 @@ export default function AssistantPage() {
               ) : (
                 <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-white/80 backdrop-blur-md text-center">
                   <div className="text-sm font-black uppercase tracking-widest">Aucun message</div>
-                  <div className="mt-2 text-sm text-white/40">
-                    Commencez une exploration locale.
-                  </div>
+                  <div className="mt-2 text-sm text-white/40">Commencez une exploration locale.</div>
                 </div>
               )}
             </div>
@@ -518,12 +910,17 @@ export default function AssistantPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        send(input);
+                        void send(input);
                       }
                     }}
                   />
 
-                  <button type="button" onClick={() => send(input)} className={btnPrimaryLg}>
+                  <button
+                    type="button"
+                    onClick={() => void send(input)}
+                    className={btnPrimaryLg}
+                    disabled={isTyping}
+                  >
                     <Send className="h-4 w-4" />
                     Envoyer
                   </button>
@@ -539,4 +936,4 @@ export default function AssistantPage() {
       </div>
     </main>
   );
-}
+} 

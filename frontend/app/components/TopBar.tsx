@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { label: "Carte", href: "/test-map", icon: CarteIcon },
 ];
 
+// N'oublie pas d'ajouter sidebarCollapsed dans les props ici
 export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -67,11 +68,13 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
         <div className="mx-auto max-w-[1600px] px-4 sm:px-8">
           <div className="grid grid-cols-3 h-20 items-center">
 
-            {/* GAUCHE : BURGER & LOGO */}
+            {/* GAUCHE : BURGER (PC UNIQUEMENT) & LOGO */}
             <div className="flex items-center gap-4 justify-self-start">
+              
+              {/* Le bouton Burger est remis, mais caché sur mobile (hidden) et visible sur PC (lg:block) */}
               <button
                 onClick={onToggleSidebar}
-                className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:border-[#facc15] transition-all"
+                className="hidden lg:block p-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:border-[#facc15] transition-all"
               >
                 {sidebarCollapsed ? <Menu size={22} /> : <X size={22} />}
               </button>
@@ -196,13 +199,21 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
       </header>
 
       {/* --- BOTTOM BAR MOBILE --- */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[110] bg-black/60 backdrop-blur-2xl border-t border-white/10 px-4 pb-8 pt-3">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <Link href="/" className={`p-3 ${isActive('/') ? 'text-[#facc15]' : 'text-white/20'}`}><Home size={24} /></Link>
-          <Link href="/events" className={`p-3 ${isActive('/events') ? 'text-[#facc15]' : 'text-white/20'}`}><Calendar size={24} /></Link>
-          <button onClick={onToggleSidebar} className="flex h-14 w-14 -translate-y-6 items-center justify-center rounded-2xl bg-[#facc15] text-black shadow-lg active:scale-90"><Menu size={28} /></button>
-          <Link href="/culture" className={`p-3 ${isActive('/culture') ? 'text-[#facc15]' : 'text-white/20'}`}><Landmark size={24} /></Link>
-          <Link href="/map" className={`p-3 ${isActive('/map') ? 'text-[#facc15]' : 'text-white/20'}`}><CarteIcon size={24} /></Link>
+      {/* Cachée sur grand écran (lg:hidden), visible sur mobile */}
+      <nav className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-[110] bg-black/80 backdrop-blur-2xl border border-white/10 rounded-3xl px-4 py-2 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <Link href="/" className={`p-2 ${isActive('/') ? 'text-[#facc15]' : 'text-white/40'}`}><Home size={22} /></Link>
+          <Link href="/matches" className={`p-2 ${isActive('/matches') ? 'text-[#facc15]' : 'text-white/40'}`}><Calendar size={22} /></Link>
+          
+          <button 
+            onClick={onToggleSidebar} 
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#facc15] text-black shadow-lg active:scale-90 transition-transform"
+          >
+            <Menu size={24} />
+          </button>
+          
+          <Link href="/assistant" className={`p-2 ${isActive('/assistant') ? 'text-[#facc15]' : 'text-white/40'}`}><Landmark size={22} /></Link>
+          <Link href="/test-map" className={`p-2 ${isActive('/test-map') ? 'text-[#facc15]' : 'text-white/40'}`}><CarteIcon size={22} /></Link>
         </div>
       </nav>
     </>

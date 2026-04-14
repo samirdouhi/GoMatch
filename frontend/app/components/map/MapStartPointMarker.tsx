@@ -31,9 +31,12 @@ export default function MapStartPointMarker({
     <Marker position={position} icon={startPointIcon}>
       <Popup>
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-slate-900">Point de départ</p>
+          <p className="text-sm font-semibold text-slate-900">
+            Point de départ manuel
+          </p>
           <p className="text-xs text-slate-600">
-            Ce point est utilisé pour calculer l’itinéraire.
+            Ce point remplace temporairement le GPS pour le calcul
+            d’itinéraire.
           </p>
         </div>
       </Popup>

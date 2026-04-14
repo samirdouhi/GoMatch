@@ -48,15 +48,19 @@ type BusinessApiItem = {
   nom?: string;
   name?: string;
   description?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 
   categorieNom?: string;
   categoryName?: string;
+  categorieName?: string;
+
   categorie?: {
     nom?: string;
     name?: string;
   };
+
+  category?: string | { nom?: string; name?: string };
 
   culturalTags?: string[];
   tagsCulturels?: string[];
@@ -65,9 +69,7 @@ type BusinessApiItem = {
     name?: string;
   }>;
 
-  category?: string | { nom?: string; name?: string };
-  categorieName?: string;
-  businessType?: "Hotel" | "Restaurant" | "Activity";
+  businessType?: "Hotel" | "Restaurant" | "Activity" | string;
 };
 
 function isValidCoordinate(value: unknown): value is number {
@@ -78,6 +80,14 @@ function safeString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;
+}
+
+function normalizeText(value: unknown): string {
+  return safeString(value)
+    ?.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim() ?? "";
 }
 
 function slugify(value: string): string {
@@ -111,9 +121,9 @@ function extractBusinessCategory(business: BusinessApiItem): string | undefined 
   return (
     safeString(business.categorieNom) ||
     safeString(business.categoryName) ||
+    safeString(business.categorieName) ||
     safeString(business.categorie?.nom) ||
     safeString(business.categorie?.name) ||
-    safeString(business.categorieName) ||
     safeString(typeof business.category === "string" ? business.category : undefined) ||
     safeString(
       typeof business.category === "object" ? business.category?.nom : undefined
@@ -142,18 +152,23 @@ function extractBusinessTags(business: BusinessApiItem): string[] {
 function mapBusinessTypeToMapType(
   businessType?: BusinessApiItem["businessType"]
 ): MapItemType | undefined {
-  if (!businessType) return undefined;
+  const normalized = normalizeText(businessType);
 
-  switch (businessType) {
-    case "Hotel":
-      return "hotel";
-    case "Restaurant":
-      return "restaurant";
-    case "Activity":
-      return "activity";
-    default:
-      return undefined;
-  }
+  if (!normalized) return undefined;
+
+  if (normalized === "hotel") return "hotel";
+  if (normalized === "restaurant") return "restaurant";
+  if (normalized === "activity") return "activity";
+
+  return undefined;
+}
+
+function includesAny(source: string, values: string[]): boolean {
+  return values.some((value) => source.includes(value));
+}
+
+function tagsIncludeAny(tags: string[], values: string[]): boolean {
+  return tags.some((tag) => includesAny(tag, values));
 }
 
 function mapCategoryToType(
@@ -165,57 +180,79 @@ function mapCategoryToType(
   const directType = mapBusinessTypeToMapType(businessType);
   if (directType) return directType;
 
-  const normalizedCategory = category?.trim().toLowerCase() ?? "";
-  const normalizedName = name?.trim().toLowerCase() ?? "";
-  const normalizedTags = tags.map((tag) => tag.trim().toLowerCase());
+  const normalizedCategory = normalizeText(category);
+  const normalizedName = normalizeText(name);
+  const normalizedTags = tags.map((tag) => normalizeText(tag));
+
+  const restaurantKeywords = [
+    "restauration",
+    "restaurant",
+    "cafe",
+    "salon de the",
+    "street food",
+    "food",
+    "snack",
+    "fast food",
+    "bistro",
+    "brasserie",
+    "grill",
+    "pizzeria",
+    "pizza",
+    "burger",
+    "gastronomie",
+  ];
+
+  const hotelKeywords = [
+    "hebergement",
+    "hotel",
+    "riad",
+    "auberge",
+    "maison d hotes",
+    "maison hotes",
+    "resort",
+  ];
+
+  const activityKeywords = [
+    "loisirs",
+    "loisir",
+    "tourisme",
+    "touristique",
+    "activite",
+    "artisanat",
+    "beaute",
+    "bien etre",
+    "mode",
+    "habillement",
+    "services",
+    "souvenirs",
+    "cadeaux",
+    "epicerie",
+    "produits locaux",
+    "produits locaux",
+    "culturel",
+    "patrimoine",
+  ];
 
   if (
-    normalizedCategory.includes("restauration") ||
-    normalizedCategory.includes("restaurant") ||
-    normalizedCategory.includes("café") ||
-    normalizedCategory.includes("cafe") ||
-    normalizedCategory.includes("salon de thé") ||
-    normalizedCategory.includes("salon de the")
+    includesAny(normalizedCategory, restaurantKeywords) ||
+    includesAny(normalizedName, restaurantKeywords) ||
+    tagsIncludeAny(normalizedTags, restaurantKeywords)
   ) {
     return "restaurant";
   }
 
   if (
-    normalizedCategory.includes("hébergement") ||
-    normalizedCategory.includes("hebergement")
+    includesAny(normalizedCategory, hotelKeywords) ||
+    includesAny(normalizedName, hotelKeywords) ||
+    tagsIncludeAny(normalizedTags, hotelKeywords)
   ) {
     return "hotel";
   }
 
   if (
-    normalizedName.includes("hotel") ||
-    normalizedName.includes("hôtel")
-  ) {
-    return "hotel";
-  }
-
-  if (
-    normalizedTags.includes("luxe") &&
-    normalizedTags.includes("touristique")
-  ) {
-    return "hotel";
-  }
-
-  if (
-    normalizedCategory.includes("loisirs") ||
-    normalizedCategory.includes("loisir") ||
-    normalizedCategory.includes("tourisme") ||
-    normalizedCategory.includes("artisanat") ||
-    normalizedCategory.includes("beauté") ||
-    normalizedCategory.includes("beaute") ||
-    normalizedCategory.includes("mode") ||
-    normalizedCategory.includes("habillement") ||
-    normalizedCategory.includes("services") ||
-    normalizedCategory.includes("souvenirs") ||
-    normalizedCategory.includes("cadeaux") ||
-    normalizedCategory.includes("épicerie") ||
-    normalizedCategory.includes("epicerie") ||
-    normalizedCategory.includes("produits locaux")
+    includesAny(normalizedCategory, activityKeywords) ||
+    includesAny(normalizedName, activityKeywords) ||
+    tagsIncludeAny(normalizedTags, activityKeywords)
   ) {
     return "activity";
   }
@@ -329,21 +366,12 @@ function mapBusinessToMapItem(business: BusinessApiItem): MapItem | null {
     safeString(business.name) ||
     "Commerce local";
 
-  const normalizedName = name.toLowerCase();
-
-  let type = mapCategoryToType(
+  const type = mapCategoryToType(
     category,
     tags,
     name,
     business.businessType
   );
-
-  if (
-    normalizedName.includes("hotel") ||
-    normalizedName.includes("hôtel")
-  ) {
-    type = "hotel";
-  }
 
   const descriptionParts: string[] = [];
 

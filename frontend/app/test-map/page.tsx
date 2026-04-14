@@ -20,6 +20,7 @@ import {
 const RABAT_FALLBACK_POINT: [number, number] = [34.020882, -6.84165];
 
 type OpenSection = "" | "position" | "filters" | "planner" | "details";
+type NavigationMode = "live" | "manual";
 
 export default function TestMapPage() {
   const [selectedTypes, setSelectedTypes] =
@@ -29,11 +30,21 @@ export default function TestMapPage() {
   const [focusKey, setFocusKey] = useState(0);
 
   const [tripStops, setTripStops] = useState<MapItem[]>([]);
-  const [startPoint, setStartPoint] =
-    useState<[number, number]>(RABAT_FALLBACK_POINT);
+
+  const [liveUserPosition, setLiveUserPosition] = useState<
+    [number, number] | null
+  >(null);
+
+  const [manualStartPoint, setManualStartPoint] = useState<
+    [number, number] | null
+  >(null);
+
   const [startPointSource, setStartPointSource] = useState<
     "user" | "fallback" | "manual"
   >("fallback");
+
+  const [navigationMode, setNavigationMode] =
+    useState<NavigationMode>("live");
 
   const [routeMode, setRouteMode] = useState<RouteMode>("driving");
   const [routeSegments, setRouteSegments] = useState<[number, number][][]>([]);
@@ -48,9 +59,22 @@ export default function TestMapPage() {
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [geoErrorMessage, setGeoErrorMessage] = useState<string | null>(null);
+  const [geoAccuracy, setGeoAccuracy] = useState<number | null>(null);
 
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [openSection, setOpenSection] = useState<OpenSection>("filters");
+
+  const routeStartPoint = useMemo<[number, number] | null>(() => {
+    if (navigationMode === "manual" && manualStartPoint) {
+      return manualStartPoint;
+    }
+
+    if (liveUserPosition) {
+      return liveUserPosition;
+    }
+
+    return null;
+  }, [navigationMode, manualStartPoint, liveUserPosition]);
 
   const visibleItems = useMemo(() => {
     return items.filter((item) => selectedTypes.includes(item.type));
@@ -93,7 +117,7 @@ export default function TestMapPage() {
   };
 
   const calculateTripRoute = async () => {
-    if (tripStops.length === 0) return;
+    if (tripStops.length === 0 || !routeStartPoint) return;
 
     setRouteLoading(true);
     clearRoute();
@@ -101,7 +125,7 @@ export default function TestMapPage() {
     try {
       const stopsPositions = tripStops.map((stop) => stop.position);
       const result = await fetchRouteThroughStops(
-        startPoint,
+        routeStartPoint,
         stopsPositions,
         routeMode
       );
@@ -128,6 +152,7 @@ export default function TestMapPage() {
   const handleFocusItem = (item: MapItem) => {
     setSelectedItem(item);
     setFocusKey((prev) => prev + 1);
+    setOpenSection("details");
   };
 
   const handleAddToTrip = (item: MapItem) => {
@@ -147,10 +172,16 @@ export default function TestMapPage() {
   };
 
   const handleRouteItem = async (item: MapItem) => {
+    if (!routeStartPoint) {
+      alert("Position réelle non disponible pour calculer l’itinéraire.");
+      return;
+    }
+
     try {
       setSelectedItem(item);
       setFocusKey((prev) => prev + 1);
-      await calculateRouteToItem(startPoint, item, routeMode);
+      setOpenSection("details");
+      await calculateRouteToItem(routeStartPoint, item, routeMode);
     } catch (err) {
       alert(
         err instanceof Error
@@ -161,7 +192,8 @@ export default function TestMapPage() {
   };
 
   const handleSelectStartPoint = async (position: [number, number]) => {
-    setStartPoint(position);
+    setNavigationMode("manual");
+    setManualStartPoint(position);
     setStartPointSource("manual");
 
     if (tripStops.length > 0) {
@@ -184,8 +216,17 @@ export default function TestMapPage() {
     }
   };
 
+  const handleResumeLivePosition = () => {
+    setNavigationMode("live");
+    setManualStartPoint(null);
+    setGeoStatus("loading");
+    setGeoErrorMessage(null);
+  };
+
   const handleChangeRouteMode = async (mode: RouteMode) => {
     setRouteMode(mode);
+
+    if (!routeStartPoint) return;
 
     if (tripStops.length > 0) {
       setTimeout(() => void calculateTripRoute(), 0);
@@ -194,7 +235,7 @@ export default function TestMapPage() {
 
     if (selectedItem) {
       try {
-        await calculateRouteToItem(startPoint, selectedItem, mode);
+        await calculateRouteToItem(routeStartPoint, selectedItem, mode);
       } catch (err) {
         alert(
           err instanceof Error
@@ -234,7 +275,6 @@ export default function TestMapPage() {
       setGeoErrorMessage(
         "La géolocalisation n'est pas supportée par ce navigateur."
       );
-      setStartPoint(RABAT_FALLBACK_POINT);
       setStartPointSource("fallback");
       return;
     }
@@ -242,39 +282,68 @@ export default function TestMapPage() {
     setGeoStatus("loading");
     setGeoErrorMessage(null);
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const latitude = pos.coords.latitude;
-        const longitude = pos.coords.longitude;
+    const onSuccess = (pos: GeolocationPosition) => {
+      const latitude = pos.coords.latitude;
+      const longitude = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
 
-        setStartPoint([latitude, longitude]);
+      console.log("GPS SUCCESS", {
+        lat: latitude,
+        lng: longitude,
+        accuracy,
+      });
+
+      setLiveUserPosition([latitude, longitude]);
+      setGeoAccuracy(accuracy);
+      setGeoStatus("success");
+      setGeoErrorMessage(null);
+
+      if (navigationMode === "live") {
         setStartPointSource("user");
-        setGeoStatus("success");
-        setGeoErrorMessage(null);
-      },
-      (geoError) => {
-        let message = "Impossible de récupérer votre position réelle.";
-
-        if (geoError.code === geoError.PERMISSION_DENIED) {
-          message = "Permission de localisation refusée.";
-        } else if (geoError.code === geoError.POSITION_UNAVAILABLE) {
-          message = "Position indisponible pour le moment.";
-        } else if (geoError.code === geoError.TIMEOUT) {
-          message = "Temps d'attente dépassé pour la géolocalisation.";
-        }
-
-        setGeoStatus("error");
-        setGeoErrorMessage(message);
-        setStartPoint(RABAT_FALLBACK_POINT);
-        setStartPointSource("fallback");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
       }
-    );
-  }, []);
+    };
+
+    const onError = (geoError: GeolocationPositionError) => {
+      console.log("GPS ERROR", {
+        code: geoError.code,
+        message: geoError.message,
+      });
+
+      let message = "Impossible de récupérer votre position réelle.";
+
+      if (geoError.code === geoError.PERMISSION_DENIED) {
+        message = "Permission de localisation refusée.";
+      } else if (geoError.code === geoError.POSITION_UNAVAILABLE) {
+        message = "Position indisponible pour le moment.";
+      } else if (geoError.code === geoError.TIMEOUT) {
+        message = "Temps d'attente dépassé pour la géolocalisation.";
+      }
+
+      setGeoStatus("error");
+      setGeoErrorMessage(message);
+      setGeoAccuracy(null);
+
+      if (!liveUserPosition && navigationMode !== "manual") {
+        setStartPointSource("fallback");
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+
+    const watchId = navigator.geolocation.watchPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0,
+    });
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [navigationMode, liveUserPosition]);
 
   useEffect(() => {
     if (
@@ -288,6 +357,21 @@ export default function TestMapPage() {
       }
     }
   }, [visibleItems, selectedItem, openSection]);
+
+  useEffect(() => {
+    if (!routeStartPoint) return;
+    if (navigationMode !== "live") return;
+    if (!selectedItem && tripStops.length === 0) return;
+
+    if (tripStops.length > 0) {
+      void calculateTripRoute();
+      return;
+    }
+
+    if (selectedItem) {
+      void calculateRouteToItem(routeStartPoint, selectedItem, routeMode);
+    }
+  }, [liveUserPosition]);
 
   useEffect(() => {
     const resizeTimeout = setTimeout(() => {
@@ -316,9 +400,7 @@ export default function TestMapPage() {
         .dark-theme-enforcer [class*="bg-slate-800"],
         .dark-theme-enforcer [class*="bg-slate-900"],
         .dark-theme-enforcer [class*="bg-blue-900"],
-        .dark-theme-enforcer [class*="bg-indigo-900"],
-        .dark-theme-enforcer .bg-\$begin:math:display$\\\\\#1e293b\\$end:math:display$,
-        .dark-theme-enforcer .bg-\$begin:math:display$\\\\\#0f172a\\$end:math:display$ {
+        .dark-theme-enforcer [class*="bg-indigo-900"] {
           background-color: rgba(255, 255, 255, 0.03) !important;
           border-color: rgba(255, 255, 255, 0.05) !important;
         }
@@ -389,7 +471,7 @@ export default function TestMapPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-2">
-              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
+<div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
                 <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/40">
                   Spots
                 </p>
@@ -425,7 +507,13 @@ export default function TestMapPage() {
 
             {loading && (
               <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3 text-center text-xs font-bold uppercase text-[#FFD700]">
-                Synchronisation GPS...
+                Chargement des données...
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center text-xs font-bold text-red-300">
+                {error}
               </div>
             )}
 
@@ -442,14 +530,16 @@ export default function TestMapPage() {
                 </button>
 
                 {openSection === "position" && (
-                  <div className="mt-3 space-y-3 pb-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-3 space-y-3 pb-3">
                     <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-4">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/40">
-                          Point de départ
+                          Point de départ actif
                         </p>
                         <p className="mt-1 text-sm font-bold text-white">
-                          {startPoint[0].toFixed(4)}, {startPoint[1].toFixed(4)}
+                          {routeStartPoint
+                            ? `${routeStartPoint[0].toFixed(4)}, ${routeStartPoint[1].toFixed(4)}`
+                            : "Position réelle non disponible"}
                         </p>
                       </div>
                       <span className="rounded-full bg-white/5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">
@@ -489,6 +579,37 @@ export default function TestMapPage() {
                           En attente de la géolocalisation.
                         </p>
                       )}
+
+                      {geoStatus === "success" && geoAccuracy !== null && (
+                        <p className="mt-2 text-xs text-white/55">
+                          Précision estimée : ± {Math.round(geoAccuracy)} m
+                        </p>
+                      )}
+
+                      <p className="mt-2 text-xs text-white/55">
+                        Mode actuel :{" "}
+                        {navigationMode === "live"
+                          ? "suivi GPS en direct"
+                          : "point manuel"}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleResumeLivePosition}
+                        className="flex-1 rounded-xl border border-[#3b82f6]/20 bg-[#3b82f6]/10 px-4 py-2 text-sm font-bold text-sky-300 transition hover:bg-[#3b82f6]/20"
+                      >
+                        Suivre ma position
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setNavigationMode("manual")}
+                        className="flex-1 rounded-xl border border-[#FF8A00]/20 bg-[#FF8A00]/10 px-4 py-2 text-sm font-bold text-[#FFD700] transition hover:bg-[#FF8A00]/20"
+                      >
+                        Mode manuel
+                      </button>
                     </div>
 
                     {(routeSegments.length > 0 || routeDistanceLabel) && (
@@ -530,7 +651,7 @@ export default function TestMapPage() {
                 </button>
 
                 {openSection === "filters" && (
-                  <div className="mt-3 space-y-4 rounded-2xl border border-white/5 bg-white/[0.03] p-4 pb-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-3 space-y-4 rounded-2xl border border-white/5 bg-white/[0.03] p-4 pb-3">
                     <MapFilters
                       selectedTypes={selectedTypes}
                       onToggle={toggleType}
@@ -554,7 +675,7 @@ export default function TestMapPage() {
                 </button>
 
                 {openSection === "planner" && (
-                  <div className="mt-3 rounded-2xl border border-white/5 bg-white/[0.03] p-2 pb-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-3 rounded-2xl border border-white/5 bg-white/[0.03] p-2 pb-3">
                     <TripPlannerPanel
                       stops={tripStops}
                       onRemoveStop={handleRemoveStop}
@@ -579,7 +700,7 @@ export default function TestMapPage() {
                   </button>
 
                   {openSection === "details" && (
-                    <div className="mt-3 pb-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="mt-3 pb-3">
                       <MapSidePanel
                         item={selectedItem}
                         onClose={() => setSelectedItem(null)}
@@ -600,8 +721,10 @@ export default function TestMapPage() {
         <section className="relative z-0 flex min-w-0 min-h-0 flex-1 flex-col bg-[#1a1a1a]">
           <div className="relative h-full w-full flex-1">
             <ExperienceMapClient
-              center={[34.020882, -6.84165]}
-              zoom={12}
+              center={
+                liveUserPosition ?? manualStartPoint ?? RABAT_FALLBACK_POINT
+              }
+              zoom={14}
               height="100%"
               visibleTypes={selectedTypes}
               items={visibleItems}
@@ -611,7 +734,10 @@ export default function TestMapPage() {
               routeSegments={routeSegments}
               routeDistanceLabel={routeDistanceLabel}
               routeDurationLabel={routeDurationLabel}
-              startPoint={startPoint}
+              startPoint={routeStartPoint}
+              liveUserPosition={liveUserPosition}
+              liveUserAccuracy={geoAccuracy}
+              navigationMode={navigationMode}
               onSelectStartPoint={handleSelectStartPoint}
             />
           </div>

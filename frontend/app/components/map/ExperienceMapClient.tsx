@@ -20,6 +20,9 @@ type ExperienceMapClientProps = {
   routeDistanceLabel?: string;
   routeDurationLabel?: string;
   startPoint?: [number, number] | null;
+  liveUserPosition?: [number, number] | null;
+  liveUserAccuracy?: number | null;
+  navigationMode?: "live" | "manual";
   onSelectStartPoint?: (position: [number, number]) => void;
 };
 
