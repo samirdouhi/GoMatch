@@ -16,7 +16,7 @@ export default function AdminShell({ children }: AdminShellProps) {
           <AdminTopbar />
 
           <main className="flex-1 overflow-y-auto">
-            <div className="px-6 py-8 lg:px-10">
+            <div className="px-4 py-6 pb-24 lg:px-10 lg:pb-8">
               {children}
             </div>
           </main>

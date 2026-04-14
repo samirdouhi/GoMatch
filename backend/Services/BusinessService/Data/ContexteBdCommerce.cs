@@ -14,6 +14,7 @@ namespace BusinessService.Data
         public DbSet<Categorie> Categories { get; set; }
         public DbSet<TagCulturel> TagsCulturels { get; set; }
         public DbSet<HoraireCommerce> HorairesCommerces { get; set; }
+        public DbSet<PhotoCommerce> PhotosCommerces { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

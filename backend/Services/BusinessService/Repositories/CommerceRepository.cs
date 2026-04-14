@@ -19,6 +19,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.Categorie)
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Horaires)
+                .Include(c => c.Photos)
                 .ToListAsync();
         }
 
@@ -28,6 +29,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.Categorie)
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Horaires)
+                .Include(c => c.Photos)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
@@ -59,6 +61,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Categorie)
                 .Include(c => c.Horaires)
+                .Include(c => c.Photos)
                 .FirstOrDefaultAsync(c => c.Id == commerceId);
 
             if (commerce == null)
@@ -99,6 +102,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.Categorie)
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Horaires)
+                .Include(c => c.Photos)
                 .Where(c => c.EstValide)
                 .ToListAsync();
 
@@ -117,7 +121,8 @@ namespace BusinessService.Repositories
             IQueryable<Commerce> query = _context.Commerces
                 .Include(c => c.Categorie)
                 .Include(c => c.TagsCulturels)
-                .Include(c => c.Horaires);
+                .Include(c => c.Horaires)
+                .Include(c => c.Photos);
 
             if (!string.IsNullOrWhiteSpace(nom))
             {

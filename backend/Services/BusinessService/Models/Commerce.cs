@@ -39,5 +39,7 @@ namespace BusinessService.Models
         public ICollection<TagCulturel> TagsCulturels { get; set; } = new List<TagCulturel>();
 
         public ICollection<HoraireCommerce> Horaires { get; set; } = new List<HoraireCommerce>();
+
+        public ICollection<PhotoCommerce> Photos { get; set; } = new List<PhotoCommerce>();
     }
 }

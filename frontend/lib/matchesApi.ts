@@ -86,91 +86,204 @@ function getTeamVisual(teamName: string): {
   const normalized = normalizeTeamName(teamName);
 
   const map: Record<string, { flag: string; code: string }> = {
+    // Afrique du Nord / Moyen-Orient
     morocco: { flag: "🇲🇦", code: "MA" },
     maroc: { flag: "🇲🇦", code: "MA" },
+    egypt: { flag: "🇪🇬", code: "EG" },
+    egypte: { flag: "🇪🇬", code: "EG" },
+    algeria: { flag: "🇩🇿", code: "DZ" },
+    algerie: { flag: "🇩🇿", code: "DZ" },
+    tunisia: { flag: "🇹🇳", code: "TN" },
+    tunisie: { flag: "🇹🇳", code: "TN" },
+    "saudi arabia": { flag: "🇸🇦", code: "SA" },
+    "arabie saoudite": { flag: "🇸🇦", code: "SA" },
+    iraq: { flag: "🇮🇶", code: "IQ" },
+    irak: { flag: "🇮🇶", code: "IQ" },
+    jordan: { flag: "🇯🇴", code: "JO" },
+    jordanie: { flag: "🇯🇴", code: "JO" },
+    qatar: { flag: "🇶🇦", code: "QA" },
+    bahrain: { flag: "🇧🇭", code: "BH" },
+    bahrein: { flag: "🇧🇭", code: "BH" },
+    oman: { flag: "🇴🇲", code: "OM" },
+    "united arab emirates": { flag: "🇦🇪", code: "AE" },
+    "emirats arabes unis": { flag: "🇦🇪", code: "AE" },
+    iran: { flag: "🇮🇷", code: "IR" },
+    palestine: { flag: "🇵🇸", code: "PS" },
 
-    brazil: { flag: "🇧🇷", code: "BR" },
-    bresil: { flag: "🇧🇷", code: "BR" },
+    // Afrique subsaharienne
+    senegal: { flag: "🇸🇳", code: "SN" },
+    nigeria: { flag: "🇳🇬", code: "NG" },
+    "south africa": { flag: "🇿🇦", code: "ZA" },
+    "afrique du sud": { flag: "🇿🇦", code: "ZA" },
+    cameroon: { flag: "🇨🇲", code: "CM" },
+    cameroun: { flag: "🇨🇲", code: "CM" },
+    ghana: { flag: "🇬🇭", code: "GH" },
+    "ivory coast": { flag: "🇨🇮", code: "CI" },
+    "cote d'ivoire": { flag: "🇨🇮", code: "CI" },
+    "côte d'ivoire": { flag: "🇨🇮", code: "CI" },
+    mali: { flag: "🇲🇱", code: "ML" },
+    "dr congo": { flag: "🇨🇩", code: "CD" },
+    "congo dr": { flag: "🇨🇩", code: "CD" },
+    "democratic republic of congo": { flag: "🇨🇩", code: "CD" },
+    tanzania: { flag: "🇹🇿", code: "TZ" },
+    tanzanie: { flag: "🇹🇿", code: "TZ" },
+    comoros: { flag: "🇰🇲", code: "KM" },
+    comores: { flag: "🇰🇲", code: "KM" },
+    "cape verde": { flag: "🇨🇻", code: "CV" },
+    "cap-vert": { flag: "🇨🇻", code: "CV" },
+    zambia: { flag: "🇿🇲", code: "ZM" },
+    zambie: { flag: "🇿🇲", code: "ZM" },
+    zimbabwe: { flag: "🇿🇼", code: "ZW" },
+    kenya: { flag: "🇰🇪", code: "KE" },
+    uganda: { flag: "🇺🇬", code: "UG" },
+    ouganda: { flag: "🇺🇬", code: "UG" },
+    angola: { flag: "🇦🇴", code: "AO" },
+    mozambique: { flag: "🇲🇿", code: "MZ" },
 
-    argentina: { flag: "🇦🇷", code: "AR" },
-    argentine: { flag: "🇦🇷", code: "AR" },
-
+    // Europe de l'Ouest
     france: { flag: "🇫🇷", code: "FR" },
     spain: { flag: "🇪🇸", code: "ES" },
     espagne: { flag: "🇪🇸", code: "ES" },
-
     portugal: { flag: "🇵🇹", code: "PT" },
-
     germany: { flag: "🇩🇪", code: "DE" },
     allemagne: { flag: "🇩🇪", code: "DE" },
-
-    england: { flag: "🏴", code: "ENG" },
-    angleterre: { flag: "🏴", code: "ENG" },
-
+    england: { flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "ENG" },
+    angleterre: { flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "ENG" },
+    scotland: { flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", code: "SCO" },
+    ecosse: { flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", code: "SCO" },
+    wales: { flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", code: "WAL" },
+    pays: { flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", code: "WAL" },
+    "northern ireland": { flag: "🇬🇧", code: "NIR" },
+    "irlande du nord": { flag: "🇬🇧", code: "NIR" },
     italy: { flag: "🇮🇹", code: "IT" },
     italie: { flag: "🇮🇹", code: "IT" },
-
     netherlands: { flag: "🇳🇱", code: "NL" },
     "pays-bas": { flag: "🇳🇱", code: "NL" },
-
     belgium: { flag: "🇧🇪", code: "BE" },
     belgique: { flag: "🇧🇪", code: "BE" },
-
-    croatia: { flag: "🇭🇷", code: "HR" },
-    croatie: { flag: "🇭🇷", code: "HR" },
-
     switzerland: { flag: "🇨🇭", code: "CH" },
     suisse: { flag: "🇨🇭", code: "CH" },
+    austria: { flag: "🇦🇹", code: "AT" },
+    autriche: { flag: "🇦🇹", code: "AT" },
+    sweden: { flag: "🇸🇪", code: "SE" },
+    suede: { flag: "🇸🇪", code: "SE" },
+    denmark: { flag: "🇩🇰", code: "DK" },
+    danemark: { flag: "🇩🇰", code: "DK" },
+    norway: { flag: "🇳🇴", code: "NO" },
+    norvege: { flag: "🇳🇴", code: "NO" },
+    finland: { flag: "🇫🇮", code: "FI" },
+    finlande: { flag: "🇫🇮", code: "FI" },
+    ireland: { flag: "🇮🇪", code: "IE" },
+    irlande: { flag: "🇮🇪", code: "IE" },
+    greece: { flag: "🇬🇷", code: "GR" },
+    grece: { flag: "🇬🇷", code: "GR" },
+    turkey: { flag: "🇹🇷", code: "TR" },
+    turquie: { flag: "🇹🇷", code: "TR" },
 
-    poland: { flag: "🇵🇱", code: "PL" },
-    pologne: { flag: "🇵🇱", code: "PL" },
-
+    // Europe de l'Est / Balkans
+    croatia: { flag: "🇭🇷", code: "HR" },
+    croatie: { flag: "🇭🇷", code: "HR" },
     serbia: { flag: "🇷🇸", code: "RS" },
     serbie: { flag: "🇷🇸", code: "RS" },
+    poland: { flag: "🇵🇱", code: "PL" },
+    pologne: { flag: "🇵🇱", code: "PL" },
+    ukraine: { flag: "🇺🇦", code: "UA" },
+    hungary: { flag: "🇭🇺", code: "HU" },
+    hongrie: { flag: "🇭🇺", code: "HU" },
+    romania: { flag: "🇷🇴", code: "RO" },
+    roumanie: { flag: "🇷🇴", code: "RO" },
+    czechia: { flag: "🇨🇿", code: "CZ" },
+    "czech republic": { flag: "🇨🇿", code: "CZ" },
+    "republique tcheque": { flag: "🇨🇿", code: "CZ" },
+    slovakia: { flag: "🇸🇰", code: "SK" },
+    slovaquie: { flag: "🇸🇰", code: "SK" },
+    slovenia: { flag: "🇸🇮", code: "SI" },
+    slovenie: { flag: "🇸🇮", code: "SI" },
+    albania: { flag: "🇦🇱", code: "AL" },
+    albanie: { flag: "🇦🇱", code: "AL" },
+    "bosnia-herzegovina": { flag: "🇧🇦", code: "BA" },
+    "bosnia and herzegovina": { flag: "🇧🇦", code: "BA" },
+    "bosnie-herzegovine": { flag: "🇧🇦", code: "BA" },
+    russia: { flag: "🇷🇺", code: "RU" },
+    russie: { flag: "🇷🇺", code: "RU" },
+    bulgaria: { flag: "🇧🇬", code: "BG" },
+    bulgarie: { flag: "🇧🇬", code: "BG" },
+    "north macedonia": { flag: "🇲🇰", code: "MK" },
+    "macedoine du nord": { flag: "🇲🇰", code: "MK" },
+    montenegro: { flag: "🇲🇪", code: "ME" },
+    montenégro: { flag: "🇲🇪", code: "ME" },
+    georgia: { flag: "🇬🇪", code: "GE" },
+    georgie: { flag: "🇬🇪", code: "GE" },
+    azerbaijan: { flag: "🇦🇿", code: "AZ" },
+    azerbaidjan: { flag: "🇦🇿", code: "AZ" },
 
+    // Asie / Océanie
     japan: { flag: "🇯🇵", code: "JP" },
     japon: { flag: "🇯🇵", code: "JP" },
-
     "south korea": { flag: "🇰🇷", code: "KR" },
     "coree du sud": { flag: "🇰🇷", code: "KR" },
     "corée du sud": { flag: "🇰🇷", code: "KR" },
+    australia: { flag: "🇦🇺", code: "AU" },
+    australie: { flag: "🇦🇺", code: "AU" },
+    china: { flag: "🇨🇳", code: "CN" },
+    chine: { flag: "🇨🇳", code: "CN" },
+    indonesia: { flag: "🇮🇩", code: "ID" },
+    indonesie: { flag: "🇮🇩", code: "ID" },
+    uzbekistan: { flag: "🇺🇿", code: "UZ" },
+    ouzbekistan: { flag: "🇺🇿", code: "UZ" },
+    thailand: { flag: "🇹🇭", code: "TH" },
+    thailande: { flag: "🇹🇭", code: "TH" },
+    "new zealand": { flag: "🇳🇿", code: "NZ" },
+    "nouvelle-zelande": { flag: "🇳🇿", code: "NZ" },
 
-    mexico: { flag: "🇲🇽", code: "MX" },
-    mexique: { flag: "🇲🇽", code: "MX" },
-
-    canada: { flag: "🇨🇦", code: "CA" },
-
+    // Amérique du Nord / Centrale / Caraïbes
     usa: { flag: "🇺🇸", code: "US" },
     "united states": { flag: "🇺🇸", code: "US" },
+    canada: { flag: "🇨🇦", code: "CA" },
+    mexico: { flag: "🇲🇽", code: "MX" },
+    mexique: { flag: "🇲🇽", code: "MX" },
+    "costa rica": { flag: "🇨🇷", code: "CR" },
+    honduras: { flag: "🇭🇳", code: "HN" },
+    panama: { flag: "🇵🇦", code: "PA" },
+    "el salvador": { flag: "🇸🇻", code: "SV" },
+    jamaica: { flag: "🇯🇲", code: "JM" },
+    jamaique: { flag: "🇯🇲", code: "JM" },
+    haiti: { flag: "🇭🇹", code: "HT" },
+    "trinidad and tobago": { flag: "🇹🇹", code: "TT" },
+    "trinite-et-tobago": { flag: "🇹🇹", code: "TT" },
+    cuba: { flag: "🇨🇺", code: "CU" },
+    guatemala: { flag: "🇬🇹", code: "GT" },
+    nicaragua: { flag: "🇳🇮", code: "NI" },
 
-    czechia: { flag: "🇨🇿", code: "CZ" },
-    "czech republic": { flag: "🇨🇿", code: "CZ" },
-
-    "bosnia-herzegovina": { flag: "🇧🇦", code: "BA" },
-    "bosnia and herzegovina": { flag: "🇧🇦", code: "BA" },
-
-    "south africa": { flag: "🇿🇦", code: "ZA" },
-
-    tunisia: { flag: "🇹🇳", code: "TN" },
-    tunisie: { flag: "🇹🇳", code: "TN" },
-
-    senegal: { flag: "🇸🇳", code: "SN" },
-    nigeria: { flag: "🇳🇬", code: "NG" },
-    egypt: { flag: "🇪🇬", code: "EG" },
-    egypte: { flag: "🇪🇬", code: "EG" },
+    // Amérique du Sud
+    brazil: { flag: "🇧🇷", code: "BR" },
+    bresil: { flag: "🇧🇷", code: "BR" },
+    argentina: { flag: "🇦🇷", code: "AR" },
+    argentine: { flag: "🇦🇷", code: "AR" },
+    uruguay: { flag: "🇺🇾", code: "UY" },
+    colombia: { flag: "🇨🇴", code: "CO" },
+    colombie: { flag: "🇨🇴", code: "CO" },
+    ecuador: { flag: "🇪🇨", code: "EC" },
+    equateur: { flag: "🇪🇨", code: "EC" },
+    paraguay: { flag: "🇵🇾", code: "PY" },
+    chile: { flag: "🇨🇱", code: "CL" },
+    chili: { flag: "🇨🇱", code: "CL" },
+    peru: { flag: "🇵🇪", code: "PE" },
+    perou: { flag: "🇵🇪", code: "PE" },
+    venezuela: { flag: "🇻🇪", code: "VE" },
+    bolivia: { flag: "🇧🇴", code: "BO" },
   };
 
   if (map[normalized]) {
     return map[normalized];
   }
 
-  const fallbackCode = teamName
-    .trim()
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 3)
-    .toUpperCase();
+  // Fallback : produit au moins 2 caractères pour que getFlagUrl puisse fonctionner
+  const parts = teamName.trim().split(/\s+/);
+  const fallbackCode =
+    parts.length === 1
+      ? parts[0].slice(0, 2).toUpperCase()
+      : parts.map((p) => p[0]).join("").slice(0, 3).toUpperCase();
 
   return {
     flag: "🏳️",

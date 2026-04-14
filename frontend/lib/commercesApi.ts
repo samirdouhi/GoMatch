@@ -1,5 +1,17 @@
 import { authFetch } from "@/lib/authApi";
 
+export type PhotoCommerce = {
+  id: string;
+  commerceId: string;
+  nomFichier: string;
+  typeContenu: string;
+  tailleFichier: number;
+  ordre: number;
+  dateAjout: string;
+  /** URL relative : à préfixer de /business pour passer par le gateway */
+  urlImage: string;
+};
+
 export type Commerce = {
   id: string;
   nom: string;
@@ -18,6 +30,7 @@ export type Commerce = {
   nomCategorie?: string | null;
   tagsCulturels: string[];
   horaires: HoraireCommerce[];
+  photos: PhotoCommerce[];
 };
 
 export type HoraireCommerce = {
@@ -161,4 +174,97 @@ export async function rejectCommerce(id: string, raison: string): Promise<Commer
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(extractMessage(data, "Erreur rejet commerce"));
   return data as Commerce;
+}
+
+// ── Photos ─────────────────────────────────────────────────────────────────────
+
+/** Retourne l'URL complète (via gateway) d'une photo. */
+export function photoUrl(urlImage: string): string {
+  return `/business${urlImage}`;
+}
+
+export async function getPhotos(commerceId: string): Promise<PhotoCommerce[]> {
+  const res  = await fetch(`/business/api/commerces/${commerceId}/photos`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur récupération photos"));
+  return data as PhotoCommerce[];
+}
+
+export async function uploadPhoto(commerceId: string, file: File): Promise<PhotoCommerce> {
+  const form = new FormData();
+  form.append("fichier", file);
+
+  const res  = await authFetch(`/business/api/commerces/${commerceId}/photos`, {
+    method: "POST",
+    body: form,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur upload photo"));
+  return data as PhotoCommerce;
+}
+
+export async function deletePhoto(commerceId: string, photoId: string): Promise<void> {
+  const res = await authFetch(`/business/api/commerces/${commerceId}/photos/${photoId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(extractMessage(data, "Erreur suppression photo"));
+  }
+}
+
+// ── Horaires ───────────────────────────────────────────────────────────────────
+
+export type CreerHoraireDto = {
+  jourSemaine: number;
+  heureOuverture: string; // "HH:mm:ss"
+  heureFermeture: string;
+  estFerme: boolean;
+};
+
+export async function getHoraires(commerceId: string): Promise<HoraireCommerce[]> {
+  const res  = await fetch(`/business/api/commerces/${commerceId}/horaires`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur récupération horaires"));
+  return data as HoraireCommerce[];
+}
+
+export async function createHoraire(
+  commerceId: string,
+  dto: CreerHoraireDto
+): Promise<HoraireCommerce> {
+  const res  = await authFetch(`/business/api/commerces/${commerceId}/horaires`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur création horaire"));
+  return data as HoraireCommerce;
+}
+
+export async function updateHoraire(
+  commerceId: string,
+  horaireId: string,
+  dto: CreerHoraireDto
+): Promise<HoraireCommerce> {
+  const res  = await authFetch(`/business/api/commerces/${commerceId}/horaires/${horaireId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur modification horaire"));
+  return data as HoraireCommerce;
+}
+
+export async function deleteHoraire(commerceId: string, horaireId: string): Promise<void> {
+  const res = await authFetch(
+    `/business/api/commerces/${commerceId}/horaires/${horaireId}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(extractMessage(data, "Erreur suppression horaire"));
+  }
 }

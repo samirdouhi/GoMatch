@@ -34,5 +34,7 @@ namespace BusinessService.DTOs
         public List<string> TagsCulturels { get; set; } = new();
 
         public List<HoraireCommerceReponseDto> Horaires { get; set; } = new();
+
+        public List<PhotoCommerceReponseDto> Photos { get; set; } = new();
     }
 }
