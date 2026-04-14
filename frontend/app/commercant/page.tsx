@@ -338,7 +338,7 @@ export default function CommercantDashboardPage() {
             <Clock className="h-5 w-5 text-orange-400" />
             <div><h2 className="font-semibold">Horaires d'ouverture</h2><p className="text-xs text-zinc-500">Visibles par les touristes</p></div>
           </div>
-          <button type="button" onClick={() => router.push(`/commercant/horaires/${commerce.id}`)}
+          <button type="button" onClick={() => router.push('/commercant/horaires')}
             className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
             <Clock className="h-4 w-4" />Gérer
           </button>

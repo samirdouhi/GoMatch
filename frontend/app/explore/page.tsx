@@ -24,11 +24,7 @@ function StatutBadgeSmall({ statut }: { statut: string }) {
 }
 
 function CommerceCard({ commerce }: { commerce: Commerce }) {
-  const [fav, setFav] = useState(false);
-
-  useEffect(() => {
-    setFav(isFavorite(commerce.id));
-  }, [commerce.id]);
+  const [fav, setFav] = useState(() => isFavorite(commerce.id));
 
   function handleFav(e: React.MouseEvent) {
     e.preventDefault();

@@ -11,7 +11,6 @@ import {
   UserCircle2,
   ArrowLeft,
   PlusCircle,
-  Camera,
 } from "lucide-react";
 import { logout } from "@/lib/logout";
 
