@@ -25,7 +25,20 @@ namespace BusinessService.Mappers
                 CategorieId = commerce.CategorieId,
                 NomCategorie = commerce.Categorie?.Nom,
                 TagsCulturels = commerce.TagsCulturels.Select(t => t.Nom).ToList(),
-                Horaires = commerce.Horaires.Select(HoraireCommerceMapper.ToResponse).ToList()
+                Horaires = commerce.Horaires.Select(HoraireCommerceMapper.ToResponse).ToList(),
+                Photos = commerce.Photos
+                    .OrderBy(p => p.Ordre).ThenBy(p => p.DateAjout)
+                    .Select(p => new PhotoCommerceReponseDto
+                    {
+                        Id = p.Id,
+                        CommerceId = p.CommerceId,
+                        NomFichier = p.NomFichier,
+                        TypeContenu = p.TypeContenu,
+                        TailleFichier = p.TailleFichier,
+                        Ordre = p.Ordre,
+                        DateAjout = p.DateAjout,
+                        UrlImage = $"/api/commerces/{p.CommerceId}/photos/{p.Id}/image"
+                    }).ToList()
             };
         }
 

@@ -32,12 +32,14 @@ builder.Services.AddScoped<ICommerceRepository, CommerceRepository>();
 builder.Services.AddScoped<IHoraireCommerceRepository, HoraireCommerceRepository>();
 builder.Services.AddScoped<ICategorieRepository, CategorieRepository>();
 builder.Services.AddScoped<ITagCulturelRepository, TagCulturelRepository>();
+builder.Services.AddScoped<IPhotoCommerceRepository, PhotoCommerceRepository>();
 
 // Services
 builder.Services.AddScoped<IServiceCommerce, ServiceCommerce>();
 builder.Services.AddScoped<IServiceHoraireCommerce, ServiceHoraireCommerce>();
 builder.Services.AddScoped<IServiceCategorie, ServiceCategorie>();
 builder.Services.AddScoped<IServiceTagCulturel, ServiceTagCulturel>();
+builder.Services.AddScoped<IServicePhotoCommerce, ServicePhotoCommerce>();
 
 // HTTP client vers AuthService pour les emails
 var authServiceUrl = builder.Configuration["Services:AuthService:BaseUrl"]
