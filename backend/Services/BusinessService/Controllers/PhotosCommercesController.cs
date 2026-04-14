@@ -33,9 +33,9 @@ namespace BusinessService.Controllers
             var result = await _service.TelechargerAsync(photoId);
             if (result == null) return NotFound();
 
-            var (contenu, typeContenu, nomFichier) = result.Value;
+            var (contenu, typeContenu, _) = result.Value;
             Response.Headers.Append("Cache-Control", "public, max-age=86400");
-            return File(contenu, typeContenu, nomFichier);
+            return File(contenu, typeContenu);
         }
 
         /// <summary>Ajoute une photo (multipart/form-data, champ "fichier"). Max 10 MB, formats jpg/png/webp.</summary>
