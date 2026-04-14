@@ -2,6 +2,7 @@ using BusinessService.DTOs;
 using BusinessService.Models;
 using BusinessService.Repositories;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 
 namespace BusinessService.Services
 {
@@ -12,15 +13,25 @@ namespace BusinessService.Services
         private const long TailleMaxFichier = 10 * 1024 * 1024; // 10 MB
 
         private readonly IPhotoCommerceRepository _photoRepo;
-        private readonly ICommerceRepository _commerceRepo;
+        private readonly ICommerceRepository      _commerceRepo;
+        private readonly IHostEnvironment         _env;
+        private readonly ILogger<ServicePhotoCommerce> _logger;
 
         public ServicePhotoCommerce(
             IPhotoCommerceRepository photoRepo,
-            ICommerceRepository commerceRepo)
+            ICommerceRepository      commerceRepo,
+            IHostEnvironment         env,
+            ILogger<ServicePhotoCommerce> logger)
         {
-            _photoRepo = photoRepo;
+            _photoRepo    = photoRepo;
             _commerceRepo = commerceRepo;
+            _env          = env;
+            _logger       = logger;
         }
+
+        // Racine persistante des uploads (créée au démarrage via ContentRootPath)
+        private string UploadsRoot =>
+            Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "commerces");
 
         public async Task<List<PhotoCommerceReponseDto>> ObtenirParCommerceAsync(Guid commerceId)
         {
@@ -48,25 +59,32 @@ namespace BusinessService.Services
             if (nbExistant >= MaxPhotosParCommerce)
                 return null;
 
-            var photoId = Guid.NewGuid();
-            var nomFichier = $"{photoId}{extension}";
-            var dossier = Path.Combine(
-                Directory.GetCurrentDirectory(), "wwwroot", "uploads", "commerces", commerceId.ToString());
+            var photoId        = Guid.NewGuid();
+            var nomFichierDisk = $"{photoId}{extension}";
 
-            Directory.CreateDirectory(dossier);
+            // Chemin relatif stocké en BD (portable entre environnements)
+            var cheminRelatif = Path.Combine("uploads", "commerces",
+                commerceId.ToString(), nomFichierDisk)
+                .Replace('\\', '/');
 
-            var chemin = Path.Combine(dossier, nomFichier);
-            using (var stream = new FileStream(chemin, FileMode.Create))
+            // Chemin absolu réel pour l'écriture
+            var dossierAbsolu = Path.Combine(UploadsRoot, commerceId.ToString());
+            Directory.CreateDirectory(dossierAbsolu);
+            var cheminAbsolu = Path.Combine(dossierAbsolu, nomFichierDisk);
+
+            await using (var stream = new FileStream(cheminAbsolu, FileMode.Create))
             {
                 await fichier.CopyToAsync(stream);
             }
+
+            _logger.LogInformation("Photo enregistrée : {Path}", cheminAbsolu);
 
             var photo = new PhotoCommerce
             {
                 Id            = photoId,
                 CommerceId    = commerceId,
                 NomFichier    = fichier.FileName,
-                CheminFichier = chemin,
+                CheminFichier = cheminRelatif,
                 TypeContenu   = fichier.ContentType,
                 TailleFichier = fichier.Length,
                 Ordre         = nbExistant,
@@ -87,8 +105,12 @@ namespace BusinessService.Services
             if (photo == null || photo.CommerceId != commerceId)
                 return false;
 
-            if (File.Exists(photo.CheminFichier))
-                File.Delete(photo.CheminFichier);
+            var cheminAbsolu = ResoudrChemin(photo.CheminFichier);
+            if (File.Exists(cheminAbsolu))
+            {
+                try { File.Delete(cheminAbsolu); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Suppression fichier échouée : {Path}", cheminAbsolu); }
+            }
 
             return await _photoRepo.SupprimerAsync(photoId);
         }
@@ -96,11 +118,25 @@ namespace BusinessService.Services
         public async Task<(byte[] contenu, string typeContenu, string nomFichier)?> TelechargerAsync(Guid photoId)
         {
             var photo = await _photoRepo.ObtenirParIdAsync(photoId);
-            if (photo == null || !File.Exists(photo.CheminFichier))
-                return null;
+            if (photo == null) return null;
 
-            var contenu = await File.ReadAllBytesAsync(photo.CheminFichier);
+            var cheminAbsolu = ResoudrChemin(photo.CheminFichier);
+            if (!File.Exists(cheminAbsolu))
+            {
+                _logger.LogWarning("Fichier photo introuvable sur disque : {Path}", cheminAbsolu);
+                return null;
+            }
+
+            var contenu = await File.ReadAllBytesAsync(cheminAbsolu);
             return (contenu, photo.TypeContenu, photo.NomFichier);
+        }
+
+        // Résout un chemin qui peut être relatif (nouveau format) OU absolu (ancien format)
+        private string ResoudrChemin(string cheminStocke)
+        {
+            if (string.IsNullOrWhiteSpace(cheminStocke)) return string.Empty;
+            if (Path.IsPathRooted(cheminStocke)) return cheminStocke; // rétro-compatibilité
+            return Path.Combine(_env.ContentRootPath, "wwwroot", cheminStocke);
         }
 
         private static PhotoCommerceReponseDto ToDto(PhotoCommerce p) => new()
