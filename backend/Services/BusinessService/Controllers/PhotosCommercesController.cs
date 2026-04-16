@@ -33,7 +33,7 @@ namespace BusinessService.Controllers
 
             var (contenu, typeContenu, _) = result.Value;
             Response.Headers.Append("Cache-Control", "public, max-age=86400");
-            return File(contenu, typeContenu);
+            return File(contenu, typeContenu); // pas de nom = inline (pas attachment)
         }
 
         [Authorize]

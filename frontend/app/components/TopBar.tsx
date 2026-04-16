@@ -20,9 +20,13 @@ type TopBarProps = {
 
 const NAV_ITEMS = [
   { label: "Accueil", href: "/", icon: Home },
+   { label: "dahsboard", href: "/dashboard", icon: CarteIcon },
+
   { label: "Matchs", href: "/matches", icon: Calendar },
+     { label: "explore", href: "/explore", icon: CarteIcon },
   { label: "Culture", href: "/culture", icon: Landmark },
   { label: "Carte", href: "/test-map", icon: CarteIcon },
+
 ];
 
 // N'oublie pas d'ajouter sidebarCollapsed dans les props ici
@@ -214,6 +218,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
           
           <Link href="/assistant" className={`p-2 ${isActive('/assistant') ? 'text-[#facc15]' : 'text-white/40'}`}><Landmark size={22} /></Link>
           <Link href="/test-map" className={`p-2 ${isActive('/test-map') ? 'text-[#facc15]' : 'text-white/40'}`}><CarteIcon size={22} /></Link>
+          
         </div>
       </nav>
     </>

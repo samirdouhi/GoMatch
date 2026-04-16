@@ -1,0 +1,147 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-04-15T10:39:30Z",
+    "timestamp_areas_base": "2026-04-14T18:40:15Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 1324045746,
+  "lat": 34.0282430,
+  "lon": -6.8309846,
+  "tags": {
+    "name": "View on Kasbah",
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 1326338325,
+  "lat": 34.0084042,
+  "lon": -6.8205078,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 2872447275,
+  "lat": 34.0305068,
+  "lon": -6.8350657,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 2872447276,
+  "lat": 34.0304784,
+  "lon": -6.8347275,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 2872447277,
+  "lat": 34.0320871,
+  "lon": -6.8348134,
+  "tags": {
+    "name": "Tour des Pirates",
+    "name:ko": "해적탑",
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 2872447278,
+  "lat": 34.0330578,
+  "lon": -6.8356280,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 2872447279,
+  "lat": 34.0331183,
+  "lon": -6.8353402,
+  "tags": {
+    "name": "Plateforme du Sémaphore",
+    "name:ko": "세마포어 플랫폼",
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 2877907733,
+  "lat": 34.0321976,
+  "lon": -6.8349741,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 7730905485,
+  "lat": 34.0241317,
+  "lon": -6.8227816,
+  "tags": {
+    "name": "صومعة الحسن",
+    "name:ar": "صومعة الحسن",
+    "name:fr": "Tour Hassan",
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 11738383072,
+  "lat": 34.0260543,
+  "lon": -6.8059321,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 11738383073,
+  "lat": 34.0241446,
+  "lon": -6.8212886,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 12582104404,
+  "lat": 34.0249792,
+  "lon": -6.8220545,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 13268124910,
+  "lat": 34.0072763,
+  "lon": -6.8192928,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 13268124930,
+  "lat": 34.0069443,
+  "lon": -6.8220182,
+  "tags": {
+    "tourism": "viewpoint"
+  }
+}
+
+  ]
+}

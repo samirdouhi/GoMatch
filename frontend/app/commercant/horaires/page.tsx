@@ -10,7 +10,7 @@ import {
   deleteHoraire,
   type HoraireCommerce,
 } from "@/lib/commercesApi";
-import { Clock, Save, Trash2, Plus, CheckCircle2, AlertCircle } from "lucide-react";
+import { Clock, Save, Trash2, CheckCircle2 } from "lucide-react";
 
 const JOURS: { label: string; value: number }[] = [
   { label: "Lundi",    value: 1 },
@@ -23,9 +23,9 @@ const JOURS: { label: string; value: number }[] = [
 ];
 
 type RowState = {
-  horaireId: string | null;   // null = pas encore créé
+  horaireId: string | null;
   estFerme: boolean;
-  heureOuverture: string;     // "HH:mm"
+  heureOuverture: string;
   heureFermeture: string;
   dirty: boolean;
   saving: boolean;
@@ -48,7 +48,6 @@ export default function HorairesPage() {
   const [error, setError] = useState<string | null>(null);
   const [globalMsg, setGlobalMsg] = useState<string | null>(null);
 
-  // ── Chargement ───────────────────────────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -63,13 +62,12 @@ export default function HorairesPage() {
         const horaires = await getHoraires(commerce.id);
         if (!mounted) return;
 
-        // Initialiser les lignes avec les valeurs existantes ou des defaults
         const initial: Record<number, RowState> = {};
         for (const jour of JOURS) {
           const existing = horaires.find((h) => h.jourSemaine === jour.value);
           initial[jour.value] = {
-            horaireId:     existing?.id ?? null,
-            estFerme:      existing?.estFerme ?? false,
+            horaireId:      existing?.id ?? null,
+            estFerme:       existing?.estFerme ?? false,
             heureOuverture: existing ? fromTimeSpan(existing.heureOuverture) : "09:00",
             heureFermeture: existing ? fromTimeSpan(existing.heureFermeture) : "18:00",
             dirty:  false,
@@ -89,7 +87,6 @@ export default function HorairesPage() {
     return () => { mounted = false; };
   }, [router]);
 
-  // ── Mise à jour d'une ligne ───────────────────────────────────────────────────
   function updateRow(jourValue: number, patch: Partial<RowState>) {
     setRows((prev) => ({
       ...prev,
@@ -97,7 +94,6 @@ export default function HorairesPage() {
     }));
   }
 
-  // ── Sauvegarde d'une ligne ────────────────────────────────────────────────────
   async function saveRow(jourValue: number) {
     if (!commerceId) return;
     const row = rows[jourValue];
@@ -136,7 +132,6 @@ export default function HorairesPage() {
     }
   }
 
-  // ── Suppression d'une ligne ───────────────────────────────────────────────────
   async function deleteRow(jourValue: number) {
     if (!commerceId) return;
     const row = rows[jourValue];
@@ -149,8 +144,8 @@ export default function HorairesPage() {
         ...prev,
         [jourValue]: {
           ...prev[jourValue],
-          horaireId:     null,
-          estFerme:      false,
+          horaireId:      null,
+          estFerme:       false,
           heureOuverture: "09:00",
           heureFermeture: "18:00",
           dirty:  false,
@@ -164,7 +159,6 @@ export default function HorairesPage() {
     }
   }
 
-  // ── Tout sauvegarder ─────────────────────────────────────────────────────────
   async function saveAll() {
     for (const jour of JOURS) {
       const row = rows[jour.value];
@@ -174,7 +168,6 @@ export default function HorairesPage() {
     setTimeout(() => setGlobalMsg(null), 3000);
   }
 
-  // ── Rendu ─────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="space-y-3">
@@ -197,18 +190,16 @@ export default function HorairesPage() {
 
   return (
     <div className="space-y-6 text-white">
-      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-orange-400" />
-            <h1 className="text-2xl font-black">Horaires ouverture</h1>
+            <h1 className="text-2xl font-black">Horaires d'ouverture</h1>
           </div>
           <p className="mt-1 text-sm text-zinc-500">
-            Configurez vos heures ouverture jour par jour. Les modifications sont visibles par les touristes.
+            Configurez vos heures d'ouverture jour par jour.
           </p>
         </div>
-
         <button
           type="button"
           onClick={saveAll}
@@ -220,7 +211,6 @@ export default function HorairesPage() {
         </button>
       </div>
 
-      {/* Message global */}
       {globalMsg && (
         <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -228,33 +218,20 @@ export default function HorairesPage() {
         </div>
       )}
 
-      {/* Lignes */}
       <div className="overflow-hidden rounded-3xl border border-white/[0.07]">
         <div className="divide-y divide-white/[0.05]">
           {JOURS.map((jour) => {
             const row = rows[jour.value];
             if (!row) return null;
-
             return (
-              <div
-                key={jour.value}
-                className="flex flex-col gap-4 bg-white/[0.02] px-5 py-4 sm:flex-row sm:items-center"
-              >
-                {/* Jour */}
+              <div key={jour.value} className="flex flex-col gap-4 bg-white/[0.02] px-5 py-4 sm:flex-row sm:items-center">
                 <div className="w-28 shrink-0">
                   <p className="font-bold text-white">{jour.label}</p>
-                  {row.horaireId && !row.dirty && (
-                    <p className="text-[10px] text-zinc-600">enregistré</p>
-                  )}
-                  {row.dirty && (
-                    <p className="text-[10px] text-amber-500">modifié</p>
-                  )}
-                  {row.saved && (
-                    <p className="text-[10px] text-emerald-500">sauvegardé</p>
-                  )}
+                  {row.horaireId && !row.dirty && <p className="text-[10px] text-zinc-600">enregistré</p>}
+                  {row.dirty && <p className="text-[10px] text-amber-500">modifié</p>}
+                  {row.saved && <p className="text-[10px] text-emerald-500">sauvegardé</p>}
                 </div>
 
-                {/* Toggle ouvert/fermé */}
                 <button
                   type="button"
                   onClick={() => updateRow(jour.value, { estFerme: !row.estFerme })}
@@ -267,56 +244,35 @@ export default function HorairesPage() {
                   {row.estFerme ? "Fermé" : "Ouvert"}
                 </button>
 
-                {/* Heures */}
-                <div
-                  className={`flex flex-1 items-center gap-3 transition-opacity ${
-                    row.estFerme ? "pointer-events-none opacity-30" : ""
-                  }`}
-                >
+                <div className={`flex flex-1 items-center gap-3 transition-opacity ${row.estFerme ? "pointer-events-none opacity-30" : ""}`}>
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-zinc-500">De</label>
-                    <input
-                      type="time"
-                      value={row.heureOuverture}
+                    <input type="time" value={row.heureOuverture}
                       onChange={(e) => updateRow(jour.value, { heureOuverture: e.target.value })}
-                      className="rounded-xl border border-white/[0.07] bg-black/30 px-3 py-2 text-sm text-white focus:border-orange-500/40 focus:outline-none"
-                    />
+                      className="rounded-xl border border-white/[0.07] bg-black/30 px-3 py-2 text-sm text-white focus:border-orange-500/40 focus:outline-none" />
                   </div>
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-zinc-500">À</label>
-                    <input
-                      type="time"
-                      value={row.heureFermeture}
+                    <input type="time" value={row.heureFermeture}
                       onChange={(e) => updateRow(jour.value, { heureFermeture: e.target.value })}
-                      className="rounded-xl border border-white/[0.07] bg-black/30 px-3 py-2 text-sm text-white focus:border-orange-500/40 focus:outline-none"
-                    />
+                      className="rounded-xl border border-white/[0.07] bg-black/30 px-3 py-2 text-sm text-white focus:border-orange-500/40 focus:outline-none" />
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => saveRow(jour.value)}
+                  <button type="button" onClick={() => saveRow(jour.value)}
                     disabled={!row.dirty || row.saving}
                     className="flex h-9 w-9 items-center justify-center rounded-xl border border-orange-500/30 bg-orange-500/10 text-orange-400 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-30"
-                    title="Sauvegarder ce jour"
-                  >
-                    {row.saving ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
+                    title="Sauvegarder ce jour">
+                    {row.saving
+                      ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
+                      : <Save className="h-4 w-4" />}
                   </button>
-
                   {row.horaireId && (
-                    <button
-                      type="button"
-                      onClick={() => deleteRow(jour.value)}
+                    <button type="button" onClick={() => deleteRow(jour.value)}
                       disabled={row.saving}
                       className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 disabled:opacity-30"
-                      title="Supprimer cet horaire"
-                    >
+                      title="Supprimer">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
@@ -327,10 +283,9 @@ export default function HorairesPage() {
         </div>
       </div>
 
-      {/* Légende */}
       <p className="text-xs text-zinc-600">
-        Cliquez sur <strong className="text-zinc-400">Ouvert / Fermé</strong> pour basculer le statut du jour.
-        Sauvegardez chaque ligne individuellement ou utilisez <strong className="text-zinc-400">Tout sauvegarder</strong> pour appliquer toutes les modifications en attente.
+        Cliquez sur <strong className="text-zinc-400">Ouvert / Fermé</strong> pour basculer le statut.
+        Sauvegardez chaque ligne individuellement ou utilisez <strong className="text-zinc-400">Tout sauvegarder</strong>.
       </p>
     </div>
   );

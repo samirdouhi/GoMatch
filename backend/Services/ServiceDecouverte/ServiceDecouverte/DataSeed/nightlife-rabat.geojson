@@ -1,0 +1,503 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-04-15T10:32:14Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1719028259",
+        "amenity": "pub",
+        "name": "Irish Pub"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8300131,
+          34.020398
+        ]
+      },
+      "id": "node/1719028259"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/2585666391",
+        "amenity": "nightclub",
+        "name": "Bar Lounge Le Zebrano"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8272789,
+          34.0206289
+        ]
+      },
+      "id": "node/2585666391"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3088880447",
+        "amenity": "public_bath",
+        "name": "حمّـام",
+        "name:ar": "حمّـام"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.7959612,
+          34.0476418
+        ]
+      },
+      "id": "node/3088880447"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3190094386",
+        "amenity": "bar",
+        "name": "Bar Casablanca بار كازابلانكا",
+        "name:ar": "بار كازابلانكا",
+        "name:es": "Bar Casablanca",
+        "name:fr": "Bar Casablanca"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8309999,
+          34.0167498
+        ]
+      },
+      "id": "node/3190094386"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3394023014",
+        "amenity": "public_building",
+        "name": "banzai"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8242164,
+          34.0158951
+        ]
+      },
+      "id": "node/3394023014"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3409254118",
+        "amenity": "bar",
+        "name": "Yucatan"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8321618,
+          34.0168662
+        ]
+      },
+      "id": "node/3409254118"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410381056",
+        "addr:city": "Rabat",
+        "addr:city:ar": "الرباط",
+        "addr:city:es": "Rabat",
+        "addr:city:fr": "Rabat",
+        "amenity": "bar",
+        "name": "Bar Jour Et Nuit"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8309667,
+          34.0221306
+        ]
+      },
+      "id": "node/3410381056"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410381057",
+        "addr:city": "Rabat",
+        "addr:city:ar": "الرباط",
+        "addr:city:es": "Rabat",
+        "addr:city:fr": "Rabat",
+        "amenity": "nightclub",
+        "name": "Jefferson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8315014,
+          34.0214311
+        ]
+      },
+      "id": "node/3410381057"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410407440",
+        "amenity": "bar",
+        "name": "Yamas Bistro"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8362053,
+          34.0220475
+        ]
+      },
+      "id": "node/3410407440"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410407441",
+        "amenity": "nightclub",
+        "name": "Amnesia"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8361599,
+          34.0219037
+        ]
+      },
+      "id": "node/3410407441"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410415537",
+        "amenity": "bar",
+        "name": "33 Export"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.835467,
+          34.0211929
+        ]
+      },
+      "id": "node/3410415537"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3417540492",
+        "amenity": "bar",
+        "name": "Chateaubriand"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8450784,
+          34.0003924
+        ]
+      },
+      "id": "node/3417540492"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3417548198",
+        "amenity": "bar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8463558,
+          34.0002062
+        ]
+      },
+      "id": "node/3417548198"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3417548200",
+        "amenity": "nightclub",
+        "name": "Privilege"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8458586,
+          34.0005551
+        ]
+      },
+      "id": "node/3417548200"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3417559339",
+        "amenity": "nightclub",
+        "name": "El Barrio Latino"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8462072,
+          34.0002774
+        ]
+      },
+      "id": "node/3417559339"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3423068140",
+        "amenity": "nightclub",
+        "name": "Bombay"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8426373,
+          34.0122733
+        ]
+      },
+      "id": "node/3423068140"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3524082554",
+        "amenity": "bar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8395838,
+          34.0083078
+        ]
+      },
+      "id": "node/3524082554"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3702119329",
+        "alcohol": "yes",
+        "amenity": "nightclub",
+        "name": "5th Avenue",
+        "smoking": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8478775,
+          34.0050771
+        ]
+      },
+      "id": "node/3702119329"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3761815267",
+        "amenity": "bar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8268509,
+          34.0203679
+        ]
+      },
+      "id": "node/3761815267"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3771983460",
+        "amenity": "public_building",
+        "name": "bistro"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8251298,
+          34.0171662
+        ]
+      },
+      "id": "node/3771983460"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4153478491",
+        "amenity": "bar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8351759,
+          34.0184512
+        ]
+      },
+      "id": "node/4153478491"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4153546789",
+        "amenity": "bar",
+        "name": "le rêve"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.835224,
+          34.0185454
+        ]
+      },
+      "id": "node/4153546789"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4239728902",
+        "amenity": "bar",
+        "name": "Henry's Bar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8348968,
+          34.0169745
+        ]
+      },
+      "id": "node/4239728902"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4291852191",
+        "amenity": "bar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8481717,
+          34.0235388
+        ]
+      },
+      "id": "node/4291852191"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5262339027",
+        "addr:housenumber": "344",
+        "addr:street": "Avenue Mohammed V",
+        "amenity": "bar",
+        "check_date": "2025-10-25",
+        "description": "Bar with a classic rock theme",
+        "name": "Brasserie Terminus",
+        "phone": "+212 5 37 70 52 10"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8352736,
+          34.0159811
+        ]
+      },
+      "id": "node/5262339027"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5415066338",
+        "amenity": "bar",
+        "name:en": "El Pelatino"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8337732,
+          34.0168028
+        ]
+      },
+      "id": "node/5415066338"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5768989453",
+        "addr:street": "Avenue Mohamed V",
+        "amenity": "pub",
+        "name": "El Palatino",
+        "source": "Kaart Ground Survey 2018"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8346731,
+          34.0161541
+        ]
+      },
+      "id": "node/5768989453"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8243063411",
+        "amenity": "pub"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8472763,
+          34.0053256
+        ]
+      },
+      "id": "node/8243063411"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11895493769",
+        "amenity": "bar",
+        "name:es": "Drink & Tapa"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8315092,
+          34.0217234
+        ]
+      },
+      "id": "node/11895493769"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13685584601",
+        "amenity": "bar",
+        "name": "Baz'Art"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8303953,
+          34.0199095
+        ]
+      },
+      "id": "node/13685584601"
+    }
+  ]
+}

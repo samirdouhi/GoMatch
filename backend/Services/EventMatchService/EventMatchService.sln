@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36616.10 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventMatchService", "EventMatchService.csproj", "{76BC5F86-B651-FD43-0C2E-EF940381BE36}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{76BC5F86-B651-FD43-0C2E-EF940381BE36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76BC5F86-B651-FD43-0C2E-EF940381BE36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76BC5F86-B651-FD43-0C2E-EF940381BE36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76BC5F86-B651-FD43-0C2E-EF940381BE36}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2696BB5E-1AB8-4416-9D8A-EF5A41ABB7E3}
+	EndGlobalSection
+EndGlobal

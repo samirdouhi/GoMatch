@@ -1,0 +1,1318 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-04-15T10:30:14Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/516664650",
+        "name": "Hôtel des Oudaias",
+        "name:fr": "Hôtel des Oudaias",
+        "tourism": "hotel",
+        "wikidata": "Q66082310"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8371705,
+          34.0295641
+        ]
+      },
+      "id": "node/516664650"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/527903350",
+        "addr:city": "Rabat ⵕⵕⴱⴰⵟ الرباط",
+        "addr:housenumber": "2",
+        "addr:street": "Rue Ifni",
+        "check_date": "2026-03-19",
+        "name": "Helnan Chellah",
+        "phone": "+212 537 66 83 00",
+        "stars": "4",
+        "tourism": "hotel",
+        "website": "https://www.helnan.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8317277,
+          34.0142801
+        ]
+      },
+      "id": "node/527903350"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/527903393",
+        "addr:city": "Rabat ⵔⴱⴰⵟ الرباط",
+        "addr:housenumber": "14",
+        "addr:street": "Avenue Chellah شارع شالة",
+        "email": "reservation@latourhassan.com",
+        "name": "Hôtel La Tour Hassan",
+        "name:fr": "Hôtel La Tour Hassan",
+        "tourism": "hotel",
+        "website": "https://tourhassanpalace.com"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8298442,
+          34.0196347
+        ]
+      },
+      "id": "node/527903393"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/527903400",
+        "check_date": "2026-03-22",
+        "name": "Hôtel Rabat",
+        "name:fr": "Hôtel Rabat",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8298919,
+          34.0205362
+        ]
+      },
+      "id": "node/527903400"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1151736192",
+        "air_conditioning": "yes",
+        "internet_access": "wlan",
+        "name": "Le Diwan",
+        "operator": "Accor",
+        "stars": "4",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8279059,
+          34.0175741
+        ]
+      },
+      "id": "node/1151736192"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1259440479",
+        "name": "Majliss",
+        "tourism": "hotel",
+        "wikidata": "Q111873047"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8366638,
+          34.0164825
+        ]
+      },
+      "id": "node/1259440479"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1324037779",
+        "name": "Hôtel Majestic",
+        "name:fr": "Hôtel Majestic",
+        "tourism": "hotel",
+        "wikidata": "Q59955786"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8394443,
+          34.0212872
+        ]
+      },
+      "id": "node/1324037779"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1719030425",
+        "name": "Hôtel Yasmine",
+        "name:fr": "Hôtel Yasmine",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.828931,
+          34.0204173
+        ]
+      },
+      "id": "node/1719030425"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1811888412",
+        "name": "Hotel Mercure Sherazade",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8228848,
+          34.0192103
+        ]
+      },
+      "id": "node/1811888412"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/2122738367",
+        "addr:city": "Rabat ⵕⵕⴱⴰⵟ الرباط",
+        "addr:country": "MA",
+        "addr:housenumber": "4",
+        "addr:postcode": "10000",
+        "addr:street": "Rue Tobrouk زنقة طبرق",
+        "air_conditioning": "yes",
+        "check_date": "2025-09-02",
+        "contact:facebook": "https://www.facebook.com/LePietriUrbanHotel/",
+        "contact:instagram": "https://www.instagram.com/lepietriurbanhotel/",
+        "contact:phone": "+212 537 707820",
+        "contact:website": "https://www.lepietri.com/",
+        "name": "Le Pietri",
+        "tourism": "hotel",
+        "wikidata": "Q111409310"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8322101,
+          34.0162377
+        ]
+      },
+      "id": "node/2122738367"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/2226826932",
+        "name": "Hotel Golden Tulip",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8260428,
+          34.0257722
+        ]
+      },
+      "id": "node/2226826932"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/2585574489",
+        "addr:city": "Rabat ⵔⴱⴰⵟ الرباط",
+        "addr:housenumber": "45",
+        "addr:postcode": "10000",
+        "addr:street": "Avenue Moulay Ismail شارع مولاي اسماعيل",
+        "air_conditioning": "yes",
+        "email": "booking@rihabhotel.com",
+        "internet_access": "wlan",
+        "name": "Hôtel Rihab",
+        "opening_hours": "24/7",
+        "phone": "+212 5 37 70 62 70;+212 6 61 55 50 58",
+        "tourism": "hotel",
+        "website": "https://www.rihabhotel.com/",
+        "wikidata": "Q111873049"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8271917,
+          34.0206863
+        ]
+      },
+      "id": "node/2585574489"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3118154627",
+        "check_date": "2026-03-19",
+        "name": "Hôtel Malak",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8315281,
+          34.0225205
+        ]
+      },
+      "id": "node/3118154627"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410415535",
+        "name": "Capitol",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8365261,
+          34.0213311
+        ]
+      },
+      "id": "node/3410415535"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410415538",
+        "name": "Splendide",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8369941,
+          34.0209254
+        ]
+      },
+      "id": "node/3410415538"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3410436675",
+        "name": "Royal Hôtel",
+        "name:fr": "Royal Hôtel",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8355057,
+          34.0207014
+        ]
+      },
+      "id": "node/3410436675"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3434912303",
+        "name": "Malak",
+        "tourism": "hotel",
+        "website": "http://www.malakhotel.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8308735,
+          34.0219561
+        ]
+      },
+      "id": "node/3434912303"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3436991239",
+        "name": "Hôtel de France",
+        "name:fr": "Hôtel de France",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8395168,
+          34.0226818
+        ]
+      },
+      "id": "node/3436991239"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3437027284",
+        "addr:city": "Rabat",
+        "name": "Hôtel d'Alger",
+        "name:fr": "Hôtel d'Alger",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8393318,
+          34.0227911
+        ]
+      },
+      "id": "node/3437027284"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3437027285",
+        "check_date": "2026-03-19",
+        "name": "Hôtel du Marché",
+        "name:fr": "Hôtel du Marché",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8391398,
+          34.0233104
+        ]
+      },
+      "id": "node/3437027285"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3437027286",
+        "name": "Hôtel Assaada",
+        "name:fr": "Hôtel Assaada",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8390685,
+          34.0228632
+        ]
+      },
+      "id": "node/3437027286"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3437027287",
+        "addr:city": "الرباط",
+        "name": "Hôtel des Voyageurs",
+        "name:fr": "Hôtel des Voyageurs",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8386968,
+          34.0229712
+        ]
+      },
+      "id": "node/3437027287"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3705812346",
+        "addr:street": "Avenue Maghreb Arabe",
+        "name": "Hôtel Afrique",
+        "name:fr": "Hôtel Afrique",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8424711,
+          34.020697
+        ]
+      },
+      "id": "node/3705812346"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3705812347",
+        "name": "Hôtel Dakar",
+        "name:fr": "Hôtel Dakar",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8428708,
+          34.0211283
+        ]
+      },
+      "id": "node/3705812347"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3772969802",
+        "addr:housenumber": "33",
+        "addr:postcode": "10000",
+        "addr:street": "Avenue Moulay Youssef شارع مولاي يوسف",
+        "name": "Hôtel Bélère",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8363635,
+          34.0145275
+        ]
+      },
+      "id": "node/3772969802"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3801930662",
+        "addr:city": "الرباط",
+        "name": "Berlin",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8374809,
+          34.0213879
+        ]
+      },
+      "id": "node/3801930662"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3980286198",
+        "name": "Hôtel Texuda",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8461415,
+          34.0228794
+        ]
+      },
+      "id": "node/3980286198"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4174180594",
+        "name": "bouregreg",
+        "tourism": "hotel",
+        "wikidata": "Q111873053"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.832152,
+          34.0241454
+        ]
+      },
+      "id": "node/4174180594"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4189950299",
+        "name": "Hôtel Gaulois",
+        "phone": "+2125377223022",
+        "tourism": "hotel",
+        "wikidata": "Q59955790"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8378024,
+          34.0210045
+        ]
+      },
+      "id": "node/4189950299"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4792445702",
+        "name": "Ifriquia",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8425567,
+          34.0206585
+        ]
+      },
+      "id": "node/4792445702"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4918746221",
+        "addr:street": "Avenue d'Alger شارع الجزائر",
+        "name": "Annakhil",
+        "name:fr": "Annakhil",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8254135,
+          34.0174483
+        ]
+      },
+      "id": "node/4918746221"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5044928725",
+        "addr:street": "Avenue Mohamed V",
+        "check_date": "2026-03-19",
+        "name": "Mess Off Rabat",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8315132,
+          34.0126979
+        ]
+      },
+      "id": "node/5044928725"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5154645133",
+        "name:zh": "酒店",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8380137,
+          34.025442
+        ]
+      },
+      "id": "node/5154645133"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5337305522",
+        "addr:housenumber": "312",
+        "addr:street": "Ave. Mohammed V. Place du Marche",
+        "check_date": "2026-03-19",
+        "internet_access": "wlan",
+        "name": "Hôtel Dorhmi",
+        "name:fr": "Hôtel Dorhmi",
+        "opening_hours": "24/7",
+        "phone": "037723898",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8381372,
+          34.0231296
+        ]
+      },
+      "id": "node/5337305522"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5337666822",
+        "addr:housenumber": "313",
+        "addr:street": "Avenue Mohammad V Place du Marche",
+        "internet_access": "wlan",
+        "name": "Hôtel Dorhmi",
+        "name:fr": "Hôtel Dorhmi",
+        "opening_hours": "24/7",
+        "phone": "037723898",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8381122,
+          34.0227411
+        ]
+      },
+      "id": "node/5337666822"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5767000084",
+        "addr:street": "Rue Al Bassra",
+        "source": "Kaart Ground Survey",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8355399,
+          34.0184273
+        ]
+      },
+      "id": "node/5767000084"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5782839884",
+        "addr:street": "Rue Azegza",
+        "name": "Smarts Hotel",
+        "source": "Kaart Ground Survey",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.850626,
+          34.0029059
+        ]
+      },
+      "id": "node/5782839884"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6483829985",
+        "name:en": "Hotel Velleda",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8342002,
+          34.0171757
+        ]
+      },
+      "id": "node/6483829985"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6693613985",
+        "internet_access": "wlan",
+        "name": "Alsace",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8413174,
+          34.0202309
+        ]
+      },
+      "id": "node/6693613985"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6743197385",
+        "name": "فندق الشعب",
+        "name:ar": "فندق الشعب",
+        "name:en": "Hotel chaab",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8373844,
+          34.0228005
+        ]
+      },
+      "id": "node/6743197385"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7223498585",
+        "addr:housenumber": "5",
+        "addr:street": "Impasse Slitane",
+        "email": "kayezer3@gmail.com",
+        "internet_access": "wlan",
+        "name": "Kayezer",
+        "phone": "+212 6 61 21 79 31",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8376611,
+          34.023315
+        ]
+      },
+      "id": "node/7223498585"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8910909282",
+        "addr:housenumber": "133",
+        "addr:street": "Rue Souika Ancienne Medina",
+        "check_date": "2024-03-19",
+        "name": "Dar El Idrissi",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8366599,
+          34.0242119
+        ]
+      },
+      "id": "node/8910909282"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9211113117",
+        "addr:housenumber": "14",
+        "addr:postcode": "10030",
+        "addr:street": "Rue Sidi Mohamed El Ghazi زنقة سيدي محمد الغازي",
+        "internet_access": "wlan",
+        "name:en": "Dar Rehab",
+        "phone": "+212 6 97 59 16 59",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8381891,
+          34.0236838
+        ]
+      },
+      "id": "node/9211113117"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9575357717",
+        "check_date": "2026-03-19",
+        "internet_access": "wlan",
+        "name": "Euphoriad",
+        "tourism": "hotel",
+        "wikidata": "Q111873067"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8390849,
+          34.0274413
+        ]
+      },
+      "id": "node/9575357717"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10171363917",
+        "internet_access": "wlan",
+        "name": "Hôtel Eljadid",
+        "name:fr": "Hôtel Eljadid",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8388653,
+          34.0251617
+        ]
+      },
+      "id": "node/10171363917"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10555619509",
+        "addr:housenumber": "22",
+        "addr:postcode": "10030",
+        "addr:street": "Lalla Oum Kenabich",
+        "internet_access": "wlan",
+        "name:en": "Dar Rita",
+        "name:fr": "Dar Rita",
+        "phone": "+212 6 54 02 49 98",
+        "tourism": "hotel",
+        "website": "https://dar-rita-guest-house.business.site/?utm_source=gmb&utm_medium=referral"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8366739,
+          34.0232198
+        ]
+      },
+      "id": "node/10555619509"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10882965206",
+        "addr:housenumber": "6",
+        "addr:postcode": "10000",
+        "addr:street": "Rue Moulay Abdellah",
+        "internet_access": "wlan",
+        "name:de": "Riad El Pacha",
+        "name:en": "Riad El Pacha",
+        "opening_hours": "24/7",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.838679,
+          34.0279467
+        ]
+      },
+      "id": "node/10882965206"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11055502936",
+        "addr:city": "Rabat ⵔⴱⴰⵟ الرباط",
+        "addr:street": "257C+638",
+        "name": "Ubay Hôtel",
+        "phone": "+212537734034",
+        "stars": "3",
+        "tourism": "hotel",
+        "website": "https://ubayhotel.morocco-ma.website/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8297476,
+          34.01303
+        ]
+      },
+      "id": "node/11055502936"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11297543969",
+        "addr:housenumber": "7",
+        "addr:street": "Rue Soussa زنقة سوسة",
+        "internet_access": "wlan",
+        "name:en": "La Capitale",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8327694,
+          34.0178023
+        ]
+      },
+      "id": "node/11297543969"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11471587069",
+        "addr:housenumber": "1",
+        "addr:postcode": "10000",
+        "addr:street": "Zanqat Assam",
+        "internet_access": "wlan",
+        "name:en": "Riad Dar Ouezzani",
+        "phone": "+212661372226",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8371245,
+          34.0272381
+        ]
+      },
+      "id": "node/11471587069"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11474149469",
+        "addr:postcode": "10000",
+        "addr:street": "Rue Ahmad Tadili",
+        "air_conditioning": "yes",
+        "bar": "yes",
+        "check_date": "2025-11-10",
+        "internet_access": "wlan",
+        "internet_access:fee": "customers",
+        "internet_access:ssid": "Dar chrifa",
+        "name:en": "Riad Dar Chrifa",
+        "payment:cash": "yes",
+        "payment:credit_cards": "yes",
+        "payment:debit_cards": "yes",
+        "reservation": "yes",
+        "toilets": "yes",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8380372,
+          34.0266933
+        ]
+      },
+      "id": "node/11474149469"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11752243869",
+        "name:en": "Dar Kika Selam by DKS",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8368208,
+          34.0293234
+        ]
+      },
+      "id": "node/11752243869"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12345590501",
+        "name": "Hôtel Mamounia",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8391457,
+          34.0209102
+        ]
+      },
+      "id": "node/12345590501"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12367693891",
+        "addr:city": "Rabat",
+        "addr:street": "Zanquat Assam",
+        "email": "riadmarhaba@yahoo.com",
+        "internet_access": "yes",
+        "internet_access:fee": "no",
+        "name": "Riad Marhaba",
+        "rooms": "6",
+        "tourism": "hotel",
+        "website": "https://www.riadmarhaba.com"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8369069,
+          34.0273271
+        ]
+      },
+      "id": "node/12367693891"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12605379590",
+        "name": "Riad Kalaa 2",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8368537,
+          34.02728
+        ]
+      },
+      "id": "node/12605379590"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12631703913",
+        "name": "Onomo Rabat Terminus",
+        "tourism": "hotel",
+        "website": "https://www.onomohotels.com/hotel/onomo-hotel-rabat-terminus/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.835358,
+          34.015983
+        ]
+      },
+      "id": "node/12631703913"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12829172701",
+        "addr:street": "Zaouia Naciria",
+        "name": "Riad Louane",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8364168,
+          34.0270254
+        ]
+      },
+      "id": "node/12829172701"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12830259201",
+        "addr:housenumber": "14",
+        "addr:street": "Zaouia Nassiria",
+        "name": "Riad Louane",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.836479,
+          34.0271657
+        ]
+      },
+      "id": "node/12830259201"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12841546636",
+        "name": "Riad dar Mayssanne",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8397374,
+          34.0270043
+        ]
+      },
+      "id": "node/12841546636"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13123153442",
+        "name": "Hotel Parisien",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8318446,
+          34.0160771
+        ]
+      },
+      "id": "node/13123153442"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13191492248",
+        "brand": "Four Seasons",
+        "brand:wikidata": "Q1424786",
+        "name": "Four Seasons Hotel Rabat at Kasr Al Bahr",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8545618,
+          34.0206634
+        ]
+      },
+      "id": "node/13191492248"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13266993302",
+        "internet_access": "wlan",
+        "name": "Jbara 2",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8381118,
+          34.0246975
+        ]
+      },
+      "id": "node/13266993302"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13305071725",
+        "check_date": "2025-11-14",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8409554,
+          34.0269863
+        ]
+      },
+      "id": "node/13305071725"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13313654503",
+        "addr:city": "Rabat",
+        "addr:housenumber": "13",
+        "addr:postcode": "10000",
+        "addr:street": "Rue Ben Messaoud",
+        "internet_access": "wlan",
+        "name": "Riad Safia",
+        "phone": "+212665027463",
+        "tourism": "hotel",
+        "website": "http://www.riadsafiarabat.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.839598,
+          34.0258748
+        ]
+      },
+      "id": "node/13313654503"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13314335327",
+        "addr:city": "Rabat",
+        "addr:housenumber": "8",
+        "addr:street": "Rue Jamaâ Moreno",
+        "name": "Riad Dar Karima",
+        "phone": "+212661226644",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8398269,
+          34.0263531
+        ]
+      },
+      "id": "node/13314335327"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13314335328",
+        "addr:city": "Rabat",
+        "addr:housenumber": "5",
+        "addr:street": "Rue Moreno",
+        "name": "Riad Zyo",
+        "phone": "+212661110896",
+        "tourism": "hotel",
+        "website": "https://www.riad-zyo.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.840564,
+          34.026076
+        ]
+      },
+      "id": "node/13314335328"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13314335329",
+        "addr:city": "Rabat",
+        "addr:housenumber": "10",
+        "addr:street": "Rue Lalla Hannou",
+        "name": "Riad Amaris",
+        "phone": "+212662885093",
+        "tourism": "hotel",
+        "website": "https://www.riadamaris.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.840177,
+          34.0251096
+        ]
+      },
+      "id": "node/13314335329"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13314335330",
+        "addr:city": "Rabat",
+        "addr:housenumber": "7",
+        "addr:street": "Derb Souaf",
+        "name": "Riad Dar Soufa",
+        "phone": "+212673194537",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8396292,
+          34.0242412
+        ]
+      },
+      "id": "node/13314335330"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13621194347",
+        "name": "Casa Indigo",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.837438,
+          34.0273712
+        ]
+      },
+      "id": "node/13621194347"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13675739101",
+        "addr:housenumber": "7",
+        "addr:street": "Rue Al Baakili",
+        "name": "Stayhere Agdal 2",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8497666,
+          34.0075563
+        ]
+      },
+      "id": "node/13675739101"
+    }
+  ]
+}

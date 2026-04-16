@@ -1,0 +1,229 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-04-15T10:36:15Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/2550854393",
+        "name": "Kasbat Genaoua",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8131988,
+          34.062347
+        ]
+      },
+      "id": "node/2550854393"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3202510603",
+        "addr:street": "Avenue Allal Ben Abdellah",
+        "fee": "yes",
+        "name": "Le Musée de la Monnaie de Bank Al-Maghrib",
+        "name:en": "The Currency Museum of the Bank Al-Maghrib",
+        "name:fr": "Le Musée de la Monnaie de Bank Al-Maghrib",
+        "name:ko": "알 마그리브 은행 화폐 박물관",
+        "phone": "+212 5 37 70 26 26",
+        "tourism": "museum",
+        "website": "https://www.bkam.ma/musee/A-propos/Horaires-et-tarifs"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8351781,
+          34.0194224
+        ]
+      },
+      "id": "node/3202510603"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5210546025",
+        "name": "دار نادية سلا",
+        "name:ar": "دار نادية سلا",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.7960168,
+          34.0759137
+        ]
+      },
+      "id": "node/5210546025"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10090635574",
+        "name": "Museum of Ceramics",
+        "name:fr": "Musée de la céramique",
+        "start_date": "1994",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8323588,
+          34.0425164
+        ]
+      },
+      "id": "node/10090635574"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10290615909",
+        "addr:city": "Rabat",
+        "addr:city:ar": "الرباط",
+        "addr:city:fr": "Rabat",
+        "addr:street": "Rue Boukroune زنقة بوقرون",
+        "name": "Poupées du Monde",
+        "name:fr": "Poupées du Monde",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8354982,
+          34.0265096
+        ]
+      },
+      "id": "node/10290615909"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10574982841",
+        "fee": "yes",
+        "name:es": "Museo Nacional de Fotografía",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8509474,
+          34.0248272
+        ]
+      },
+      "id": "node/10574982841"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11055502940",
+        "addr:city": "Rabat ⵔⴱⴰⵟ الرباط",
+        "addr:street": "Avenue Ibn Batouta شارع ابن بطوطة",
+        "museum": "history",
+        "name": "Muséum National d'Histoire Naturelle - Institut Scientifique",
+        "name:fr": "Muséum National d'Histoire Naturelle - Institut Scientifique",
+        "opening_hours": "Mo-Fr 09:00-15:45",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8387658,
+          34.0062816
+        ]
+      },
+      "id": "node/11055502940"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11055502941",
+        "addr:city": "Rabat ⵔⴱⴰⵟ الرباط",
+        "addr:street": "Avenue Ibn Batouta شارع ابن بطوطة",
+        "museum": "history",
+        "name": "Musée des Instruments de Géophysique et de Météorologie du Maroc",
+        "name:fr": "Musée des Instruments de Géophysique et de Météorologie du Maroc",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8388251,
+          34.0061164
+        ]
+      },
+      "id": "node/11055502941"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12170367601",
+        "name:fr": "Musée Belghazi des instruments de musique à Dar El Qadi",
+        "outdoor_seating": "no",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8240816,
+          34.0377992
+        ]
+      },
+      "id": "node/12170367601"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13374374557",
+        "name": "Mausolée Mohammed V ضريح محمد الخامس",
+        "name:ar": "ضريح محمد الخامس",
+        "name:en": "Mausoleum of Mohammed V",
+        "name:fr": "Mausolée Mohammed V",
+        "name:zh": "穆罕默德五世陵墓",
+        "tourism": "museum",
+        "wikidata": "Q193874",
+        "wikipedia": "ar:محمد الخامس بن يوسف"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.821335,
+          34.0225258
+        ]
+      },
+      "id": "node/13374374557"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13630526273",
+        "addr:city": "Rabat ⵕⵕⴱⴰⵟ الرباط",
+        "addr:housenumber": "2",
+        "addr:street": "Avenue Moulay Al Hassan شارع مولاي الحسن",
+        "museum": "art",
+        "name": "متحف محمد السادس للفن الحديث والمعاصر",
+        "name:ar": "متحف محمد السادس للفن الحديث والمعاصر",
+        "name:de": "Museum Mohamed VI. für Moderne und Zeitgenössische Kunst",
+        "name:en": "Mohammed VI Museum of Modern and Contemporary Art",
+        "name:fr": "Musée Mohammed VI d'art moderne et contemporain",
+        "opening_hours": "We-Mo 10:00-18:00",
+        "tourism": "museum",
+        "website": "https://fnm.ma/musees-ouverts/musee-mohammed-vi-dart-moderne-et-contemporain/",
+        "wikidata": "Q20726223",
+        "wikimedia_commons": "Category:Mohammed VI Museum of Modern and Contemporary Art",
+        "wikipedia": "ar:متحف محمد السادس للفن الحديث والمعاصر (الرباط)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8328811,
+          34.0152309
+        ]
+      },
+      "id": "node/13630526273"
+    }
+  ]
+}

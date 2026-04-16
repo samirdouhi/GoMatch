@@ -4,6 +4,62 @@ namespace EventMatchService.Infrastructure.Data;
 
 public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverrideProvider
 {
+    private static readonly List<FanZone> RabatFanZonesA =
+    [
+        new FanZone
+        {
+            Name = "Fan Zone OLM Souissi",
+            Address = "Souissi, Rabat"
+        },
+        new FanZone
+        {
+            Name = "Fan Zone Bab El Had",
+            Address = "Centre-ville, Rabat"
+        }
+    ];
+
+    private static readonly List<FanZone> RabatFanZonesB =
+    [
+        new FanZone
+        {
+            Name = "Fan Zone Rabat Waterfront",
+            Address = "Bouregreg, Rabat"
+        },
+        new FanZone
+        {
+            Name = "Fan Zone Agdal",
+            Address = "Agdal, Rabat"
+        }
+    ];
+
+    private static readonly List<FanZone> RabatFanZonesC =
+    [
+        new FanZone
+        {
+            Name = "Fan Zone Hassan",
+            Address = "Hassan, Rabat"
+        },
+        new FanZone
+        {
+            Name = "Fan Zone Marina Bouregreg",
+            Address = "Marina Bouregreg, Rabat"
+        }
+    ];
+
+    private static readonly List<FanZone> RabatFanZonesD =
+    [
+        new FanZone
+        {
+            Name = "Fan Zone Hay Riad",
+            Address = "Hay Riad, Rabat"
+        },
+        new FanZone
+        {
+            Name = "Fan Zone Centre-Ville",
+            Address = "Centre-ville, Rabat"
+        }
+    ];
+
     private static readonly List<MatchLocationOverride> Overrides =
     [
         // =========================
@@ -14,72 +70,36 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
             MatchId = 537339, // Brazil vs Morocco
             City = "Rabat",
             StadiumName = "Stade Prince Moulay Abdellah",
-            Address = "Stade Prince Moulay Abdellah, Rabat, Maroc",
-            Latitude = 33.9716,
-            Longitude = -6.8466,
+            Address = "15 RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.960282,
+            Longitude = -6.889123,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone OLM Souissi",
-                    Address = "Souissi, Rabat"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Bab El Had",
-                    Address = "Centre-ville, Rabat"
-                }
-            ]
+            FanZones = RabatFanZonesA
         },
         new MatchLocationOverride
         {
             MatchId = 537342, // Scotland vs Morocco
-            City = "Casablanca",
-            StadiumName = "Grand Stade de Casablanca",
-            Address = "Grand Stade de Casablanca, Casablanca, Maroc",
-            Latitude = 33.5731,
-            Longitude = -7.5898,
+            City = "Rabat",
+            StadiumName = "Stade Moulay El Hassan",
+            Address = "17 R. du Rif, Arrondissement Souissi, 10170 Rabat, Maroc",
+            Latitude = 33.975643,
+            Longitude = -6.825571,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Ain Diab",
-                    Address = "Corniche Ain Diab, Casablanca"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Anfa Park",
-                    Address = "Anfa, Casablanca"
-                }
-            ]
+            FanZones = RabatFanZonesB
         },
         new MatchLocationOverride
         {
             MatchId = 537344, // Morocco vs Haiti
-            City = "Tanger",
-            StadiumName = "Grand Stade de Tanger",
-            Address = "Grand Stade de Tanger, Tanger, Maroc",
-            Latitude = 35.7595,
-            Longitude = -5.8340,
+            City = "Rabat",
+            StadiumName = "Stade Annexe Olympique",
+            Address = "RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.95764,
+            Longitude = -6.891378,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Marina Bay",
-                    Address = "Marina Bay, Tanger"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche de Tanger",
-                    Address = "Corniche, Tanger"
-                }
-            ]
+            FanZones = RabatFanZonesC
         },
 
         // =========================
@@ -88,74 +108,38 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
         new MatchLocationOverride
         {
             MatchId = 537358, // Sweden vs Tunisia
-            City = "Fès",
-            StadiumName = "Complexe Sportif de Fès",
-            Address = "Complexe Sportif de Fès, Fès, Maroc",
-            Latitude = 34.0331,
-            Longitude = -5.0003,
+            City = "Rabat",
+            StadiumName = "Stade Al Medina",
+            Address = "5 R. Assouhaili زنقة السهيلي, Arrondissement Agdal-Riyad, 10080 Rabat, Maroc",
+            Latitude = 34.00569,
+            Longitude = -6.845464,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Bab Boujloud",
-                    Address = "Bab Boujloud, Fès"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Place Atlas",
-                    Address = "Ville nouvelle, Fès"
-                }
-            ]
+            FanZones = RabatFanZonesD
         },
         new MatchLocationOverride
         {
             MatchId = 537360, // Tunisia vs Japan
-            City = "Marrakech",
-            StadiumName = "Grand Stade de Marrakech",
-            Address = "Grand Stade de Marrakech, Marrakech, Maroc",
-            Latitude = 31.6697,
-            Longitude = -8.0478,
+            City = "Rabat",
+            StadiumName = "Stade Prince Moulay Abdellah",
+            Address = "15 RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.960282,
+            Longitude = -6.889123,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Jemaa el-Fna",
-                    Address = "Médina, Marrakech"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone M Avenue",
-                    Address = "M Avenue, Marrakech"
-                }
-            ]
+            FanZones = RabatFanZonesA
         },
         new MatchLocationOverride
         {
             MatchId = 537361, // Tunisia vs Netherlands
-            City = "Agadir",
-            StadiumName = "Grand Stade d'Agadir",
-            Address = "Grand Stade d'Agadir, Agadir, Maroc",
-            Latitude = 30.4278,
-            Longitude = -9.5981,
+            City = "Rabat",
+            StadiumName = "Stade Moulay El Hassan",
+            Address = "17 R. du Rif, Arrondissement Souissi, 10170 Rabat, Maroc",
+            Latitude = 33.975643,
+            Longitude = -6.825571,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche Agadir",
-                    Address = "Corniche, Agadir"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Marina d'Agadir",
-                    Address = "Marina, Agadir"
-                }
-            ]
+            FanZones = RabatFanZonesB
         },
 
         // =========================
@@ -164,74 +148,38 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
         new MatchLocationOverride
         {
             MatchId = 537363, // Belgium vs Egypt
-            City = "Casablanca",
-            StadiumName = "Grand Stade de Casablanca",
-            Address = "Grand Stade de Casablanca, Casablanca, Maroc",
-            Latitude = 33.5731,
-            Longitude = -7.5898,
+            City = "Rabat",
+            StadiumName = "Stade Annexe Olympique",
+            Address = "RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.95764,
+            Longitude = -6.891378,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Ain Diab",
-                    Address = "Corniche Ain Diab, Casablanca"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Casa Marina",
-                    Address = "Marina, Casablanca"
-                }
-            ]
+            FanZones = RabatFanZonesC
         },
         new MatchLocationOverride
         {
             MatchId = 537366, // New Zealand vs Egypt
             City = "Rabat",
-            StadiumName = "Stade Prince Moulay Abdellah",
-            Address = "Stade Prince Moulay Abdellah, Rabat, Maroc",
-            Latitude = 33.9716,
-            Longitude = -6.8466,
+            StadiumName = "Stade Al Medina",
+            Address = "5 R. Assouhaili زنقة السهيلي, Arrondissement Agdal-Riyad, 10080 Rabat, Maroc",
+            Latitude = 34.00569,
+            Longitude = -6.845464,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone OLM Souissi",
-                    Address = "Souissi, Rabat"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Rabat Waterfront",
-                    Address = "Bouregreg, Rabat"
-                }
-            ]
+            FanZones = RabatFanZonesD
         },
         new MatchLocationOverride
         {
             MatchId = 537368, // Egypt vs Iran
-            City = "Tanger",
-            StadiumName = "Grand Stade de Tanger",
-            Address = "Grand Stade de Tanger, Tanger, Maroc",
-            Latitude = 35.7595,
-            Longitude = -5.8340,
+            City = "Rabat",
+            StadiumName = "Stade Prince Moulay Abdellah",
+            Address = "15 RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.960282,
+            Longitude = -6.889123,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Marina Bay",
-                    Address = "Marina Bay, Tanger"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche de Tanger",
-                    Address = "Corniche, Tanger"
-                }
-            ]
+            FanZones = RabatFanZonesA
         },
 
         // =========================
@@ -241,121 +189,61 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
         {
             MatchId = 537391, // France vs Senegal
             City = "Rabat",
-            StadiumName = "Stade Prince Moulay Abdellah",
-            Address = "Stade Prince Moulay Abdellah, Rabat, Maroc",
-            Latitude = 33.9716,
-            Longitude = -6.8466,
+            StadiumName = "Stade Moulay El Hassan",
+            Address = "17 R. du Rif, Arrondissement Souissi, 10170 Rabat, Maroc",
+            Latitude = 33.975643,
+            Longitude = -6.825571,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone OLM Souissi",
-                    Address = "Souissi, Rabat"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Bab El Had",
-                    Address = "Centre-ville, Rabat"
-                }
-            ]
+            FanZones = RabatFanZonesB
         },
         new MatchLocationOverride
         {
             MatchId = 537393, // France vs Iraq
-            City = "Marrakech",
-            StadiumName = "Grand Stade de Marrakech",
-            Address = "Grand Stade de Marrakech, Marrakech, Maroc",
-            Latitude = 31.6697,
-            Longitude = -8.0478,
+            City = "Rabat",
+            StadiumName = "Stade Annexe Olympique",
+            Address = "RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.95764,
+            Longitude = -6.891378,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Jemaa el-Fna",
-                    Address = "Médina, Marrakech"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone M Avenue",
-                    Address = "M Avenue, Marrakech"
-                }
-            ]
+            FanZones = RabatFanZonesC
         },
         new MatchLocationOverride
         {
             MatchId = 537394, // Norway vs Senegal
-            City = "Agadir",
-            StadiumName = "Grand Stade d'Agadir",
-            Address = "Grand Stade d'Agadir, Agadir, Maroc",
-            Latitude = 30.4278,
-            Longitude = -9.5981,
+            City = "Rabat",
+            StadiumName = "Stade Al Medina",
+            Address = "5 R. Assouhaili زنقة السهيلي, Arrondissement Agdal-Riyad, 10080 Rabat, Maroc",
+            Latitude = 34.00569,
+            Longitude = -6.845464,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche Agadir",
-                    Address = "Corniche, Agadir"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Marina d'Agadir",
-                    Address = "Marina, Agadir"
-                }
-            ]
+            FanZones = RabatFanZonesD
         },
         new MatchLocationOverride
         {
             MatchId = 537395, // Norway vs France
-            City = "Casablanca",
-            StadiumName = "Grand Stade de Casablanca",
-            Address = "Grand Stade de Casablanca, Casablanca, Maroc",
-            Latitude = 33.5731,
-            Longitude = -7.5898,
+            City = "Rabat",
+            StadiumName = "Stade Prince Moulay Abdellah",
+            Address = "15 RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.960282,
+            Longitude = -6.889123,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Ain Diab",
-                    Address = "Corniche Ain Diab, Casablanca"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Anfa Park",
-                    Address = "Anfa, Casablanca"
-                }
-            ]
+            FanZones = RabatFanZonesA
         },
         new MatchLocationOverride
         {
             MatchId = 537396, // Senegal vs Iraq
-            City = "Tanger",
-            StadiumName = "Grand Stade de Tanger",
-            Address = "Grand Stade de Tanger, Tanger, Maroc",
-            Latitude = 35.7595,
-            Longitude = -5.8340,
+            City = "Rabat",
+            StadiumName = "Stade Moulay El Hassan",
+            Address = "17 R. du Rif, Arrondissement Souissi, 10170 Rabat, Maroc",
+            Latitude = 33.975643,
+            Longitude = -6.825571,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Marina Bay",
-                    Address = "Marina Bay, Tanger"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche de Tanger",
-                    Address = "Corniche, Tanger"
-                }
-            ]
+            FanZones = RabatFanZonesB
         },
 
         // =========================
@@ -364,74 +252,38 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
         new MatchLocationOverride
         {
             MatchId = 537351, // Germany vs Curaçao
-            City = "Agadir",
-            StadiumName = "Grand Stade d'Agadir",
-            Address = "Grand Stade d'Agadir, Agadir, Maroc",
-            Latitude = 30.4278,
-            Longitude = -9.5981,
+            City = "Rabat",
+            StadiumName = "Stade Annexe Olympique",
+            Address = "RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.95764,
+            Longitude = -6.891378,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche Agadir",
-                    Address = "Corniche, Agadir"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Marina d'Agadir",
-                    Address = "Marina, Agadir"
-                }
-            ]
+            FanZones = RabatFanZonesC
         },
         new MatchLocationOverride
         {
             MatchId = 537353, // Germany vs Ivory Coast
-            City = "Marrakech",
-            StadiumName = "Grand Stade de Marrakech",
-            Address = "Grand Stade de Marrakech, Marrakech, Maroc",
-            Latitude = 31.6697,
-            Longitude = -8.0478,
+            City = "Rabat",
+            StadiumName = "Stade Al Medina",
+            Address = "5 R. Assouhaili زنقة السهيلي, Arrondissement Agdal-Riyad, 10080 Rabat, Maroc",
+            Latitude = 34.00569,
+            Longitude = -6.845464,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Jemaa el-Fna",
-                    Address = "Médina, Marrakech"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone M Avenue",
-                    Address = "M Avenue, Marrakech"
-                }
-            ]
+            FanZones = RabatFanZonesD
         },
         new MatchLocationOverride
         {
             MatchId = 537355, // Ecuador vs Germany
-            City = "Tanger",
-            StadiumName = "Grand Stade de Tanger",
-            Address = "Grand Stade de Tanger, Tanger, Maroc",
-            Latitude = 35.7595,
-            Longitude = -5.8340,
+            City = "Rabat",
+            StadiumName = "Stade Prince Moulay Abdellah",
+            Address = "15 RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.960282,
+            Longitude = -6.889123,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Marina Bay",
-                    Address = "Marina Bay, Tanger"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Corniche de Tanger",
-                    Address = "Corniche, Tanger"
-                }
-            ]
+            FanZones = RabatFanZonesA
         },
 
         // =========================
@@ -440,74 +292,38 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
         new MatchLocationOverride
         {
             MatchId = 537409, // England vs Croatia
-            City = "Fès",
-            StadiumName = "Complexe Sportif de Fès",
-            Address = "Complexe Sportif de Fès, Fès, Maroc",
-            Latitude = 34.0331,
-            Longitude = -5.0003,
+            City = "Rabat",
+            StadiumName = "Stade Moulay El Hassan",
+            Address = "17 R. du Rif, Arrondissement Souissi, 10170 Rabat, Maroc",
+            Latitude = 33.975643,
+            Longitude = -6.825571,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Bab Boujloud",
-                    Address = "Bab Boujloud, Fès"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Place Atlas",
-                    Address = "Ville nouvelle, Fès"
-                }
-            ]
+            FanZones = RabatFanZonesB
         },
         new MatchLocationOverride
         {
             MatchId = 537411, // England vs Ghana
             City = "Rabat",
-            StadiumName = "Stade Prince Moulay Abdellah",
-            Address = "Stade Prince Moulay Abdellah, Rabat, Maroc",
-            Latitude = 33.9716,
-            Longitude = -6.8466,
+            StadiumName = "Stade Annexe Olympique",
+            Address = "RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.95764,
+            Longitude = -6.891378,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone OLM Souissi",
-                    Address = "Souissi, Rabat"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Rabat Waterfront",
-                    Address = "Bouregreg, Rabat"
-                }
-            ]
+            FanZones = RabatFanZonesC
         },
         new MatchLocationOverride
         {
             MatchId = 537413, // Panama vs England
-            City = "Casablanca",
-            StadiumName = "Grand Stade de Casablanca",
-            Address = "Grand Stade de Casablanca, Casablanca, Maroc",
-            Latitude = 33.5731,
-            Longitude = -7.5898,
+            City = "Rabat",
+            StadiumName = "Stade Al Medina",
+            Address = "5 R. Assouhaili زنقة السهيلي, Arrondissement Agdal-Riyad, 10080 Rabat, Maroc",
+            Latitude = 34.00569,
+            Longitude = -6.845464,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Ain Diab",
-                    Address = "Corniche Ain Diab, Casablanca"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Casa Marina",
-                    Address = "Marina, Casablanca"
-                }
-            ]
+            FanZones = RabatFanZonesD
         },
 
         // =========================
@@ -516,74 +332,38 @@ public sealed class StaticMatchLocationOverrideProvider : IMatchLocationOverride
         new MatchLocationOverride
         {
             MatchId = 537397, // Argentina vs Algeria
-            City = "Casablanca",
-            StadiumName = "Grand Stade de Casablanca",
-            Address = "Grand Stade de Casablanca, Casablanca, Maroc",
-            Latitude = 33.5731,
-            Longitude = -7.5898,
+            City = "Rabat",
+            StadiumName = "Stade Prince Moulay Abdellah",
+            Address = "15 RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.960282,
+            Longitude = -6.889123,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Ain Diab",
-                    Address = "Corniche Ain Diab, Casablanca"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Casa Marina",
-                    Address = "Marina, Casablanca"
-                }
-            ]
+            FanZones = RabatFanZonesA
         },
         new MatchLocationOverride
         {
             MatchId = 537400, // Jordan vs Algeria
-            City = "Fès",
-            StadiumName = "Complexe Sportif de Fès",
-            Address = "Complexe Sportif de Fès, Fès, Maroc",
-            Latitude = 34.0331,
-            Longitude = -5.0003,
+            City = "Rabat",
+            StadiumName = "Stade Moulay El Hassan",
+            Address = "17 R. du Rif, Arrondissement Souissi, 10170 Rabat, Maroc",
+            Latitude = 33.975643,
+            Longitude = -6.825571,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Bab Boujloud",
-                    Address = "Bab Boujloud, Fès"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone Place Atlas",
-                    Address = "Ville nouvelle, Fès"
-                }
-            ]
+            FanZones = RabatFanZonesB
         },
         new MatchLocationOverride
         {
             MatchId = 537402, // Algeria vs Austria
-            City = "Marrakech",
-            StadiumName = "Grand Stade de Marrakech",
-            Address = "Grand Stade de Marrakech, Marrakech, Maroc",
-            Latitude = 31.6697,
-            Longitude = -8.0478,
+            City = "Rabat",
+            StadiumName = "Stade Annexe Olympique",
+            Address = "RN1, Yacoub El Mansour, 10000 Rabat, Maroc",
+            Latitude = 33.95764,
+            Longitude = -6.891378,
             IsOfficialLocation = false,
             LocationSource = "gomatch_override",
-            FanZones =
-            [
-                new FanZone
-                {
-                    Name = "Fan Zone Jemaa el-Fna",
-                    Address = "Médina, Marrakech"
-                },
-                new FanZone
-                {
-                    Name = "Fan Zone M Avenue",
-                    Address = "M Avenue, Marrakech"
-                }
-            ]
+            FanZones = RabatFanZonesC
         }
     ];
 

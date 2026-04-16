@@ -83,7 +83,10 @@ builder.Services.AddHttpClient("BusinessService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:BusinessService"]!);
 });
-
+builder.Services.AddHttpClient("ServiceDecouverte", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:ServiceDecouverte"]!);
+});
 // YARP Reverse Proxy
 builder.Services
     .AddReverseProxy()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import type { MapItem } from "./types";
@@ -19,31 +19,36 @@ export default function MapAutoFit({
   enabled = true,
 }: MapAutoFitProps) {
   const map = useMap();
-  const hasAppliedInitially = useRef(false);
 
   useEffect(() => {
     if (!enabled) return;
 
-    if (hasAppliedInitially.current) return;
-    hasAppliedInitially.current = true;
+    const run = () => {
+      map.invalidateSize(false);
 
-    if (!items || items.length === 0) {
-      map.setView(defaultCenter, defaultZoom);
-      return;
-    }
+      if (!items || items.length === 0) {
+        map.setView(defaultCenter, defaultZoom, { animate: false });
+        return;
+      }
 
-    if (items.length === 1) {
-      map.setView(items[0].position, 15, {
+      if (items.length === 1) {
+        map.setView(items[0].position, 15, { animate: true });
+        return;
+      }
+
+      const bounds = L.latLngBounds(items.map((item) => item.position));
+
+      map.fitBounds(bounds, {
+        padding: [60, 60],
         animate: true,
       });
-      return;
-    }
+    };
 
-    const bounds = L.latLngBounds(items.map((item) => item.position));
-    map.fitBounds(bounds, {
-      padding: [50, 50],
-      animate: true,
+    const raf = requestAnimationFrame(() => {
+      setTimeout(run, 80);
     });
+
+    return () => cancelAnimationFrame(raf);
   }, [items, map, defaultCenter, defaultZoom, enabled]);
 
   return null;

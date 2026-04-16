@@ -9,6 +9,9 @@ const EVENT_MATCHES_ENDPOINT =
 const BUSINESSES_ENDPOINT =
   `${GATEWAY_BASE_URL}/business/api/commerces`;
 
+const DISCOVERY_ENDPOINT =
+  `${GATEWAY_BASE_URL}/decouverte/api/places`;
+
 type EventMatchFanZoneApiItem = {
   name?: string;
   address?: string;
@@ -43,17 +46,31 @@ type EventMatchApiItem = {
   fanZones?: EventMatchFanZoneApiItem[];
 };
 
+type BusinessApiPhoto = {
+  id?: string;
+  commerceId?: string;
+  nomFichier?: string;
+  typeContenu?: string;
+  tailleFichier?: number;
+  ordre?: number;
+  dateAjout?: string;
+  urlImage?: string;
+};
+
 type BusinessApiItem = {
   id?: string;
   nom?: string;
   name?: string;
   description?: string;
+  adresse?: string;
+  address?: string;
   latitude?: number | null;
   longitude?: number | null;
 
   categorieNom?: string;
   categoryName?: string;
   categorieName?: string;
+  nomCategorie?: string;
 
   categorie?: {
     nom?: string;
@@ -69,7 +86,39 @@ type BusinessApiItem = {
     name?: string;
   }>;
 
+  photos?: BusinessApiPhoto[];
   businessType?: "Hotel" | "Restaurant" | "Activity" | string;
+};
+
+type DiscoveryApiItem = {
+  id?: string;
+  nom?: string;
+  description?: string;
+  type?: string;
+  adresse?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  ville?: string;
+  tags?: string[];
+  note?: number | null;
+  prixMoyen?: number | null;
+  images?: string[];
+  estOuvert?: boolean | null;
+  horairesOuverture?: string | null;
+  popularite?: number | null;
+};
+
+export type RichMapItem = MapItem & {
+  source?: "business" | "discovery" | "event";
+  imageUrl?: string;
+  adresse?: string;
+  nomCategorie?: string;
+  tagsCulturels?: string[];
+  note?: number | null;
+  prixMoyen?: number | null;
+  estOuvert?: boolean | null;
+  horairesOuverture?: string | null;
+  popularite?: number | null;
 };
 
 function isValidCoordinate(value: unknown): value is number {
@@ -83,11 +132,13 @@ function safeString(value: unknown): string | undefined {
 }
 
 function normalizeText(value: unknown): string {
-  return safeString(value)
-    ?.normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim() ?? "";
+  return (
+    safeString(value)
+      ?.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim() ?? ""
+  );
 }
 
 function slugify(value: string): string {
@@ -99,7 +150,7 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function ensureUniqueIds(items: MapItem[]): MapItem[] {
+function ensureUniqueIds(items: RichMapItem[]): RichMapItem[] {
   const seen = new Map<string, number>();
 
   return items.map((item) => {
@@ -119,18 +170,15 @@ function ensureUniqueIds(items: MapItem[]): MapItem[] {
 
 function extractBusinessCategory(business: BusinessApiItem): string | undefined {
   return (
+    safeString(business.nomCategorie) ||
     safeString(business.categorieNom) ||
     safeString(business.categoryName) ||
     safeString(business.categorieName) ||
     safeString(business.categorie?.nom) ||
     safeString(business.categorie?.name) ||
     safeString(typeof business.category === "string" ? business.category : undefined) ||
-    safeString(
-      typeof business.category === "object" ? business.category?.nom : undefined
-    ) ||
-    safeString(
-      typeof business.category === "object" ? business.category?.name : undefined
-    )
+    safeString(typeof business.category === "object" ? business.category?.nom : undefined) ||
+    safeString(typeof business.category === "object" ? business.category?.name : undefined)
   );
 }
 
@@ -155,7 +203,6 @@ function mapBusinessTypeToMapType(
   const normalized = normalizeText(businessType);
 
   if (!normalized) return undefined;
-
   if (normalized === "hotel") return "hotel";
   if (normalized === "restaurant") return "restaurant";
   if (normalized === "activity") return "activity";
@@ -228,7 +275,6 @@ function mapCategoryToType(
     "cadeaux",
     "epicerie",
     "produits locaux",
-    "produits locaux",
     "culturel",
     "patrimoine",
   ];
@@ -260,6 +306,13 @@ function mapCategoryToType(
   return "activity";
 }
 
+function mapDiscoveryTypeToMapType(discoveryType?: string): MapItemType {
+  const normalized = normalizeText(discoveryType);
+
+  if (normalized === "hotel") return "hotel";
+  return "activity";
+}
+
 function buildMatchBaseId(match: EventMatchApiItem, matchIndex: number): string {
   if (match.matchId !== undefined && match.matchId !== null) {
     return String(match.matchId);
@@ -270,12 +323,8 @@ function buildMatchBaseId(match: EventMatchApiItem, matchIndex: number): string 
   }
 
   const parts = [
-    safeString(match.homeTeamName) ||
-      safeString(match.homeTeam) ||
-      "teamA",
-    safeString(match.awayTeamName) ||
-      safeString(match.awayTeam) ||
-      "teamB",
+    safeString(match.homeTeamName) || safeString(match.homeTeam) || "teamA",
+    safeString(match.awayTeamName) || safeString(match.awayTeam) || "teamB",
     safeString(match.city) ?? "unknown-city",
     safeString(match.stadiumName) ?? "unknown-stadium",
     String(matchIndex),
@@ -287,8 +336,8 @@ function buildMatchBaseId(match: EventMatchApiItem, matchIndex: number): string 
 function mapMatchToMapItems(
   match: EventMatchApiItem,
   matchIndex: number
-): MapItem[] {
-  const results: MapItem[] = [];
+): RichMapItem[] {
+  const results: RichMapItem[] = [];
 
   if (
     !isValidCoordinate(match.latitude) ||
@@ -304,6 +353,7 @@ function mapMatchToMapItems(
 
   results.push({
     id: `stadium-${baseId}`,
+    source: "event",
     name:
       safeString(match.stadiumName) ||
       `${safeString(match.homeTeamName) || safeString(match.homeTeam) || "Équipe A"} vs ${
@@ -315,6 +365,14 @@ function mapMatchToMapItems(
       safeString(match.address) ||
       safeString(match.city) ||
       "Stade lié à un match d’expérience",
+    adresse: safeString(match.address) || safeString(match.city),
+    nomCategorie: "Stade",
+    tagsCulturels: [],
+    prixMoyen: null,
+    popularite: null,
+    estOuvert: null,
+    horairesOuverture: null,
+    note: null,
   });
 
   const fanZones = Array.isArray(match.fanZones) ? match.fanZones : [];
@@ -336,19 +394,56 @@ function mapMatchToMapItems(
 
     results.push({
       id: `fanzone-${baseId}-${index}`,
+      source: "event",
       name: zoneName,
       type: "fanzone",
       position: [fanZoneLatitude, fanZoneLongitude],
       description:
         safeString(fanZone.address) ||
         `Fan zone liée au match à ${safeString(match.city) ?? "la ville hôte"}`,
+      adresse: safeString(fanZone.address) || safeString(match.city),
+      nomCategorie: "Fan zone",
+      tagsCulturels: [],
+      prixMoyen: null,
+      popularite: null,
+      estOuvert: null,
+      horairesOuverture: null,
+      note: null,
     });
   });
 
   return results;
 }
 
-function mapBusinessToMapItem(business: BusinessApiItem): MapItem | null {
+function extractPrimaryPhotoUrl(business: BusinessApiItem): string | undefined {
+  if (!Array.isArray(business.photos) || business.photos.length === 0) {
+    return undefined;
+  }
+
+  const sortedPhotos = [...business.photos].sort((a, b) => {
+    const ordreA = typeof a.ordre === "number" ? a.ordre : Number.MAX_SAFE_INTEGER;
+    const ordreB = typeof b.ordre === "number" ? b.ordre : Number.MAX_SAFE_INTEGER;
+
+    if (ordreA !== ordreB) return ordreA - ordreB;
+
+    const dateA = a.dateAjout ? new Date(a.dateAjout).getTime() : Number.MAX_SAFE_INTEGER;
+    const dateB = b.dateAjout ? new Date(b.dateAjout).getTime() : Number.MAX_SAFE_INTEGER;
+
+    return dateA - dateB;
+  });
+
+  const firstPhoto = sortedPhotos[0];
+  const relativeUrl = safeString(firstPhoto?.urlImage);
+
+  if (!relativeUrl) return undefined;
+  if (relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://")) {
+    return relativeUrl;
+  }
+
+  return `${GATEWAY_BASE_URL}/business${relativeUrl}`;
+}
+
+function mapBusinessToMapItem(business: BusinessApiItem): RichMapItem | null {
   if (
     !isValidCoordinate(business.latitude) ||
     !isValidCoordinate(business.longitude)
@@ -373,33 +468,141 @@ function mapBusinessToMapItem(business: BusinessApiItem): MapItem | null {
     business.businessType
   );
 
-  const descriptionParts: string[] = [];
+  const businessDescription =
+    safeString(business.description) || "Commerce partenaire GoMatch";
 
-  if (category) {
-    descriptionParts.push(category);
-  }
+  const address =
+    safeString(business.adresse) ||
+    safeString(business.address);
 
-  if (tags.length > 0) {
-    descriptionParts.push(`Tags : ${tags.join(", ")}`);
-  }
-
-  const businessDescription = safeString(business.description);
-  if (businessDescription) {
-    descriptionParts.push(businessDescription);
-  }
+  const imageUrl = extractPrimaryPhotoUrl(business);
 
   return {
     id: `business-${safeString(business.id) ?? crypto.randomUUID()}`,
+    source: "business",
     name,
     type,
     position: [latitude, longitude],
-    description:
-      descriptionParts.join(" • ") || "Commerce partenaire GoMatch",
+    description: businessDescription,
+    adresse: address,
+    nomCategorie: category ?? "Commerce local",
+    tagsCulturels: tags,
+    imageUrl,
+    prixMoyen: null,
+    popularite: null,
+    estOuvert: null,
+    horairesOuverture: null,
+    note: null,
   };
 }
 
-function spreadOverlappingItems(items: MapItem[]): MapItem[] {
-  const groups = new Map<string, MapItem[]>();
+function getDiscoveryFallbackImage(type?: string): string {
+  const normalized = normalizeText(type);
+
+  switch (normalized) {
+    case "hotel":
+      return "/images/hotel.png";
+    case "nightlife":
+      return "/images/nightlife.png";
+    case "museum":
+      return "/images/types/museum.jpg";
+    case "attraction":
+      return "/images/types/attraction.jpg";
+    case "viewpoint":
+      return "/images/types/viewpoint.jpg";
+    case "activity":
+      return "/images/types/activity.jpg";
+    default:
+      return "/images/types/default.jpg";
+  }
+}
+
+function buildDiscoveryTags(item: DiscoveryApiItem): string[] {
+  const tags = Array.isArray(item.tags)
+    ? item.tags.map((tag) => safeString(tag)).filter((tag): tag is string => Boolean(tag))
+    : [];
+
+  const type = safeString(item.type);
+  if (type && !tags.includes(type)) {
+    tags.unshift(type);
+  }
+
+  return [...new Set(tags)];
+}
+
+function getDiscoveryCategoryLabel(type?: string): string {
+  const normalized = normalizeText(type);
+
+  switch (normalized) {
+    case "hotel":
+      return "Hôtel";
+    case "nightlife":
+      return "Nightlife";
+    case "museum":
+      return "Musée";
+    case "attraction":
+      return "Attraction";
+    case "viewpoint":
+      return "Viewpoint";
+    case "activity":
+      return "Activité";
+    default:
+      return "Lieu touristique";
+  }
+}
+
+function extractDiscoveryImageUrl(item: DiscoveryApiItem): string | undefined {
+  if (!Array.isArray(item.images) || item.images.length === 0) {
+    return undefined;
+  }
+
+  const firstImage = safeString(item.images[0]);
+  if (!firstImage) return undefined;
+
+  if (firstImage.startsWith("http://") || firstImage.startsWith("https://")) {
+    return firstImage;
+  }
+
+  return firstImage;
+}
+
+function mapDiscoveryToMapItem(item: DiscoveryApiItem): RichMapItem | null {
+  if (
+    !isValidCoordinate(item.latitude) ||
+    !isValidCoordinate(item.longitude)
+  ) {
+    return null;
+  }
+
+  const name = safeString(item.nom) || "Lieu touristique";
+  const discoveryType = safeString(item.type) || "activity";
+  const mapType = mapDiscoveryTypeToMapType(discoveryType);
+  const imageUrl =
+    extractDiscoveryImageUrl(item) || getDiscoveryFallbackImage(discoveryType);
+  const tags = buildDiscoveryTags(item);
+
+  return {
+    id: `discovery-${safeString(item.id) ?? crypto.randomUUID()}`,
+    source: "discovery",
+    name,
+    type: mapType,
+    position: [item.latitude, item.longitude],
+    description:
+      safeString(item.description) || "Lieu touristique à Rabat.",
+    adresse: safeString(item.adresse) || safeString(item.ville) || "Rabat",
+    nomCategorie: getDiscoveryCategoryLabel(discoveryType),
+    tagsCulturels: tags,
+    imageUrl,
+    note: item.note ?? null,
+    prixMoyen: item.prixMoyen ?? null,
+    estOuvert: item.estOuvert ?? null,
+    horairesOuverture: safeString(item.horairesOuverture) ?? null,
+    popularite: item.popularite ?? null,
+  };
+}
+
+function spreadOverlappingItems(items: RichMapItem[]): RichMapItem[] {
+  const groups = new Map<string, RichMapItem[]>();
 
   for (const item of items) {
     const key = `${item.position[0].toFixed(6)}:${item.position[1].toFixed(6)}`;
@@ -408,7 +611,7 @@ function spreadOverlappingItems(items: MapItem[]): MapItem[] {
     groups.set(key, group);
   }
 
-  const result: MapItem[] = [];
+  const result: RichMapItem[] = [];
 
   for (const [, group] of groups) {
     if (group.length === 1) {
@@ -417,7 +620,7 @@ function spreadOverlappingItems(items: MapItem[]): MapItem[] {
     }
 
     const [baseLat, baseLng] = group[0].position;
-    const radius = 0.006;
+    const radius = 0.0006;
 
     group.forEach((item, index) => {
       const angle = (index / group.length) * 2 * Math.PI;
@@ -445,10 +648,11 @@ async function readJsonOrThrow<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function fetchMapItems(): Promise<MapItem[]> {
-  const [matchesData, businessesData] = await Promise.all([
+export async function fetchMapItems(): Promise<RichMapItem[]> {
+  const [matchesData, businessesData, discoveryData] = await Promise.all([
     readJsonOrThrow<EventMatchApiItem[]>(EVENT_MATCHES_ENDPOINT),
     readJsonOrThrow<BusinessApiItem[]>(BUSINESSES_ENDPOINT),
+    readJsonOrThrow<DiscoveryApiItem[]>(DISCOVERY_ENDPOINT),
   ]);
 
   const matchItems = matchesData.flatMap((match, index) =>
@@ -457,9 +661,13 @@ export async function fetchMapItems(): Promise<MapItem[]> {
 
   const businessItems = businessesData
     .map(mapBusinessToMapItem)
-    .filter((item): item is MapItem => item !== null);
+    .filter((item): item is RichMapItem => item !== null);
 
-  const allItems = [...matchItems, ...businessItems];
+  const discoveryItems = discoveryData
+    .map(mapDiscoveryToMapItem)
+    .filter((item): item is RichMapItem => item !== null);
+
+  const allItems = [...matchItems, ...businessItems, ...discoveryItems];
   const spreadItems = spreadOverlappingItems(allItems);
 
   return ensureUniqueIds(spreadItems);

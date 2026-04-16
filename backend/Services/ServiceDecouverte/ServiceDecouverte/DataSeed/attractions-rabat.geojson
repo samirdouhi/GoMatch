@@ -1,0 +1,124 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-04-15T10:35:14Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4511868889",
+        "harbour": "yes",
+        "name": "Port de pêche de Salé",
+        "name:fr": "Port de pêche de Salé",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8327504,
+          34.039651
+        ]
+      },
+      "id": "node/4511868889"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4511888889",
+        "name": "Medersa des Mérinides",
+        "name:fr": "Medersa des Mérinides",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8273632,
+          34.0400819
+        ]
+      },
+      "id": "node/4511888889"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4929214022",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.822347,
+          34.0223189
+        ]
+      },
+      "id": "node/4929214022"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6491257185",
+        "name:cs": "Můj domov",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.7815799,
+          34.0409143
+        ]
+      },
+      "id": "node/6491257185"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6856066286",
+        "name": "Postal Museum",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.834712,
+          34.014865
+        ]
+      },
+      "id": "node/6856066286"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7813398091",
+        "name:fr": "Monar",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.7942033,
+          34.0365823
+        ]
+      },
+      "id": "node/7813398091"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10890176705",
+        "name:de": "Besuchertor Königspalast",
+        "name:en": "Visitors Gate Royal Palace",
+        "opening_hours": "Mo-Fr 09:00-12:00,13:00-18:00",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6.8303222,
+          34.0096914
+        ]
+      },
+      "id": "node/10890176705"
+    }
+  ]
+}

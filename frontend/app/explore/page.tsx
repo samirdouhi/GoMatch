@@ -1,23 +1,39 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useState, useMemo } from "react";
-import { MapPin, Tag, Search, Heart, Building2, Filter, X, Map, LayoutGrid } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  MapPin,
+  Tag,
+  Search,
+  Heart,
+  Building2,
+  Filter,
+  X,
+  ChevronDown,
+  Check,
+  Trophy,
+  Navigation,
+  Store,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { getAllCommerces, photoUrl, type Commerce } from "@/lib/commercesApi";
 import { toggleFavorite, isFavorite } from "@/lib/favoritesStore";
 
-// Import dynamique pour éviter les erreurs SSR avec Leaflet
-const CommerceMapExplore = dynamic(
-  () => import("../components/commercant/CommerceMapExplore"),
-  { ssr: false, loading: () => <div className="h-full w-full animate-pulse rounded-3xl bg-white/[0.04]" /> }
-);
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// --- COMPOSANTS INTERNES ---
 
 function StatutBadgeSmall({ statut }: { statut: string }) {
   if (statut !== "Approuve") return null;
+
   return (
-    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+    <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.2)]">
+      <div className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
       Validé
     </span>
   );
@@ -25,263 +41,449 @@ function StatutBadgeSmall({ statut }: { statut: string }) {
 
 function CommerceCard({ commerce }: { commerce: Commerce }) {
   const [fav, setFav] = useState(() => isFavorite(commerce.id));
+  const router = useRouter();
 
-  function handleFav(e: React.MouseEvent) {
+  function handleFav(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
+    e.stopPropagation();
     const next = toggleFavorite(commerce.id);
     setFav(next);
+  }
+
+  function handleVoirSurCarte() {
+    const params = new URLSearchParams({
+      id: commerce.id,
+      lat: String(commerce.latitude),
+      lng: String(commerce.longitude),
+      nom: commerce.nom,
+    });
+
+    router.push(`/test-map?${params.toString()}`);
   }
 
   const firstPhoto = commerce.photos?.[0];
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/[0.07] bg-white/[0.03] transition hover:border-white/[0.14] hover:bg-white/[0.05]">
-      {/* Photo principale */}
-      {firstPhoto ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={photoUrl(firstPhoto.urlImage)}
-          alt={commerce.nom}
-          className="h-40 w-full object-cover transition group-hover:scale-105"
-        />
-      ) : (
-        <div className="flex h-40 w-full items-center justify-center bg-zinc-900/50">
-          <Building2 className="h-10 w-10 text-zinc-700" />
-        </div>
-      )}
+    <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/5 bg-[#0f1115] transition-all duration-300 hover:border-[#ffbd13]/40 hover:shadow-[0_0_30px_rgba(255,189,19,0.05)]">
+      <div className="relative h-44 w-full overflow-hidden">
+        {firstPhoto ? (
+          <img
+            src={photoUrl(firstPhoto.urlImage)}
+            alt={commerce.nom}
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-zinc-900">
+            <Building2 className="h-10 w-10 text-zinc-700" />
+          </div>
+        )}
 
-      <div className="flex flex-1 flex-col p-5">
-        {/* Fav button */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0f1115] via-transparent to-transparent" />
+
         <button
           type="button"
           onClick={handleFav}
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/60 backdrop-blur-md transition-all hover:bg-red-500/20 active:scale-90"
           aria-label={fav ? "Retirer des favoris" : "Ajouter aux favoris"}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/40 transition hover:border-red-500/40 hover:bg-red-500/10"
         >
-          <Heart className={`h-4 w-4 transition ${fav ? "fill-red-400 text-red-400" : "text-zinc-500 group-hover:text-zinc-300"}`} />
+          <Heart
+            className={`h-4 w-4 transition-colors ${
+              fav ? "fill-red-500 text-red-500" : "text-white"
+            }`}
+          />
         </button>
+      </div>
 
-        {/* Nom + statut */}
-        <div className="flex flex-wrap items-center gap-2 pr-10">
-          <h3 className="font-bold text-white truncate">{commerce.nom}</h3>
+      <div className="flex flex-1 flex-col p-6">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="truncate text-xl font-bold text-white transition-colors group-hover:text-[#ffbd13]">
+            {commerce.nom}
+          </h3>
           <StatutBadgeSmall statut={commerce.statut} />
         </div>
 
-        <p className="mt-0.5 text-xs text-zinc-500 flex items-center gap-1 truncate">
-          <Tag className="h-3 w-3 shrink-0" />{commerce.nomCategorie ?? "Catégorie non définie"}
-        </p>
-        <p className="mt-0.5 text-xs text-zinc-600 flex items-center gap-1 truncate">
-          <MapPin className="h-3 w-3 shrink-0" />{commerce.adresse}
+        <div className="mb-4 space-y-1.5">
+          <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.1em] text-[#ffbd13]">
+            <Tag className="h-3 w-3" />
+            {commerce.nomCategorie ?? "Général"}
+          </p>
+
+          <p className="flex items-start gap-2 text-xs text-zinc-500">
+            <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+            <span className="line-clamp-1">{commerce.adresse}</span>
+          </p>
+        </div>
+
+        <p className="mb-4 line-clamp-2 flex-1 text-sm leading-relaxed text-zinc-400">
+          {commerce.description}
         </p>
 
-        {/* Description */}
-        <p className="mt-3 text-xs leading-5 text-zinc-400 line-clamp-2 flex-1">{commerce.description}</p>
-
-        {/* Tags */}
-        {commerce.tagsCulturels.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {commerce.tagsCulturels.slice(0, 3).map(t => (
-              <span key={t} className="rounded-full border border-orange-500/20 bg-orange-500/10 px-2.5 py-1 text-[10px] font-medium text-orange-300">{t}</span>
+        {commerce.tagsCulturels && commerce.tagsCulturels.length > 0 && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            {commerce.tagsCulturels.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-orange-500/20 bg-orange-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-orange-300"
+              >
+                {tag}
+              </span>
             ))}
-            {commerce.tagsCulturels.length > 3 && (
-              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-zinc-500">+{commerce.tagsCulturels.length - 3}</span>
-            )}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={handleVoirSurCarte}
+          className="w-full rounded-2xl bg-[#ffbd13] py-3.5 text-sm font-black uppercase tracking-widest text-black transition-all hover:bg-white hover:shadow-[0_0_15px_rgba(255,189,19,0.4)] active:scale-[0.98]"
+        >
+          Voir sur carte
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-export default function ExplorePage() {
-  const [commerces,  setCommerces]  = useState<Commerce[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [search,     setSearch]     = useState("");
-  const [catFilter,  setCatFilter]  = useState<string>("all");
-  const [tagFilter,  setTagFilter]  = useState<string>("all");
-  const [viewMode,   setViewMode]   = useState<"grid" | "map">("grid");
+function CustomSelect({
+  value,
+  options,
+  onChange,
+  placeholder = "Sélectionner",
+}: {
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await getAllCommerces();
-        setCommerces(data);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Erreur de chargement.");
-      } finally {
-        setLoading(false);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
       }
-    }
-    void load();
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  const categories = useMemo(() => {
-    const set = new Set(commerces.map(c => c.nomCategorie).filter(Boolean) as string[]);
-    return Array.from(set).sort();
+  const selectedLabel =
+    options.find((o) => o.value === value)?.label ?? placeholder;
+
+  return (
+    <div ref={ref} className="relative min-w-[200px]">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all ${
+          open
+            ? "border-[#ffbd13] bg-[#1a1d23] text-white"
+            : "border-white/5 bg-[#16191d] text-zinc-400 hover:border-white/20"
+        }`}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform duration-300 ${
+            open ? "rotate-180 text-[#ffbd13]" : ""
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="animate-in fade-in slide-in-from-top-2 absolute left-0 top-[calc(100%+8px)] z-50 w-full overflow-hidden rounded-xl border border-white/10 bg-[#16191d] shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+          <div className="scrollbar-thin max-h-60 overflow-y-auto">
+            {options.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between px-4 py-3 text-left text-[10px] font-bold uppercase tracking-tighter transition-colors ${
+                  o.value === value
+                    ? "bg-[#ffbd13] text-black"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                {o.label}
+                {o.value === value && <Check className="h-3 w-3" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- PAGE PRINCIPALE ---
+
+export default function ExplorePage() {
+  const [commerces, setCommerces] = useState<Commerce[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    let mounted = true;
+
+    getAllCommerces()
+      .then((data) => {
+        if (mounted) setCommerces(data);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const categories = useMemo<string[]>(() => {
+    return Array.from(
+      new Set(
+        commerces
+          .map((c) => c.nomCategorie)
+          .filter((c): c is string => Boolean(c && c.trim()))
+      )
+    ).sort((a, b) => a.localeCompare(b));
   }, [commerces]);
 
-  const allTags = useMemo(() => {
-    const set = new Set(commerces.flatMap(c => c.tagsCulturels));
-    return Array.from(set).sort();
+  const allTags = useMemo<string[]>(() => {
+    return Array.from(
+      new Set(commerces.flatMap((c) => c.tagsCulturels ?? []))
+    ).sort((a, b) => a.localeCompare(b));
   }, [commerces]);
 
   const filtered = useMemo(() => {
-    return commerces.filter(c => {
-      const q = search.toLowerCase();
-      const matchSearch = !q || c.nom.toLowerCase().includes(q) || c.adresse.toLowerCase().includes(q) || (c.description ?? "").toLowerCase().includes(q);
-      const matchCat    = catFilter === "all" || c.nomCategorie === catFilter;
-      const matchTag    = tagFilter === "all" || c.tagsCulturels.includes(tagFilter);
+    return commerces.filter((c) => {
+      const q = search.toLowerCase().trim();
+
+      const matchSearch =
+        !q ||
+        c.nom.toLowerCase().includes(q) ||
+        c.adresse.toLowerCase().includes(q) ||
+        (c.description ?? "").toLowerCase().includes(q);
+
+      const matchCat = catFilter === "all" || c.nomCategorie === catFilter;
+
+      const matchTag =
+        tagFilter === "all" || (c.tagsCulturels ?? []).includes(tagFilter);
+
       return matchSearch && matchCat && matchTag;
     });
   }, [commerces, search, catFilter, tagFilter]);
 
-  const hasFilters = search || catFilter !== "all" || tagFilter !== "all";
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, catFilter, tagFilter]);
 
-  function clearFilters() {
-    setSearch("");
-    setCatFilter("all");
-    setTagFilter("all");
-  }
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage, itemsPerPage]);
+
+  const categoryOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "all", label: "TOUTES CATÉGORIES" },
+      ...categories.map((c) => ({
+        value: c,
+        label: c.toUpperCase(),
+      })),
+    ],
+    [categories]
+  );
+
+  const tagOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "all", label: "TOUS LES TAGS" },
+      ...allTags.map((t) => ({
+        value: t,
+        label: t.toUpperCase(),
+      })),
+    ],
+    [allTags]
+  );
+
+  const hasFilters =
+    search.trim() !== "" || catFilter !== "all" || tagFilter !== "all";
 
   return (
-    <div className="min-h-screen bg-[#04060b] text-white">
-      {/* Hero + filtres */}
-      <div className="border-b border-white/[0.07] bg-gradient-to-b from-orange-500/5 to-transparent px-4 py-8 lg:px-8">
-        <h1 className="text-3xl font-black lg:text-4xl">Explorer les commerces</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Découvrez les commerces locaux validés autour des sites de la Coupe du Monde 2026.
-        </p>
+    <div className="relative min-h-screen overflow-hidden bg-[#050505] text-white selection:bg-[#ffbd13]/30">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <Trophy className="absolute left-[5%] top-[15%] h-64 w-64 -rotate-12 text-[#ffbd13] opacity-[0.06] blur-[2px] drop-shadow-[0_0_40px_rgba(255,189,19,0.8)]" />
+        <Navigation className="absolute bottom-[20%] right-[8%] h-72 w-72 rotate-12 text-[#ffbd13] opacity-[0.04] blur-[1px] drop-shadow-[0_0_30px_rgba(255,189,19,0.5)]" />
+        <Store className="absolute right-[12%] top-[45%] h-48 w-48 -rotate-6 text-[#ffbd13] opacity-[0.05] drop-shadow-[0_0_30px_rgba(255,189,19,0.6)]" />
+      </div>
 
-        {/* Barre de recherche + toggle vue */}
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-xl">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
+      <div className="relative z-10 mx-auto max-w-7xl px-6 py-16 lg:px-12">
+        <header className="mb-16">
+          <h1 className="text-5xl font-black uppercase italic tracking-tighter lg:text-7xl">
+            Explorer les{" "}
+            <span className="text-[#ffbd13] drop-shadow-[0_0_15px_rgba(255,189,19,0.6)]">
+              Commerces
+            </span>
+          </h1>
+
+          <p className="mt-4 max-w-2xl text-sm font-bold uppercase tracking-widest text-zinc-500">
+            Découvrez les pépites locales validées autour des sites de la Coupe
+            du Monde 2026.
+          </p>
+        </header>
+
+        <div className="mb-16 space-y-8">
+          <div className="group relative max-w-4xl">
+            <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-600 transition-colors group-focus-within:text-[#ffbd13]" />
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un commerce, une adresse…"
-              className="w-full rounded-2xl border border-white/[0.07] bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 focus:border-orange-500/40 focus:outline-none focus:ring-1 focus:ring-orange-500/20"
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="RECHERCHER UN COMMERCE, UNE SPÉCIALITÉ..."
+              className="w-full rounded-2xl border border-white/5 bg-[#0f1115] py-5 pl-14 pr-6 text-xs font-black uppercase tracking-widest placeholder:text-zinc-700 shadow-2xl transition-all focus:border-[#ffbd13]/50 focus:outline-none focus:ring-1 focus:ring-[#ffbd13]/20"
             />
           </div>
 
-          {/* Toggle grille / carte */}
-          <div className="flex items-center rounded-2xl border border-white/[0.07] bg-white/[0.03] p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                viewMode === "grid"
-                  ? "bg-orange-500 text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Grille
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("map")}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                viewMode === "map"
-                  ? "bg-orange-500 text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <Map className="h-4 w-4" />
-              Carte
-            </button>
-          </div>
-        </div>
-
-        {/* Filtres (masqués en vue carte pour simplifier) */}
-        {viewMode === "grid" && (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-3.5 w-3.5 text-zinc-600" />
-              <span className="text-xs font-semibold text-zinc-500">Filtres :</span>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-[#ffbd13] drop-shadow-[0_0_5px_rgba(255,189,19,0.4)]">
+              <Filter className="h-4 w-4" />
+              Filtres :
             </div>
 
-            <select
+            <CustomSelect
               value={catFilter}
-              onChange={e => setCatFilter(e.target.value)}
-              className="rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 focus:border-orange-500/40 focus:outline-none"
-            >
-              <option value="all">Toutes catégories</option>
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+              onChange={setCatFilter}
+              options={categoryOptions}
+            />
 
-            {allTags.length > 0 && (
-              <select
-                value={tagFilter}
-                onChange={e => setTagFilter(e.target.value)}
-                className="rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 focus:border-orange-500/40 focus:outline-none"
-              >
-                <option value="all">Tous les tags</option>
-                {allTags.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
+            <CustomSelect
+              value={tagFilter}
+              onChange={setTagFilter}
+              options={tagOptions}
+            />
 
             {hasFilters && (
               <button
                 type="button"
-                onClick={clearFilters}
-                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-400 transition hover:text-white"
+                onClick={() => {
+                  setSearch("");
+                  setCatFilter("all");
+                  setTagFilter("all");
+                }}
+                className="flex items-center gap-2 px-4 text-[10px] font-black uppercase tracking-widest text-red-500 transition-colors hover:text-white"
               >
-                <X className="h-3.5 w-3.5" />Effacer
+                <X className="h-3 w-3" />
+                Effacer
               </button>
             )}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Contenu */}
-      <div className="px-4 py-6 lg:px-8">
-        {viewMode === "grid" && (
-          <p className="mb-5 text-xs font-semibold text-zinc-500">
-            {loading
-              ? "Chargement…"
-              : `${filtered.length} commerce${filtered.length > 1 ? "s" : ""} trouvé${filtered.length > 1 ? "s" : ""}`}
-          </p>
-        )}
+        <div>
+          <div className="mb-8 flex items-center justify-between border-b border-white/5 pb-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ffbd13] drop-shadow-[0_0_5px_rgba(255,189,19,0.3)]">
+              {loading ? "Chargement..." : `${filtered.length} Établissements trouvés`}
+            </p>
+          </div>
 
-        {loading ? (
-          viewMode === "grid" ? (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-64 animate-pulse rounded-3xl bg-white/[0.04]" />
+          {loading ? (
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="h-96 animate-pulse rounded-[2rem] bg-zinc-900/50"
+                />
               ))}
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[3rem] border border-dashed border-white/10 bg-[#0f1115]/50 py-32 text-center backdrop-blur-sm">
+              <Search className="mb-6 h-12 w-12 text-zinc-800" />
+              <h3 className="text-2xl font-black uppercase italic tracking-tighter">
+                Aucun résultat
+              </h3>
+              <p className="mt-2 text-zinc-500">
+                Essayez de modifier vos filtres ou votre recherche.
+              </p>
+            </div>
           ) : (
-            <div className="h-[70vh] animate-pulse rounded-3xl bg-white/[0.04]" />
-          )
-        ) : error ? (
-          <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">{error}</div>
-        ) : viewMode === "map" ? (
-          <div className="overflow-hidden rounded-3xl border border-white/[0.07]" style={{ height: "70vh" }}>
-            <CommerceMapExplore commerces={filtered.length > 0 ? filtered : commerces} />
-          </div>
-        ) : (
-          filtered.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-white/[0.07] py-20 text-center">
-              <Building2 className="mx-auto h-12 w-12 text-zinc-700" />
-              <p className="mt-4 font-semibold text-zinc-500">Aucun commerce trouvé</p>
-              {hasFilters && (
-                <button type="button" onClick={clearFilters} className="mt-3 text-sm text-orange-400 hover:underline">
-                  Effacer les filtres
-                </button>
+            <>
+              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                {paginatedItems.map((c) => (
+                  <CommerceCard key={c.id} commerce={c} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-20 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/5 bg-[#0f1115] text-zinc-400 transition-all hover:border-[#ffbd13] hover:text-[#ffbd13] disabled:pointer-events-none disabled:opacity-20"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+
+                  <div className="flex items-center gap-2 px-4">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          type="button"
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`h-12 w-12 rounded-xl text-xs font-black transition-all ${
+                            currentPage === page
+                              ? "scale-110 bg-[#ffbd13] text-black shadow-[0_0_15px_rgba(255,189,19,0.3)]"
+                              : "border border-white/5 bg-[#0f1115] text-zinc-500 hover:border-white/20 hover:text-white"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/5 bg-[#0f1115] text-zinc-400 transition-all hover:border-[#ffbd13] hover:text-[#ffbd13] disabled:pointer-events-none disabled:opacity-20"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
               )}
-            </div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map(c => <CommerceCard key={c.id} commerce={c} />)}
-            </div>
-          )
-        )}
+            </>
+          )}
+        </div>
       </div>
+
+      <style jsx global>{`
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 4px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: #3f3f46;
+          border-radius: 10px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+          background: #ffbd13;
+        }
+      `}</style>
     </div>
   );
 }

@@ -135,7 +135,7 @@ export function Hero() {
 
         <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-8">
           <Link
-            href="/rabat"
+            href="/test-map"
             className="group relative flex h-16 items-center justify-center gap-4 rounded-xl bg-[#facc15] px-12 shadow-[0_0_40px_rgba(250,204,21,0.25)] transition-transform hover:scale-105"
           >
             <MapPin className="h-6 w-6 text-black" />

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import ExperienceMapClient from "../components/map/ExperienceMapClient";
 import MapLegend from "../components/map/MapLegend";
 import MapFilters from "../components/map/MapFilters";
 import MapSidePanel from "../components/map/MapSidePanel";
 import TripPlannerPanel from "../components/map/TripPlannerPanel";
-import type { MapItem, MapItemType } from "../components/map/types";
+import type { MapItemType } from "../components/map/types";
 import { ALL_MAP_TYPES } from "../components/map/types";
-import { fetchMapItems } from "@/lib/mapApi";
+import { fetchMapItems, type RichMapItem } from "@/lib/mapApi";
 import {
   fetchRouteBetweenPoints,
   fetchRouteThroughStops,
@@ -23,13 +24,25 @@ type OpenSection = "" | "position" | "filters" | "planner" | "details";
 type NavigationMode = "live" | "manual";
 
 export default function TestMapPage() {
+  const searchParams = useSearchParams();
+
+  const targetId = searchParams.get("id");
+  const targetLat = Number(searchParams.get("lat"));
+  const targetLng = Number(searchParams.get("lng"));
+
+  const hasTargetFromQuery =
+    Number.isFinite(targetLat) &&
+    Number.isFinite(targetLng) &&
+    targetLat !== 0 &&
+    targetLng !== 0;
+
   const [selectedTypes, setSelectedTypes] =
     useState<MapItemType[]>(ALL_MAP_TYPES);
-  const [items, setItems] = useState<MapItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
+  const [items, setItems] = useState<RichMapItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<RichMapItem | null>(null);
   const [focusKey, setFocusKey] = useState(0);
 
-  const [tripStops, setTripStops] = useState<MapItem[]>([]);
+  const [tripStops, setTripStops] = useState<RichMapItem[]>([]);
 
   const [liveUserPosition, setLiveUserPosition] = useState<
     [number, number] | null
@@ -61,10 +74,12 @@ export default function TestMapPage() {
   const [geoErrorMessage, setGeoErrorMessage] = useState<string | null>(null);
   const [geoAccuracy, setGeoAccuracy] = useState<number | null>(null);
 
-  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [isMapExpanded, setIsMapExpanded] = useState(true);
   const [openSection, setOpenSection] = useState<OpenSection>("filters");
 
-  const routeStartPoint = useMemo<[number, number] | null>(() => {
+  const lastAutoRouteAtRef = useRef(0);
+
+  const routeStartPoint = useMemo<[number, number]>(() => {
     if (navigationMode === "manual" && manualStartPoint) {
       return manualStartPoint;
     }
@@ -73,12 +88,31 @@ export default function TestMapPage() {
       return liveUserPosition;
     }
 
-    return null;
+    return RABAT_FALLBACK_POINT;
   }, [navigationMode, manualStartPoint, liveUserPosition]);
 
   const visibleItems = useMemo(() => {
     return items.filter((item) => selectedTypes.includes(item.type));
   }, [items, selectedTypes]);
+
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (selectedItem) {
+      return selectedItem.position;
+    }
+
+    if (hasTargetFromQuery) {
+      return [targetLat, targetLng];
+    }
+
+    return liveUserPosition ?? manualStartPoint ?? RABAT_FALLBACK_POINT;
+  }, [
+    selectedItem,
+    hasTargetFromQuery,
+    targetLat,
+    targetLng,
+    liveUserPosition,
+    manualStartPoint,
+  ]);
 
   const toggleType = (type: MapItemType) => {
     setSelectedTypes((prev) =>
@@ -100,9 +134,9 @@ export default function TestMapPage() {
 
   const calculateRouteToItem = async (
     start: [number, number],
-    item: MapItem,
+    item: RichMapItem,
     mode: RouteMode
-  ) => {
+  ): Promise<boolean> => {
     setRouteLoading(true);
     clearRoute();
 
@@ -111,13 +145,25 @@ export default function TestMapPage() {
       setRouteSegments([route.coordinates]);
       setRouteDistanceLabel(formatDistance(route.distanceMeters));
       setRouteDurationLabel(formatDuration(route.durationSeconds));
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Impossible de récupérer l’itinéraire pour le moment.";
+
+      console.warn("Itinéraire indisponible :", message);
+      setRouteSegments([]);
+      setRouteDistanceLabel("");
+      setRouteDurationLabel("");
+      return false;
     } finally {
       setRouteLoading(false);
     }
   };
 
-  const calculateTripRoute = async () => {
-    if (tripStops.length === 0 || !routeStartPoint) return;
+  const calculateTripRoute = async (showAlert = true): Promise<boolean> => {
+    if (tripStops.length === 0) return false;
 
     setRouteLoading(true);
     clearRoute();
@@ -132,30 +178,38 @@ export default function TestMapPage() {
       setRouteSegments(result.segments.map((segment) => segment.coordinates));
       setRouteDistanceLabel(formatDistance(result.totalDistanceMeters));
       setRouteDurationLabel(formatDuration(result.totalDurationSeconds));
+      return true;
     } catch (err) {
-      alert(
+      const message =
         err instanceof Error
           ? err.message
-          : "Impossible de calculer le parcours."
-      );
+          : "Impossible de calculer le parcours.";
+
+      console.warn("Parcours indisponible :", message);
+
+      if (showAlert) {
+        alert(message);
+      }
+
+      return false;
     } finally {
       setRouteLoading(false);
     }
   };
 
-  const handleSelectItem = (item: MapItem) => {
+  const handleSelectItem = (item: RichMapItem) => {
     setSelectedItem(item);
     setFocusKey((prev) => prev + 1);
     setOpenSection("details");
   };
 
-  const handleFocusItem = (item: MapItem) => {
+  const handleFocusItem = (item: RichMapItem) => {
     setSelectedItem(item);
     setFocusKey((prev) => prev + 1);
     setOpenSection("details");
   };
 
-  const handleAddToTrip = (item: MapItem) => {
+  const handleAddToTrip = (item: RichMapItem) => {
     setTripStops((prev) => {
       if (prev.some((stop) => stop.id === item.id)) return prev;
       return [...prev, item];
@@ -169,24 +223,19 @@ export default function TestMapPage() {
 
   const handleClearStops = () => {
     setTripStops([]);
+    clearRoute();
   };
 
-  const handleRouteItem = async (item: MapItem) => {
-    if (!routeStartPoint) {
-      alert("Position réelle non disponible pour calculer l’itinéraire.");
-      return;
-    }
+  const handleRouteItem = async (item: RichMapItem) => {
+    setSelectedItem(item);
+    setFocusKey((prev) => prev + 1);
+    setOpenSection("details");
 
-    try {
-      setSelectedItem(item);
-      setFocusKey((prev) => prev + 1);
-      setOpenSection("details");
-      await calculateRouteToItem(routeStartPoint, item, routeMode);
-    } catch (err) {
+    const ok = await calculateRouteToItem(routeStartPoint, item, routeMode);
+
+    if (!ok) {
       alert(
-        err instanceof Error
-          ? err.message
-          : "Impossible de calculer l’itinéraire."
+        "Itinéraire indisponible pour le moment. Réessayez dans quelques secondes."
       );
     }
   };
@@ -197,19 +246,14 @@ export default function TestMapPage() {
     setStartPointSource("manual");
 
     if (tripStops.length > 0) {
-      await calculateTripRoute();
+      await calculateTripRoute(true);
       return;
     }
 
     if (selectedItem) {
-      try {
-        await calculateRouteToItem(position, selectedItem, routeMode);
-      } catch (err) {
-        alert(
-          err instanceof Error
-            ? err.message
-            : "Impossible de recalculer l’itinéraire."
-        );
+      const ok = await calculateRouteToItem(position, selectedItem, routeMode);
+      if (!ok) {
+        alert("Impossible de recalculer l’itinéraire pour ce point de départ.");
       }
     } else {
       clearRoute();
@@ -219,29 +263,30 @@ export default function TestMapPage() {
   const handleResumeLivePosition = () => {
     setNavigationMode("live");
     setManualStartPoint(null);
-    setGeoStatus("loading");
+
+    if (!liveUserPosition) {
+      setGeoStatus("loading");
+      setStartPointSource("fallback");
+    }
+
     setGeoErrorMessage(null);
   };
 
   const handleChangeRouteMode = async (mode: RouteMode) => {
     setRouteMode(mode);
 
-    if (!routeStartPoint) return;
-
     if (tripStops.length > 0) {
-      setTimeout(() => void calculateTripRoute(), 0);
+      setTimeout(() => {
+        void calculateTripRoute(true);
+      }, 0);
       return;
     }
 
     if (selectedItem) {
-      try {
-        await calculateRouteToItem(routeStartPoint, selectedItem, mode);
-      } catch (err) {
-        alert(
-          err instanceof Error
-            ? `Impossible de recalculer l’itinéraire : ${err.message}`
-            : "Impossible de recalculer l’itinéraire."
-        );
+      const ok = await calculateRouteToItem(routeStartPoint, selectedItem, mode);
+
+      if (!ok) {
+        alert("Impossible de recalculer l’itinéraire avec ce mode.");
       }
     }
   };
@@ -254,11 +299,34 @@ export default function TestMapPage() {
         setLoading(true);
         setError(null);
         const data = await fetchMapItems();
-        if (!cancelled) setItems(data);
+
+        if (cancelled) return;
+
+        setItems(data);
+
+        if (hasTargetFromQuery) {
+          const found =
+            data.find((item) => item.id === targetId) ||
+            data.find(
+              (item) =>
+                Math.abs(item.position[0] - targetLat) < 0.00001 &&
+                Math.abs(item.position[1] - targetLng) < 0.00001
+            );
+
+          if (found) {
+            setSelectedItem(found);
+            setOpenSection("details");
+            setFocusKey((prev) => prev + 1);
+          }
+        }
       } catch {
-        if (!cancelled) setError("Erreur de chargement des données.");
+        if (!cancelled) {
+          setError("Erreur de chargement des données.");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
@@ -267,7 +335,7 @@ export default function TestMapPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasTargetFromQuery, targetId, targetLat, targetLng]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -279,7 +347,7 @@ export default function TestMapPage() {
       return;
     }
 
-    setGeoStatus("loading");
+    setGeoStatus((prev) => (liveUserPosition ? prev : "loading"));
     setGeoErrorMessage(null);
 
     const onSuccess = (pos: GeolocationPosition) => {
@@ -287,28 +355,16 @@ export default function TestMapPage() {
       const longitude = pos.coords.longitude;
       const accuracy = pos.coords.accuracy;
 
-      console.log("GPS SUCCESS", {
-        lat: latitude,
-        lng: longitude,
-        accuracy,
-      });
-
       setLiveUserPosition([latitude, longitude]);
       setGeoAccuracy(accuracy);
       setGeoStatus("success");
       setGeoErrorMessage(null);
-
-      if (navigationMode === "live") {
-        setStartPointSource("user");
-      }
+      setStartPointSource((prev) =>
+        navigationMode === "live" ? "user" : prev
+      );
     };
 
     const onError = (geoError: GeolocationPositionError) => {
-      console.log("GPS ERROR", {
-        code: geoError.code,
-        message: geoError.message,
-      });
-
       let message = "Impossible de récupérer votre position réelle.";
 
       if (geoError.code === geoError.PERMISSION_DENIED) {
@@ -319,11 +375,11 @@ export default function TestMapPage() {
         message = "Temps d'attente dépassé pour la géolocalisation.";
       }
 
-      setGeoStatus("error");
-      setGeoErrorMessage(message);
-      setGeoAccuracy(null);
+      setGeoStatus((prev) => (liveUserPosition ? prev : "error"));
+      setGeoErrorMessage((prev) => (liveUserPosition ? prev : message));
+      setGeoAccuracy((prev) => (liveUserPosition ? prev : null));
 
-      if (!liveUserPosition && navigationMode !== "manual") {
+      if (navigationMode !== "manual") {
         setStartPointSource("fallback");
       }
     };
@@ -331,13 +387,13 @@ export default function TestMapPage() {
     navigator.geolocation.getCurrentPosition(onSuccess, onError, {
       enableHighAccuracy: true,
       timeout: 15000,
-      maximumAge: 0,
+      maximumAge: 10000,
     });
 
     const watchId = navigator.geolocation.watchPosition(onSuccess, onError, {
       enableHighAccuracy: true,
       timeout: 20000,
-      maximumAge: 0,
+      maximumAge: 5000,
     });
 
     return () => {
@@ -359,19 +415,33 @@ export default function TestMapPage() {
   }, [visibleItems, selectedItem, openSection]);
 
   useEffect(() => {
-    if (!routeStartPoint) return;
     if (navigationMode !== "live") return;
     if (!selectedItem && tripStops.length === 0) return;
 
-    if (tripStops.length > 0) {
-      void calculateTripRoute();
-      return;
-    }
+    const now = Date.now();
+    if (now - lastAutoRouteAtRef.current < 4000) return;
+    lastAutoRouteAtRef.current = now;
 
-    if (selectedItem) {
-      void calculateRouteToItem(routeStartPoint, selectedItem, routeMode);
-    }
-  }, [liveUserPosition]);
+    const run = async () => {
+      if (tripStops.length > 0) {
+        await calculateTripRoute(false);
+        return;
+      }
+
+      if (selectedItem) {
+        await calculateRouteToItem(routeStartPoint, selectedItem, routeMode);
+      }
+    };
+
+    void run();
+  }, [
+    liveUserPosition,
+    routeStartPoint,
+    navigationMode,
+    selectedItem,
+    tripStops,
+    routeMode,
+  ]);
 
   useEffect(() => {
     const resizeTimeout = setTimeout(() => {
@@ -379,7 +449,15 @@ export default function TestMapPage() {
     }, 350);
 
     return () => clearTimeout(resizeTimeout);
-  }, [isMapExpanded]);
+  }, [isMapExpanded, selectedItem, openSection]);
+
+  useEffect(() => {
+    if (!selectedItem) return;
+
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsMapExpanded(true);
+    }
+  }, [selectedItem]);
 
   return (
     <main className="relative flex h-screen w-screen overflow-hidden bg-[#050505] font-sans text-white">
@@ -392,6 +470,7 @@ export default function TestMapPage() {
         .no-scrollbar::-webkit-scrollbar {
           display: none;
         }
+
         .no-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
@@ -443,16 +522,16 @@ export default function TestMapPage() {
 
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
         <aside
-          className={`no-scrollbar dark-theme-enforcer flex h-full shrink-0 flex-col overflow-y-auto border-white/5 bg-black/60 backdrop-blur-3xl shadow-[20px_0_50px_rgba(0,0,0,0.8)] transition-all duration-300 ease-in-out ${
+          className={`no-scrollbar dark-theme-enforcer flex h-full shrink-0 flex-col overflow-y-auto border-white/5 bg-black/60 shadow-[20px_0_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl transition-all duration-300 ease-in-out ${
             isMapExpanded
-              ? "absolute -translate-x-full opacity-0 lg:relative lg:w-0 lg:min-w-0 lg:translate-x-0"
-              : "absolute inset-y-0 left-0 z-40 w-full max-w-[430px] border-r lg:relative lg:w-[420px]"
+              ? "pointer-events-none absolute inset-y-0 left-0 z-40 -translate-x-full opacity-0 lg:pointer-events-auto lg:relative lg:w-0 lg:min-w-0 lg:translate-x-0"
+              : "absolute inset-y-0 left-0 z-40 w-[88vw] max-w-[430px] border-r lg:relative lg:w-[420px]"
           }`}
         >
           <div className="space-y-6 p-5 pb-24 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <h2 className="text-3xl font-black uppercase italic tracking-tighter leading-[0.9]">
+                <h2 className="leading-[0.9] text-3xl font-black uppercase italic tracking-tighter">
                   Explorer <br />
                   <span className="bg-gradient-to-r from-[#FF8A00] to-[#FFD700] bg-clip-text text-transparent">
                     Le Maroc
@@ -471,7 +550,7 @@ export default function TestMapPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-2">
-<div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
                 <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/40">
                   Spots
                 </p>
@@ -479,6 +558,7 @@ export default function TestMapPage() {
                   {visibleItems.length}
                 </p>
               </div>
+
               <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
                 <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/40">
                   Mode
@@ -487,6 +567,7 @@ export default function TestMapPage() {
                   {routeMode === "driving" ? "Auto" : "Pied"}
                 </p>
               </div>
+
               <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
                 <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/40">
                   Étapes
@@ -495,6 +576,7 @@ export default function TestMapPage() {
                   {tripStops.length}
                 </p>
               </div>
+
               <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2 text-center">
                 <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/40">
                   Tracé
@@ -542,12 +624,13 @@ export default function TestMapPage() {
                             : "Position réelle non disponible"}
                         </p>
                       </div>
+
                       <span className="rounded-full bg-white/5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">
                         {startPointSource === "user"
                           ? "GPS"
                           : startPointSource === "manual"
-                          ? "Manuel"
-                          : "Défaut"}
+                            ? "Manuel"
+                            : "Rabat"}
                       </span>
                     </div>
 
@@ -618,6 +701,7 @@ export default function TestMapPage() {
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FF8A00]">
                             Trajet en cours
                           </p>
+
                           <button
                             onClick={clearRoute}
                             className="text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-300"
@@ -625,6 +709,7 @@ export default function TestMapPage() {
                             Effacer
                           </button>
                         </div>
+
                         <div className="flex items-end gap-3">
                           <span className="text-2xl font-black italic text-white">
                             {routeDistanceLabel}
@@ -680,7 +765,7 @@ export default function TestMapPage() {
                       stops={tripStops}
                       onRemoveStop={handleRemoveStop}
                       onClearStops={handleClearStops}
-                      onCalculateTrip={calculateTripRoute}
+                      onCalculateTrip={() => calculateTripRoute(true)}
                       isCalculating={routeLoading}
                     />
                   </div>
@@ -718,13 +803,11 @@ export default function TestMapPage() {
           </div>
         </aside>
 
-        <section className="relative z-0 flex min-w-0 min-h-0 flex-1 flex-col bg-[#1a1a1a]">
+        <section className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col bg-[#1a1a1a]">
           <div className="relative h-full w-full flex-1">
             <ExperienceMapClient
-              center={
-                liveUserPosition ?? manualStartPoint ?? RABAT_FALLBACK_POINT
-              }
-              zoom={14}
+              center={mapCenter}
+              zoom={selectedItem || hasTargetFromQuery ? 16 : 14}
               height="100%"
               visibleTypes={selectedTypes}
               items={visibleItems}

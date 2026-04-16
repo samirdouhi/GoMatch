@@ -28,6 +28,10 @@ type OsrmRouteResponse = {
 };
 
 const WALKING_SPEED_M_PER_SEC = 1.4;
+const ROUTING_BASE_URL =
+  process.env.NEXT_PUBLIC_ROUTING_BASE_URL ??
+  "https://router.project-osrm.org";
+const FETCH_TIMEOUT_MS = 12000;
 
 function isValidCoordinatePair(
   value: [number, number] | null | undefined
@@ -38,6 +42,24 @@ function isValidCoordinatePair(
     Number.isFinite(value[0]) &&
     Number.isFinite(value[1])
   );
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function fetchRouteBetweenPoints(
@@ -54,29 +76,72 @@ export async function fetchRouteBetweenPoints(
   const profile = mode === "walking" ? "foot" : "driving";
 
   const url =
-    `https://router.project-osrm.org/route/v1/${profile}/` +
+    `${ROUTING_BASE_URL}/route/v1/${profile}/` +
     `${startLngLat};${endLngLat}?overview=full&geometries=geojson`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetchWithTimeout(
+      url,
+      {
+        method: "GET",
+        cache: "no-store",
+      },
+      FETCH_TIMEOUT_MS
+    );
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Le service d’itinéraire met trop de temps à répondre.");
+    }
+
+    throw new Error(
+      "Impossible de contacter le service d’itinéraire pour le moment."
+    );
+  }
 
   if (!response.ok) {
     throw new Error(`Erreur OSRM (${profile}) : HTTP ${response.status}`);
   }
 
-  const data = (await response.json()) as OsrmRouteResponse;
+  let data: OsrmRouteResponse;
+  try {
+    data = (await response.json()) as OsrmRouteResponse;
+  } catch {
+    throw new Error("Réponse itinéraire invalide.");
+  }
 
-  if (data.code !== "Ok" || !Array.isArray(data.routes) || data.routes.length === 0) {
+  if (
+    data.code !== "Ok" ||
+    !Array.isArray(data.routes) ||
+    data.routes.length === 0
+  ) {
     throw new Error(`Aucun itinéraire trouvé pour le profil ${profile}.`);
   }
 
   const bestRoute = data.routes[0];
 
-  const coordinates: [number, number][] = bestRoute.geometry.coordinates.map(
-    ([lng, lat]) => [lat, lng]
-  );
+  if (
+    !bestRoute.geometry ||
+    !Array.isArray(bestRoute.geometry.coordinates) ||
+    bestRoute.geometry.coordinates.length === 0
+  ) {
+    throw new Error("Itinéraire vide renvoyé par le service.");
+  }
+
+  const coordinates: [number, number][] = bestRoute.geometry.coordinates
+    .filter(
+      (coord): coord is [number, number] =>
+        Array.isArray(coord) &&
+        coord.length === 2 &&
+        Number.isFinite(coord[0]) &&
+        Number.isFinite(coord[1])
+    )
+    .map(([lng, lat]) => [lat, lng]);
+
+  if (coordinates.length === 0) {
+    throw new Error("Coordonnées d’itinéraire invalides.");
+  }
 
   const durationSeconds =
     mode === "walking"

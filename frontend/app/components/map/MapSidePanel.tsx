@@ -37,6 +37,37 @@ const getTypeColor = (type: MapItemType) => {
   return colorMap[type];
 };
 
+function formatPrice(value?: number | null): string {
+  if (value === null || value === undefined) {
+    return "Prix non renseigné";
+  }
+
+  if (value === 0) {
+    return "Gratuit";
+  }
+
+  return `${value} MAD`;
+}
+
+function getOpenStatusLabel(
+  estOuvert?: boolean | null,
+  horairesOuverture?: string | null
+): string {
+  if (horairesOuverture && horairesOuverture.trim().length > 0) {
+    return horairesOuverture;
+  }
+
+  if (estOuvert === true) {
+    return "Ouvert";
+  }
+
+  if (estOuvert === false) {
+    return "Fermé";
+  }
+
+  return "Horaires non renseignés";
+}
+
 export default function MapSidePanel({
   item,
   onClose,
@@ -74,11 +105,15 @@ export default function MapSidePanel({
               )}`}
             />
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-              {getTypeLabel(item.type)}
+              {item.nomCategorie || getTypeLabel(item.type)}
             </span>
           </div>
 
           <h2 className="text-xl font-bold text-white">{item.name}</h2>
+
+          {item.adresse ? (
+            <p className="mt-2 text-sm text-slate-400">{item.adresse}</p>
+          ) : null}
         </div>
 
         <button
@@ -89,6 +124,16 @@ export default function MapSidePanel({
           Fermer
         </button>
       </div>
+
+      {item.imageUrl ? (
+        <div className="mb-5 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            className="h-52 w-full object-cover"
+          />
+        </div>
+      ) : null}
 
       <div className="mb-4 flex flex-wrap gap-3">
         <button
@@ -158,6 +203,60 @@ export default function MapSidePanel({
           </p>
         </div>
 
+        {item.source === "discovery" ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Prix estimé
+                </p>
+                <p className="text-sm font-medium text-slate-200">
+                  {formatPrice(item.prixMoyen)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Popularité
+                </p>
+                <p className="text-sm font-medium text-slate-200">
+                  {item.popularite !== null && item.popularite !== undefined
+                    ? `${item.popularite}/100`
+                    : "Non renseignée"}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Horaires
+              </p>
+              <p className="text-sm text-slate-200">
+                {getOpenStatusLabel(item.estOuvert, item.horairesOuverture)}
+              </p>
+            </div>
+          </>
+        ) : null}
+
+        {item.tagsCulturels && item.tagsCulturels.length > 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Tags
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {item.tagsCulturels.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-200"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Localisation
@@ -180,7 +279,7 @@ export default function MapSidePanel({
           </p>
           <p className="text-sm text-slate-300">
             Ensuite, on pourra ajouter un itinéraire multi-étapes :
-            stade → fan zone → restaurant → hôtel.
+            stade → fan zone → restaurant → hôtel → lieu touristique.
           </p>
         </div>
       </div>
