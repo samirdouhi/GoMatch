@@ -1,0 +1,27 @@
+# --- Core API ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# --- HTTP clients ---
+requests==2.32.3
+httpx==0.27.2
+
+# --- Cache / memoire conversationnelle ---
+redis==5.0.8
+
+# --- LLM (choisis l'un OU l'autre selon Q1) ---
+openai==1.51.0
+anthropic==0.34.2
+
+# --- Utilitaires ---
+python-dotenv==1.0.1
+tenacity==9.0.0          # retries HTTP
+orjson==3.10.7           # JSON rapide
+python-jose[cryptography]==3.3.0   # decode JWT si besoin
+
+# --- Dev / tests ---
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2
