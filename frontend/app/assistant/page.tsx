@@ -16,14 +16,26 @@ import {
   X,
   Compass,
 } from "lucide-react";
+import {
+  sendConversationMessage,
+  type ConversationMemory,
+  type ConversationResponse,
+  type RecommendationCard,
+} from "@/lib/recoApi";
 
 type Role = "user" | "assistant";
+
+type ChatCard = RecommendationCard;
 
 type ChatMessage = {
   id: string;
   role: Role;
   content: string;
   ts: number;
+  cards?: ChatCard[];
+  followups?: string[];
+  alternatives?: ChatCard[];
+  needsClarification?: boolean;
 };
 
 type ChatContext = {
@@ -37,43 +49,15 @@ type ChatSession = {
   createdAt: number;
   messages: ChatMessage[];
   context?: ChatContext;
-};
-
-type RecommendationItem = {
-  commerce: {
-    id: string;
-    nom: string;
-    description?: string;
-    adresse?: string;
-    latitude?: number;
-    longitude?: number;
-    distanceKm?: number;
-    nomCategorie?: string;
-    tagsCulturels?: string[];
-  };
-  score: number;
-  distanceKm: number;
-  matchedPreferences: string[];
-  reasons?: string[];
-};
-
-type RecommendationResponse = {
-  mode?: string;
-  message?: string;
-  userPreferences: string[];
-  mappedCategories: string[];
-  mappedTags: string[];
-  matchesTodayCount: number;
-  upcomingMatchesCount: number;
-  searchedRadiusKm?: number;
-  recommendations: RecommendationItem[];
+  memory?: ConversationMemory;
+  sessionRecommendedIds?: string[];
 };
 
 const quickPrompts = [
-  "2h avant match : café traditionnel + artisanat près de moi",
-  "Plan 1 journée à Rabat : culture + street food + shopping",
-  "Je veux un resto familial pas cher près du stade",
-  "Itinéraire à pied : médina + monuments + coucher de soleil",
+  "Je veux une activité avant le match",
+  "Je veux un café calme proche de moi",
+  "Propose-moi une activité culturelle à Rabat",
+  "Trouve-moi un restaurant familial près de moi",
 ];
 
 function uid() {
@@ -91,35 +75,6 @@ function formatTime(ts: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function parseAvailableMinutes(text: string) {
-  const lower = text.toLowerCase();
-
-  const hourMatch = lower.match(/(\d+)\s*h/);
-  if (hourMatch) return Number(hourMatch[1]) * 60;
-
-  const minMatch = lower.match(/(\d+)\s*min/);
-  if (minMatch) return Number(minMatch[1]);
-
-  if (lower.includes("journée") || lower.includes("journee")) return 8 * 60;
-
-  return 120;
-}
-
-function parseBudget(text: string) {
-  const lower = text.toLowerCase();
-
-  const madMatch = lower.match(/(\d+)\s*(mad|dh|dhs)/);
-  if (madMatch) return Number(madMatch[1]);
-
-  const euroMatch = lower.match(/(\d+)\s*(euro|euros|€)/);
-  if (euroMatch) return Number(euroMatch[1]) * 10.8;
-
-  const budgetMatch = lower.match(/budget\s*(\d+)/);
-  if (budgetMatch) return Number(budgetMatch[1]);
-
-  return 150;
-}
-
 function getStoredAccessToken(): string {
   if (typeof window === "undefined") return "";
 
@@ -132,170 +87,6 @@ function getStoredAccessToken(): string {
     localStorage.getItem("access_token") ||
     ""
   );
-}
-
-function detectIntent(message: string) {
-  const text = message.toLowerCase();
-
-  return {
-    wantsFood:
-      /faim|manger|mange|restaurant|resto|street food|streetfood|snack|bouffer|déjeuner|dejeuner|diner|dîner|repas/.test(
-        text
-      ),
-    wantsCoffee: /cafe|café|coffee|boisson|thé|the/.test(text),
-    wantsCulture:
-      /culture|mus[eé]e|patrimoine|tradition|monument|architecture|medina|médina/.test(
-        text
-      ),
-    wantsShopping:
-      /shopping|acheter|boutique|souvenir|artisanat|march[eé]|souk/.test(text),
-    wantsQuick:
-      /rapide|vite|press[eé]|petite faim|léger|leger|sur le pouce/.test(text),
-    wantsChill: /calme|poser|tranquille|chill|ambiance|romantique/.test(text),
-    beforeMatch:
-      /avant match|avant le match|2h avant|1h avant|avant de regarder le match/.test(
-        text
-      ),
-    afterMatch: /apr[eè]s match|apr[eè]s le match/.test(text),
-    withFamily: /famille|familial|enfants|parents/.test(text),
-    lowBudget: /pas cher|petit budget|budget serr[eé]|cheap|économique|economique/.test(text),
-  };
-}
-
-function getCategoryLabel(category?: string) {
-  if (!category) return "Lieu";
-  return category;
-}
-
-function buildFollowUpQuestion(intent: ReturnType<typeof detectIntent>) {
-  if (intent.wantsFood && intent.wantsQuick) {
-    return "Tu préfères un snack rapide ou un vrai petit repas avant le match ?";
-  }
-
-  if (intent.wantsFood && intent.withFamily) {
-    return "Tu veux plutôt une adresse familiale tranquille ou un endroit plus animé ?";
-  }
-
-  if (intent.wantsCoffee) {
-    return "Tu veux un café rapide ou un endroit plus calme pour te poser un peu ?";
-  }
-
-  if (intent.wantsCulture) {
-    return "Tu veux plutôt une visite rapide ou une balade culturelle plus tranquille ?";
-  }
-
-  if (intent.wantsShopping) {
-    return "Tu cherches plutôt de l’artisanat local ou quelque chose de plus moderne ?";
-  }
-
-  return "Tu veux que je t’affine ça selon ton budget, la distance ou l’ambiance que tu cherches ?";
-}
-
-function describeRecommendation(
-  item: RecommendationItem,
-  intent: ReturnType<typeof detectIntent>,
-  index: number
-) {
-  const commerce = item.commerce;
-  const name = commerce.nom || "Lieu";
-  const category = getCategoryLabel(commerce.nomCategorie);
-  const distance = Number(item.distanceKm ?? commerce.distanceKm ?? 0);
-  const matched = item.matchedPreferences ?? [];
-  const reasons = item.reasons ?? [];
-
-  let text = `👉 ${name}`;
-
-  if (index === 0) {
-    text += " — c’est probablement le meilleur choix pour toi maintenant.";
-  }
-
-  text += `\n• Type : ${category}`;
-  text += `\n• Distance : ${distance.toFixed(1)} km`;
-
-  if (matched.length > 0) {
-    text += `\n• Pourquoi : ça correspond à ${matched.join(", ")}`;
-  } else if (reasons.length > 0) {
-    text += `\n• Pourquoi : ${reasons.join(", ")}`;
-  } else {
-    text += `\n• Pourquoi : option pertinente près de toi`;
-  }
-
-  if (intent.wantsQuick && distance <= 2) {
-    text += `\n• Bon point : c’est pratique si tu veux éviter de perdre du temps.`;
-  }
-
-  if (intent.wantsChill) {
-    text += `\n• Ambiance : ça peut être une bonne option pour te poser un peu.`;
-  }
-
-  if (commerce.adresse) {
-    text += `\n• Adresse : ${commerce.adresse}`;
-  }
-
-  return text;
-}
-
-function generateSmartResponse(
-  userMessage: string,
-  data: RecommendationResponse
-) {
-  const intent = detectIntent(userMessage);
-  const recs = data.recommendations ?? [];
-  const mode = data.mode;
-  const backendMessage = data.message;
-
-  let intro = "";
-
-  if (intent.beforeMatch) {
-    intro += "Parfait 👌 tu as un peu de temps avant le match. ";
-  } else if (intent.afterMatch) {
-    intro += "Très bien 👌 je vais te proposer quelque chose pour après le match. ";
-  } else {
-    intro += "D’accord 👌 ";
-  }
-
-  if (intent.wantsFood && intent.wantsQuick) {
-    intro += "Comme tu as une petite faim, j’ai cherché des options pratiques et proches de toi.\n\n";
-  } else if (intent.wantsFood) {
-    intro += "J’ai cherché des endroits où tu peux manger autour de toi.\n\n";
-  } else if (intent.wantsCoffee) {
-    intro += "J’ai cherché des cafés intéressants autour de toi.\n\n";
-  } else if (intent.wantsCulture) {
-    intro += "J’ai cherché des idées culturelles pertinentes autour de toi.\n\n";
-  } else if (intent.wantsShopping) {
-    intro += "J’ai cherché des adresses intéressantes autour de toi.\n\n";
-  } else {
-    intro += "J’ai regardé ce qui semble le plus pertinent autour de toi.\n\n";
-  }
-
-  if (!recs.length) {
-    return (
-      intro +
-      "Je n’ai pas trouvé de correspondance vraiment utile pour le moment.\n\n" +
-      "Tu peux me préciser un peu plus ce que tu veux : manger vite, café calme, endroit familial, sortie culturelle ou shopping ?"
-    );
-  }
-
-  let contextBlock = "";
-
-  if (mode === "fallback_out_of_area") {
-    contextBlock +=
-      "Je n’ai pas trouvé assez d’options vraiment pertinentes autour de ta position actuelle, donc je te propose les meilleures alternatives disponibles dans la zone couverte.\n\n";
-  } else if (mode === "fallback") {
-    contextBlock +=
-      "Je n’ai pas trouvé de correspondance parfaite, mais voici les options les plus proches de ton besoin.\n\n";
-  } else if (backendMessage) {
-    contextBlock += `${backendMessage}\n\n`;
-  }
-
-  const top = recs.slice(0, 3);
-  const suggestions = top
-    .map((item, index) => describeRecommendation(item, intent, index))
-    .join("\n\n");
-
-  const followUp = buildFollowUpQuestion(intent);
-
-  return `${intro}${contextBlock}${suggestions}\n\n${followUp}`;
 }
 
 async function getCurrentPosition(): Promise<{ latitude: number; longitude: number }> {
@@ -499,19 +290,99 @@ function AssistantSidebar(props: {
   );
 }
 
+function RecommendationCardView({ card }: { card: ChatCard }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-black text-white">{card.title}</div>
+          <div className="mt-1 text-xs text-[#FACC15] font-bold uppercase tracking-wider">
+            {card.subtitle || card.type}
+          </div>
+        </div>
+
+        {card.distance_text ? (
+          <div className="shrink-0 rounded-xl bg-white/5 px-2 py-1 text-[10px] font-black text-white/70 uppercase">
+            {card.distance_text}
+          </div>
+        ) : null}
+      </div>
+
+      {card.description ? (
+        <p className="mt-3 text-sm text-white/75 leading-relaxed">{card.description}</p>
+      ) : null}
+
+      {card.reason ? (
+        <div className="mt-3 text-xs text-white/60">
+          <span className="font-black text-white/85">Pourquoi :</span> {card.reason}
+        </div>
+      ) : null}
+
+      {(card.tags?.length ?? 0) > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {card.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white/65"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {card.actions?.includes("view_on_map") && card.latitude && card.longitude ? (
+          <Link
+            href={`/test-map?lat=${card.latitude}&lng=${card.longitude}`}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
+          >
+            Voir sur la carte
+          </Link>
+        ) : null}
+
+        {card.actions?.includes("view_detail") ? (
+          <button
+            type="button"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
+          >
+            Voir détail
+          </button>
+        ) : null}
+
+        {card.actions?.includes("favorite") ? (
+          <button
+            type="button"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
+          >
+            Favori
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function AssistantPage() {
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     const first: ChatSession = {
       id: uid(),
       title: "Nouveau chat",
       createdAt: Date.now(),
+      memory: {},
+      sessionRecommendedIds: [],
       messages: [
         {
           id: uid(),
           role: "assistant",
           content:
-            "Salut 👋 Dis-moi ce que tu veux faire et je vais interroger le moteur de recommandation GoMatch avec ta position réelle.",
+            "Salut 👋 Dis-moi ce que tu veux faire à Rabat, autour d’un match ou pas, et je vais te guider intelligemment.",
           ts: Date.now(),
+          followups: [
+            "Je veux une activité",
+            "Je cherche un café calme",
+            "Que faire avant le match ?",
+          ],
         },
       ],
     };
@@ -552,13 +423,20 @@ export default function AssistantPage() {
       id: uid(),
       title: "Nouveau chat",
       createdAt: Date.now(),
+      memory: {},
+      sessionRecommendedIds: [],
       messages: [
         {
           id: uid(),
           role: "assistant",
           content:
-            "Nouveau chat ✅ Donne-moi ton contexte et je vais chercher des recommandations réelles.",
+            "Nouveau chat ✅ Dis-moi ce que tu veux faire et je te guiderai selon ton contexte.",
           ts: Date.now(),
+          followups: [
+            "Je veux une activité culturelle",
+            "Je veux un café calme",
+            "Que faire ce soir ?",
+          ],
         },
       ],
     };
@@ -573,7 +451,15 @@ export default function AssistantPage() {
     if (!activeId) return;
     setSessions((prev) =>
       prev.map((s) =>
-        s.id === activeId ? { ...s, messages: [], title: "Nouveau chat" } : s
+        s.id === activeId
+          ? {
+              ...s,
+              title: "Nouveau chat",
+              memory: {},
+              sessionRecommendedIds: [],
+              messages: [],
+            }
+          : s
       )
     );
   }
@@ -587,12 +473,14 @@ export default function AssistantPage() {
           id: uid(),
           title: "Nouveau chat",
           createdAt: Date.now(),
+          memory: {},
+          sessionRecommendedIds: [],
           messages: [
             {
               id: uid(),
               role: "assistant",
               content:
-                "Salut 👋 Dis-moi ce que tu veux faire et je vais chercher des recommandations réelles.",
+                "Salut 👋 Dis-moi ce que tu veux faire et je vais te proposer des recommandations intelligentes.",
               ts: Date.now(),
             },
           ],
@@ -604,50 +492,32 @@ export default function AssistantPage() {
     });
   }
 
-  async function fetchRecommendations(prompt: string): Promise<RecommendationResponse> {
-    const accessToken = getStoredAccessToken();
-
-    if (!accessToken) {
-      throw new Error("Aucun token trouvé. Connecte-toi d'abord.");
-    }
-
+  async function fetchConversation(prompt: string): Promise<ConversationResponse> {
     let position;
 
     try {
       position = await getCurrentPosition();
     } catch {
       position = {
-        latitude: 34.02,
-        longitude: -6.83,
+        latitude: 34.0209,
+        longitude: -6.8416,
       };
     }
 
-    const payload = {
+    const accessToken = getStoredAccessToken();
+
+    return sendConversationMessage({
+      message: prompt,
+      access_token: accessToken,
+      user_id: "test-user",
       latitude: position.latitude,
       longitude: position.longitude,
-      available_minutes: parseAvailableMinutes(prompt),
-      budget: parseBudget(prompt),
-      access_token: accessToken,
-    };
-
-    const gatewayBase =
-      process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:5266";
-
-    const response = await fetch(`${gatewayBase}/reco/recommend`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
+      language: "fr",
+      current_match_id: null,
+      excluded_ids: [],
+      session_recommended_ids: activeSession?.sessionRecommendedIds ?? [],
+      conversation_memory: activeSession?.memory ?? {},
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Erreur lors de l’appel au service de recommandation.");
-    }
-
-    return (await response.json()) as RecommendationResponse;
   }
 
   async function send(text: string) {
@@ -661,8 +531,6 @@ export default function AssistantPage() {
       ts: Date.now(),
     };
 
-    const intent = detectIntent(trimmed);
-
     updateActiveSession((s) => {
       const nextTitle = s.title === "Nouveau chat" ? makeTitleFrom(trimmed) : s.title;
 
@@ -670,15 +538,6 @@ export default function AssistantPage() {
         ...s,
         title: nextTitle,
         context: {
-          lastIntent: intent.wantsFood
-            ? "food"
-            : intent.wantsCoffee
-            ? "coffee"
-            : intent.wantsCulture
-            ? "culture"
-            : intent.wantsShopping
-            ? "shopping"
-            : "generic",
           lastTopic: trimmed,
         },
         messages: [...s.messages, userMsg],
@@ -689,17 +548,30 @@ export default function AssistantPage() {
     setIsTyping(true);
 
     try {
-      const data = await fetchRecommendations(trimmed);
+      const data = await fetchConversation(trimmed);
 
       const aiMsg: ChatMessage = {
         id: uid(),
         role: "assistant",
         ts: Date.now(),
-        content: generateSmartResponse(trimmed, data),
+        content: data.clarification_question || data.message,
+        cards: data.cards ?? [],
+        followups: data.followups ?? [],
+        alternatives: data.alternatives ?? [],
+        needsClarification: data.needs_clarification ?? false,
       };
 
       updateActiveSession((s) => ({
         ...s,
+        memory: {
+          ...(s.memory ?? {}),
+          ...(data.memory_updates ?? {}),
+        },
+        sessionRecommendedIds: [
+          ...(s.sessionRecommendedIds ?? []),
+          ...(data.cards ?? []).map((c) => c.id),
+          ...(data.alternatives ?? []).map((c) => c.id),
+        ],
         messages: [...s.messages, aiMsg],
       }));
     } catch (error) {
@@ -812,7 +684,7 @@ export default function AssistantPage() {
                   {activeSession?.title ?? "Assistant GoMatch"}
                 </div>
                 <div className="text-xs text-white/50 font-bold uppercase tracking-tighter">
-                  Plans locaux • Food • Culture • Match
+                  Assistant conversationnel intelligent
                 </div>
               </div>
             </div>
@@ -831,30 +703,70 @@ export default function AssistantPage() {
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6">
-            <div className="mx-auto w-full max-w-3xl space-y-3">
+            <div className="mx-auto w-full max-w-3xl space-y-4">
               {activeSession?.messages?.length ? (
                 <>
                   {activeSession.messages.map((m) => {
                     const isUser = m.role === "user";
+
                     return (
                       <div key={m.id} className={["flex", isUser ? "justify-end" : "justify-start"].join(" ")}>
-                        <div
-                          className={[
-                            "max-w-[92%] rounded-3xl px-5 py-3 text-sm leading-relaxed",
-                            isUser
-                              ? "bg-[#F43F5E] text-white shadow-sm font-semibold"
-                              : "bg-white/[0.05] border border-white/10 text-white/90 backdrop-blur-md",
-                          ].join(" ")}
-                        >
-                          <div className="whitespace-pre-line">{m.content}</div>
+                        <div className="w-full max-w-[92%]">
                           <div
                             className={[
-                              "mt-2 text-[11px] font-bold uppercase opacity-50",
-                              isUser ? "text-white" : "text-white/70",
+                              "rounded-3xl px-5 py-3 text-sm leading-relaxed",
+                              isUser
+                                ? "bg-[#F43F5E] text-white shadow-sm font-semibold"
+                                : "bg-white/[0.05] border border-white/10 text-white/90 backdrop-blur-md",
                             ].join(" ")}
                           >
-                            {formatTime(m.ts)}
+                            <div className="whitespace-pre-line">{m.content}</div>
+
+                            <div
+                              className={[
+                                "mt-2 text-[11px] font-bold uppercase opacity-50",
+                                isUser ? "text-white" : "text-white/70",
+                              ].join(" ")}
+                            >
+                              {formatTime(m.ts)}
+                            </div>
                           </div>
+
+                          {!isUser && m.cards && m.cards.length > 0 ? (
+                            <div className="mt-3 grid gap-3">
+                              {m.cards.map((card) => (
+                                <RecommendationCardView key={card.id} card={card} />
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {!isUser && m.alternatives && m.alternatives.length > 0 ? (
+                            <div className="mt-3">
+                              <div className="mb-2 text-xs font-black uppercase tracking-widest text-white/45">
+                                Alternatives
+                              </div>
+                              <div className="grid gap-3">
+                                {m.alternatives.map((card) => (
+                                  <RecommendationCardView key={card.id} card={card} />
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {!isUser && m.followups && m.followups.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {m.followups.map((f) => (
+                                <button
+                                  key={f}
+                                  type="button"
+                                  onClick={() => void send(f)}
+                                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
+                                >
+                                  {f}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -868,7 +780,7 @@ export default function AssistantPage() {
                           <span className="h-2 w-2 rounded-full bg-[#FACC15] animate-bounce [animation-delay:120ms]" />
                           <span className="h-2 w-2 rounded-full bg-white/70 animate-bounce [animation-delay:240ms]" />
                           <span className="ml-2 text-xs font-black uppercase tracking-widest text-white/40">
-                            Recherche...
+                            Réflexion...
                           </span>
                         </span>
                       </div>
@@ -892,11 +804,11 @@ export default function AssistantPage() {
                 <div className="mb-2 flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[10px] font-black text-white/50 uppercase tracking-widest">
                     <Star className="h-3 w-3 text-[#FACC15] fill-current" />
-                    Authentique
+                    Intelligent
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[10px] font-black text-white/50 uppercase tracking-widest">
                     <Compass className="h-3 w-3 text-[#FACC15]" />
-                    Proche
+                    Contextuel
                   </span>
                 </div>
 
@@ -904,7 +816,7 @@ export default function AssistantPage() {
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ex : 2h avant match à Rabat, budget 120 MAD..."
+                    placeholder="Ex : Je veux une activité calme avant le match..."
                     className="w-full resize-none bg-transparent text-sm font-semibold text-white placeholder:text-white/20 outline-none"
                     rows={2}
                     onKeyDown={(e) => {
@@ -936,4 +848,4 @@ export default function AssistantPage() {
       </div>
     </main>
   );
-} 
+}

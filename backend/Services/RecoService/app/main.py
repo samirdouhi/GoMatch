@@ -1,254 +1,271 @@
+from typing import List
+
 from fastapi import FastAPI, HTTPException
-from app.models.schemas import RecommendationRequest
-from app.services.business_client import get_nearby_commerces
-from app.services.profile_client import get_user_profile, extract_preferences
-from app.services.match_client import get_today_matches, get_upcoming_matches
-from app.services.preference_mapper import normalize_text, get_interest_targets
 
-app = FastAPI()
+from app.clients.business_client import BusinessClient
+from app.clients.discovery_client import DiscoveryClient
+from app.clients.match_client import MatchClient
+from app.clients.profile_client import ProfileClient
+from app.config import settings
+from app.core.candidate_normalizer import normalize_business_item, normalize_discovery_item
+from app.core.constraint_extractor import extract_constraints
+from app.core.context_builder import RecommendationContext
+from app.core.diversity_engine import diversify
+from app.core.intent_classifier import classify_intent
+from app.core.response_builder import build_clarification_response, build_response
+from app.core.scoring_engine import score_candidate
+from app.models.domain_models import CandidateItem
+from app.models.request_models import RecommendationRequest
+from app.models.response_models import RecommendationResponse
+from app.utils.geo import compute_distance_km
 
+app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
-COVERAGE_CITY = "Rabat"
-DEFAULT_RADIUS_KM = 15
-FALLBACK_RADIUS_KM = 1200
-STRONG_MATCH_THRESHOLD = 25
+business_client = BusinessClient()
+discovery_client = DiscoveryClient()
+match_client = MatchClient()
+profile_client = ProfileClient()
 
 
 @app.get("/")
-def root():
-    return {"message": "RecoService is running"}
-
-
-def score_distance(distance: float) -> int:
-    if distance <= 1:
-        return 50
-    if distance <= 3:
-        return 35
-    if distance <= 5:
-        return 20
-    if distance <= 10:
-        return 5
-    return -25
-
-
-def score_time_available(available_minutes: int, distance: float) -> int:
-    if available_minutes < 60:
-        return 10 if distance <= 2 else -15
-    if available_minutes < 120:
-        return 5 if distance <= 5 else -5
-    return 5
-
-
-def score_match_context(
-    has_match_today: bool,
-    has_upcoming_match: bool,
-    normalized_preferences: list[str],
-    category_text: str,
-) -> int:
-    score = 0
-
-    if has_match_today:
-        if (
-            "cafe" in category_text
-            or "restaurant" in category_text
-            or "snack" in category_text
-            or "restauration" in category_text
-        ):
-            score += 12
-
-        if "football" in normalized_preferences:
-            score += 8
-
-    elif has_upcoming_match:
-        score += 4
-
-    return score
-
-
-def build_reason_text(
-    matched_preferences: list[str],
-    distance_km: float,
-    has_match_today: bool,
-    horaires_present: bool,
-) -> list[str]:
-    reasons = []
-
-    if matched_preferences:
-        reasons.append("correspond à vos préférences")
-
-    if distance_km <= 1:
-        reasons.append("très proche de vous")
-    elif distance_km <= 3:
-        reasons.append("proche de vous")
-
-    if horaires_present:
-        reasons.append("horaires disponibles")
-
-    if has_match_today:
-        reasons.append("pertinent avant ou après match")
-
-    return reasons
-
-
-@app.post("/recommend")
-def recommend(data: RecommendationRequest):
-    try:
-        profile = get_user_profile(data.access_token)
-        preferences = extract_preferences(profile)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"ProfileService error: {str(e)}")
-
-    try:
-        commerces = get_nearby_commerces(
-            data.latitude,
-            data.longitude,
-            rayon_km=DEFAULT_RADIUS_KM,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"BusinessService error: {str(e)}")
-
-    fallback_mode = False
-
-    # Si rien autour de l'utilisateur, on élargit fortement la recherche
-    if not commerces:
-        try:
-            commerces = get_nearby_commerces(
-                data.latitude,
-                data.longitude,
-                rayon_km=FALLBACK_RADIUS_KM,
-            )
-            fallback_mode = True
-        except Exception as e:
-            raise HTTPException(
-                status_code=502,
-                detail=f"BusinessService fallback error: {str(e)}",
-            )
-
-    try:
-        matches_today = get_today_matches()
-    except Exception:
-        matches_today = []
-
-    try:
-        upcoming_matches = get_upcoming_matches()
-    except Exception:
-        upcoming_matches = []
-
-    has_match_today = len(matches_today) > 0
-    has_upcoming_match = len(upcoming_matches) > 0
-
-    normalized_preferences = [normalize_text(p) for p in preferences]
-    mapped_targets = get_interest_targets(preferences)
-    mapped_categories = mapped_targets["categories"]
-    mapped_tags = mapped_targets["tags"]
-
-    results = []
-
-    for commerce in commerces:
-        score = 0
-        matched_preferences = []
-
-        distance = float(commerce.get("distanceKm", 9999))
-        score += score_distance(distance)
-
-        nom_categorie = normalize_text(str(commerce.get("nomCategorie", "")))
-        tags = [normalize_text(str(tag)) for tag in commerce.get("tagsCulturels", [])]
-
-        # Match direct avec préférences utilisateur
-        for pref in normalized_preferences:
-            if pref in tags:
-                score += 20
-                if pref not in matched_preferences:
-                    matched_preferences.append(pref)
-
-            if pref and pref in nom_categorie:
-                score += 15
-                if pref not in matched_preferences:
-                    matched_preferences.append(pref)
-
-        # Match via mapping onboarding -> catégories/tags métier
-        for mapped_tag in mapped_tags:
-            if mapped_tag in tags:
-                score += 14
-                if mapped_tag not in matched_preferences:
-                    matched_preferences.append(mapped_tag)
-
-        for mapped_category in mapped_categories:
-            if mapped_category and mapped_category in nom_categorie:
-                score += 14
-                if mapped_category not in matched_preferences:
-                    matched_preferences.append(mapped_category)
-
-        horaires = commerce.get("horaires", [])
-        horaires_present = bool(horaires)
-
-        if horaires_present:
-            score += 10
-
-        score += score_match_context(
-            has_match_today=has_match_today,
-            has_upcoming_match=has_upcoming_match,
-            normalized_preferences=normalized_preferences,
-            category_text=nom_categorie,
-        )
-
-        score += score_time_available(
-            available_minutes=data.available_minutes,
-            distance=distance,
-        )
-
-        # Budget: placeholder pour prochaine étape
-        if data.budget is not None:
-            score += 0
-
-        reasons = build_reason_text(
-            matched_preferences=matched_preferences,
-            distance_km=distance,
-            has_match_today=has_match_today,
-            horaires_present=horaires_present,
-        )
-
-        results.append(
-            {
-                "commerce": commerce,
-                "score": score,
-                "distanceKm": distance,
-                "matchedPreferences": matched_preferences,
-                "reasons": reasons,
-            }
-        )
-
-    results.sort(key=lambda x: x["score"], reverse=True)
-
-    strong_results = [r for r in results if r["score"] >= STRONG_MATCH_THRESHOLD]
-
-    if strong_results:
-        final_results = strong_results[:5]
-        response_mode = "normal"
-        message = "Recommandations trouvées."
-    else:
-        final_results = results[:5]
-        response_mode = "fallback"
-        message = (
-            f"Aucune correspondance parfaite trouvée près de vous. "
-            f"Voici les meilleures options disponibles pour la zone couverte ({COVERAGE_CITY})."
-        )
-
-    if fallback_mode and final_results:
-        response_mode = "fallback_out_of_area"
-        message = (
-            f"Aucun commerce pertinent n’a été trouvé autour de votre position actuelle. "
-            f"Les recommandations affichées proviennent principalement de la zone couverte ({COVERAGE_CITY})."
-        )
-
+async def root():
     return {
-        "mode": response_mode,
-        "message": message,
-        "userPreferences": preferences,
-        "mappedCategories": mapped_categories,
-        "mappedTags": mapped_tags,
-        "matchesTodayCount": len(matches_today),
-        "upcomingMatchesCount": len(upcoming_matches),
-        "searchedRadiusKm": FALLBACK_RADIUS_KM if fallback_mode else DEFAULT_RADIUS_KM,
-        "recommendations": final_results,
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "ok",
     }
+
+
+def _enrich_distances(
+    items: List[CandidateItem],
+    context: RecommendationContext,
+) -> List[CandidateItem]:
+    for item in items:
+        item.distance_km = compute_distance_km(
+            context.user_latitude,
+            context.user_longitude,
+            item.latitude,
+            item.longitude,
+        )
+    return items
+
+
+def _filter_candidates(
+    items: List[CandidateItem],
+    excluded_ids: List[str],
+    session_recommended_ids: List[str],
+) -> List[CandidateItem]:
+    excluded = {str(x) for x in excluded_ids}
+    session_ids = {str(x) for x in session_recommended_ids}
+
+    return [
+        item for item in items
+        if item.id not in excluded and item.id not in session_ids
+    ]
+
+
+def _is_hotel(item: CandidateItem) -> bool:
+    blob = f"{(item.type or '').lower()} {(item.title or '').lower()} {(item.description or '').lower()} {' '.join([str(t).lower() for t in item.tags])}"
+    return "hotel" in blob or "hôtel" in blob
+
+
+def _is_cafe(item: CandidateItem) -> bool:
+    blob = f"{(item.type or '').lower()} {(item.title or '').lower()} {(item.description or '').lower()} {' '.join([str(t).lower() for t in item.tags])}"
+    return any(x in blob for x in ["cafe", "café", "coffee"])
+
+
+def _is_restaurant(item: CandidateItem) -> bool:
+    blob = f"{(item.type or '').lower()} {(item.title or '').lower()} {(item.description or '').lower()} {' '.join([str(t).lower() for t in item.tags])}"
+    return any(x in blob for x in ["restaurant", "resto", "food", "gastro"])
+
+
+def _is_activity(item: CandidateItem) -> bool:
+    blob = f"{(item.type or '').lower()} {(item.title or '').lower()} {(item.description or '').lower()} {' '.join([str(t).lower() for t in item.tags])}"
+    return any(x in blob for x in [
+        "activity", "activities", "attraction", "museum", "musée", "musee",
+        "monument", "culture", "viewpoint", "visit", "visite"
+    ])
+
+
+def _is_cultural(item: CandidateItem) -> bool:
+    blob = f"{(item.type or '').lower()} {(item.title or '').lower()} {(item.description or '').lower()} {' '.join([str(t).lower() for t in item.tags])}"
+    return any(x in blob for x in [
+        "museum", "musée", "musee", "attraction", "monument", "culture"
+    ])
+
+
+def _is_nightlife(item: CandidateItem) -> bool:
+    blob = f"{(item.type or '').lower()} {(item.title or '').lower()} {(item.description or '').lower()} {' '.join([str(t).lower() for t in item.tags])}"
+    return any(x in blob for x in ["nightlife", "bar", "club", "nightclub", "discotheque", "discothèque"])
+
+
+def _filter_by_requested_type(
+    items: List[CandidateItem],
+    requested_type: str | None,
+    nightlife_explicit: bool,
+) -> List[CandidateItem]:
+    if not requested_type:
+        return items
+
+    filtered: List[CandidateItem] = []
+
+    for item in items:
+        if requested_type == "cafe":
+            if _is_cafe(item):
+                filtered.append(item)
+
+        elif requested_type == "restaurant":
+            if _is_restaurant(item):
+                filtered.append(item)
+
+        elif requested_type == "hotel":
+            if _is_hotel(item):
+                filtered.append(item)
+
+        elif requested_type == "activity":
+            if _is_hotel(item):
+                continue
+            if not nightlife_explicit and _is_nightlife(item):
+                continue
+            if _is_activity(item) or _is_cafe(item) or _is_restaurant(item):
+                filtered.append(item)
+
+        elif requested_type == "cultural":
+            if _is_hotel(item):
+                continue
+            if _is_cultural(item):
+                filtered.append(item)
+
+        elif requested_type == "nightlife":
+            if _is_hotel(item):
+                continue
+            if _is_nightlife(item):
+                filtered.append(item)
+
+    if filtered:
+        return filtered
+
+    # fallback sûr
+    if requested_type == "activity":
+        fallback = []
+        for item in items:
+            if _is_hotel(item):
+                continue
+            if not nightlife_explicit and _is_nightlife(item):
+                continue
+            fallback.append(item)
+        return fallback if fallback else items
+
+    if requested_type in {"cafe", "restaurant", "cultural"}:
+        no_hotels = [item for item in items if not _is_hotel(item)]
+        return no_hotels if no_hotels else items
+
+    return items
+
+
+def _apply_intent_blacklist(
+    items: List[CandidateItem],
+    intent: str,
+    requested_type: str | None,
+    nightlife_explicit: bool,
+) -> List[CandidateItem]:
+    cleaned = items
+
+    if intent in {"pre_match_plan", "post_match_plan"} and requested_type in {
+        "activity", "cultural", "cafe", "restaurant"
+    }:
+        cleaned = [item for item in cleaned if not _is_hotel(item)]
+
+    if not nightlife_explicit and requested_type in {"activity", "cultural", "cafe", "restaurant"}:
+        cleaned = [item for item in cleaned if not _is_nightlife(item)]
+
+    return cleaned if cleaned else items
+
+
+@app.post("/conversation", response_model=RecommendationResponse)
+async def conversation(req: RecommendationRequest):
+    try:
+        intent = classify_intent(req.message)
+        memory = req.conversation_memory or {}
+        constraints = extract_constraints(req.message, memory)
+        print("DEBUG constraints:", constraints)
+
+        if constraints.get("clarification_needed"):
+            return build_clarification_response(
+                intent="clarification",
+                question=constraints["clarification_question"],
+                followups=[
+                    "Activité culturelle",
+                    "Café calme",
+                    "Restaurant convivial",
+                    "Ambiance plus animée"
+                ],
+                memory_updates=constraints,
+            )
+
+        profile = await profile_client.get_profile(req.context.access_token)
+        current_match = await match_client.get_match_context(req.current_match_id)
+
+        context = RecommendationContext(
+            intent=intent,
+            constraints=constraints,
+            profile=profile,
+            user_latitude=req.context.latitude,
+            user_longitude=req.context.longitude,
+            current_match=current_match,
+        )
+
+        business_raw = []
+        if req.context.latitude is not None and req.context.longitude is not None:
+            business_raw = await business_client.search_nearby(
+                latitude=req.context.latitude,
+                longitude=req.context.longitude,
+                radius_km=10.0,
+            )
+
+        if not business_raw:
+            business_raw = await business_client.get_all_businesses()
+
+        discovery_raw = await discovery_client.get_places_by_city("Rabat")
+
+        candidates: List[CandidateItem] = []
+        candidates.extend(normalize_business_item(item) for item in business_raw)
+        candidates.extend(normalize_discovery_item(item) for item in discovery_raw)
+
+        candidates = _filter_candidates(
+            candidates,
+            excluded_ids=req.excluded_ids,
+            session_recommended_ids=req.session_recommended_ids,
+        )
+
+        candidates = _filter_by_requested_type(
+            candidates,
+            constraints.get("requested_place_type"),
+            constraints.get("nightlife_explicit", False),
+        )
+
+        candidates = _apply_intent_blacklist(
+            candidates,
+            intent,
+            constraints.get("requested_place_type"),
+            constraints.get("nightlife_explicit", False),
+        )
+
+        candidates = _enrich_distances(candidates, context)
+
+        scored = [score_candidate(item, context) for item in candidates]
+        scored = sorted(scored, key=lambda x: x.final_score, reverse=True)
+
+        selected = diversify(scored, max_items=3)
+        selected_ids = {x.id for x in selected}
+        alternatives = [item for item in scored if item.id not in selected_ids][:1]
+
+        return build_response(
+            intent,
+            selected,
+            alternatives,
+            memory_updates=constraints,
+        )
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"RecoService error: {str(exc)}")

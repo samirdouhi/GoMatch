@@ -7,7 +7,7 @@ import { createCommerce, addTagsToCommerce } from "@/lib/commercesApi";
 import LocationPicker, {
   type LocationData,
 } from "@/app/components/commercant/LocationPicker";
-import { MapPin, CheckCircle2 } from "lucide-react";
+import { MapPin, CheckCircle2, ChevronDown } from "lucide-react";
 
 type Categorie = {
   id: string;
@@ -56,6 +56,7 @@ export default function CreateCommercePage() {
         setTags(tagsData);
       } catch (err: unknown) {
         if (!mounted) return;
+
         setError(
           err instanceof Error
             ? err.message
@@ -89,6 +90,9 @@ export default function CreateCommercePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    setError(null);
+    setSuccess(null);
+
     if (!nom.trim()) {
       setError("Le nom du commerce est obligatoire.");
       return;
@@ -118,8 +122,6 @@ export default function CreateCommercePage() {
 
     try {
       setSaving(true);
-      setError(null);
-      setSuccess(null);
 
       const commerce = await createCommerce({
         nom: nom.trim(),
@@ -200,36 +202,62 @@ export default function CreateCommercePage() {
               </div>
             )}
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+                <label className="text-sm font-medium text-zinc-200">
                   Nom du commerce
                 </label>
+                <p className="text-xs text-zinc-500">
+                  Entrez le nom affiché de votre commerce sur GoMatch
+                </p>
                 <input
                   type="text"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
                   placeholder="Ex: Café Rabat Médina"
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
+                  className="w-full rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900 to-black/90 px-4 py-3.5 text-sm font-medium text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)] outline-none transition-all duration-200 placeholder:text-zinc-500 hover:border-orange-400/40 focus:border-orange-400/70 focus:ring-4 focus:ring-orange-400/10"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+                <label className="text-sm font-medium text-zinc-200">
                   Catégorie
                 </label>
-                <select
-                  value={categorieId}
-                  onChange={(e) => setCategorieId(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none transition focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
-                >
-                  <option value="">Sélectionner une catégorie</option>
-                  {categories.map((categorie) => (
-                    <option key={categorie.id} value={categorie.id}>
-                      {categorie.nom}
+
+                <p className="text-xs text-zinc-500">
+                  Choisissez la catégorie principale de votre commerce
+                </p>
+
+                <div className="group relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <div className="h-2 w-2 rounded-full bg-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.9)]" />
+                  </div>
+
+                  <select
+                    value={categorieId}
+                    onChange={(e) => setCategorieId(e.target.value)}
+                    disabled={saving}
+                    className="w-full appearance-none rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900 to-black/90 py-3.5 pl-10 pr-12 text-sm font-medium text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)] outline-none transition-all duration-200 hover:border-orange-400/40 hover:bg-zinc-900 focus:border-orange-400/70 focus:ring-4 focus:ring-orange-400/10 disabled:cursor-not-allowed disabled:opacity-60 [&>option]:bg-zinc-950 [&>option]:text-white"
+                  >
+                    <option value="" className="bg-zinc-950 text-zinc-400">
+                      Sélectionner une catégorie
                     </option>
-                  ))}
-                </select>
+
+                    {categories.map((categorie) => (
+                      <option
+                        key={categorie.id}
+                        value={categorie.id}
+                        className="bg-zinc-950 text-white"
+                      >
+                        {categorie.nom}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                    <ChevronDown className="h-4 w-4 text-zinc-400 transition group-focus-within:text-orange-300" />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -279,10 +307,16 @@ export default function CreateCommercePage() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-zinc-300">
-                Tags culturels
-              </label>
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-white">
+                  Tags culturels
+                </h2>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Sélectionnez les tags qui correspondent à l’identité culturelle
+                  de votre commerce.
+                </p>
+              </div>
 
               {tags.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-zinc-400">
@@ -292,6 +326,7 @@ export default function CreateCommercePage() {
                 <div className="flex flex-wrap gap-3">
                   {tags.map((tag) => {
                     const isSelected = selectedTags.includes(tag.id);
+
                     return (
                       <button
                         key={tag.id}
