@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, AlertTriangle, Loader2, ArrowRight, Home } from "lucide-react";
@@ -9,7 +9,7 @@ import { confirmEmailRequest } from "@/lib/authApi";
 
 type ConfirmState = "loading" | "success" | "error";
 
-export default function ConfirmEmailPage() {
+function ConfirmEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -145,7 +145,7 @@ export default function ConfirmEmailPage() {
                 {isError && (
                   <p className="mt-3 text-sm text-slate-400">
                     Le lien peut être invalide, expiré, ou la route de confirmation
-                    n’est pas correctement atteinte.
+                    n'est pas correctement atteinte.
                   </p>
                 )}
               </div>
@@ -172,5 +172,13 @@ export default function ConfirmEmailPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmEmailContent />
+    </Suspense>
   );
 }

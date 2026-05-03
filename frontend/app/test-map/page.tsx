@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ExperienceMapClient from "../components/map/ExperienceMapClient";
 import MapLegend from "../components/map/MapLegend";
@@ -19,11 +19,64 @@ import {
 } from "@/lib/routeApi";
 
 const RABAT_FALLBACK_POINT: [number, number] = [34.020882, -6.84165];
+const ACTIVE_PLAN_KEY = "gomatch_active_plan";
 
 type OpenSection = "" | "position" | "filters" | "planner" | "details";
 type NavigationMode = "live" | "manual";
 
-export default function TestMapPage() {
+type ActivePlanStep = {
+  order: number;
+  title: string;
+  type: string;
+  description?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  address?: string | null;
+  durationMinutes?: number | null;
+  reason?: string | null;
+};
+
+type ActivePlan = {
+  source: string;
+  mode: string;
+  summary: string;
+  steps: ActivePlanStep[];
+  match?: {
+    equipe1?: string;
+    equipe2?: string;
+    stade?: string;
+    kickoff?: string;
+  } | null;
+  savedAt: number;
+};
+
+function planTypeToMapType(type: string): MapItemType {
+  const t = (type || "").toLowerCase();
+
+  if (t.includes("hotel") || t.includes("riad") || t.includes("hébergement")) {
+    return "hotel";
+  }
+
+  if (t.includes("fanzone") || t.includes("fan")) return "fanzone";
+  if (t.includes("stadium") || t.includes("stade") || t.includes("match")) {
+    return "stadium";
+  }
+
+  if (
+    t.includes("restaurant") ||
+    t.includes("café") ||
+    t.includes("cafe") ||
+    t.includes("food")
+  ) {
+    return "restaurant";
+  }
+
+  return "activity";
+}
+
+function TestMapContent() {
   const searchParams = useSearchParams();
 
   const targetId = searchParams.get("id");
@@ -43,11 +96,9 @@ export default function TestMapPage() {
   const [focusKey, setFocusKey] = useState(0);
 
   const [tripStops, setTripStops] = useState<RichMapItem[]>([]);
-
   const [liveUserPosition, setLiveUserPosition] = useState<
     [number, number] | null
   >(null);
-
   const [manualStartPoint, setManualStartPoint] = useState<
     [number, number] | null
   >(null);
@@ -64,6 +115,9 @@ export default function TestMapPage() {
   const [routeDistanceLabel, setRouteDistanceLabel] = useState("");
   const [routeDurationLabel, setRouteDurationLabel] = useState("");
   const [routeLoading, setRouteLoading] = useState(false);
+
+  const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
+  const [planItems, setPlanItems] = useState<RichMapItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,17 +146,19 @@ export default function TestMapPage() {
   }, [navigationMode, manualStartPoint, liveUserPosition]);
 
   const visibleItems = useMemo(() => {
-    return items.filter((item) => selectedTypes.includes(item.type));
-  }, [items, selectedTypes]);
+    const filtered = items.filter((item) => selectedTypes.includes(item.type));
+    const planIds = new Set(planItems.map((p) => p.id));
+    const merged = filtered.filter((i) => !planIds.has(i.id));
+
+    return [...planItems, ...merged];
+  }, [items, selectedTypes, planItems]);
 
   const mapCenter = useMemo<[number, number]>(() => {
-    if (selectedItem) {
-      return selectedItem.position;
-    }
+    if (selectedItem) return selectedItem.position;
 
-    if (hasTargetFromQuery) {
-      return [targetLat, targetLng];
-    }
+    if (hasTargetFromQuery) return [targetLat, targetLng];
+
+    if (planItems.length > 0) return planItems[0].position;
 
     return liveUserPosition ?? manualStartPoint ?? RABAT_FALLBACK_POINT;
   }, [
@@ -110,6 +166,7 @@ export default function TestMapPage() {
     hasTargetFromQuery,
     targetLat,
     targetLng,
+    planItems,
     liveUserPosition,
     manualStartPoint,
   ]);
@@ -142,9 +199,11 @@ export default function TestMapPage() {
 
     try {
       const route = await fetchRouteBetweenPoints(start, item.position, mode);
+
       setRouteSegments([route.coordinates]);
       setRouteDistanceLabel(formatDistance(route.distanceMeters));
       setRouteDurationLabel(formatDuration(route.durationSeconds));
+
       return true;
     } catch (err) {
       const message =
@@ -153,9 +212,11 @@ export default function TestMapPage() {
           : "Impossible de récupérer l’itinéraire pour le moment.";
 
       console.warn("Itinéraire indisponible :", message);
+
       setRouteSegments([]);
       setRouteDistanceLabel("");
       setRouteDurationLabel("");
+
       return false;
     } finally {
       setRouteLoading(false);
@@ -170,26 +231,25 @@ export default function TestMapPage() {
 
     try {
       const stopsPositions = tripStops.map((stop) => stop.position);
+
       const result = await fetchRouteThroughStops(
         routeStartPoint,
         stopsPositions,
         routeMode
       );
+
       setRouteSegments(result.segments.map((segment) => segment.coordinates));
       setRouteDistanceLabel(formatDistance(result.totalDistanceMeters));
       setRouteDurationLabel(formatDuration(result.totalDurationSeconds));
+
       return true;
     } catch (err) {
       const message =
-        err instanceof Error
-          ? err.message
-          : "Impossible de calculer le parcours.";
+        err instanceof Error ? err.message : "Impossible de calculer le parcours.";
 
       console.warn("Parcours indisponible :", message);
 
-      if (showAlert) {
-        alert(message);
-      }
+      if (showAlert) alert(message);
 
       return false;
     } finally {
@@ -201,12 +261,14 @@ export default function TestMapPage() {
     setSelectedItem(item);
     setFocusKey((prev) => prev + 1);
     setOpenSection("details");
+    setIsMapExpanded(false);
   };
 
   const handleFocusItem = (item: RichMapItem) => {
     setSelectedItem(item);
     setFocusKey((prev) => prev + 1);
     setOpenSection("details");
+    setIsMapExpanded(false);
   };
 
   const handleAddToTrip = (item: RichMapItem) => {
@@ -214,7 +276,9 @@ export default function TestMapPage() {
       if (prev.some((stop) => stop.id === item.id)) return prev;
       return [...prev, item];
     });
+
     setOpenSection("planner");
+    setIsMapExpanded(false);
   };
 
   const handleRemoveStop = (id: string) => {
@@ -230,6 +294,7 @@ export default function TestMapPage() {
     setSelectedItem(item);
     setFocusKey((prev) => prev + 1);
     setOpenSection("details");
+    setIsMapExpanded(false);
 
     const ok = await calculateRouteToItem(routeStartPoint, item, routeMode);
 
@@ -252,6 +317,7 @@ export default function TestMapPage() {
 
     if (selectedItem) {
       const ok = await calculateRouteToItem(position, selectedItem, routeMode);
+
       if (!ok) {
         alert("Impossible de recalculer l’itinéraire pour ce point de départ.");
       }
@@ -298,6 +364,7 @@ export default function TestMapPage() {
       try {
         setLoading(true);
         setError(null);
+
         const data = await fetchMapItems();
 
         if (cancelled) return;
@@ -316,6 +383,7 @@ export default function TestMapPage() {
           if (found) {
             setSelectedItem(found);
             setOpenSection("details");
+            setIsMapExpanded(false);
             setFocusKey((prev) => prev + 1);
           }
         }
@@ -359,6 +427,7 @@ export default function TestMapPage() {
       setGeoAccuracy(accuracy);
       setGeoStatus("success");
       setGeoErrorMessage(null);
+
       setStartPointSource((prev) =>
         navigationMode === "live" ? "user" : prev
       );
@@ -408,6 +477,7 @@ export default function TestMapPage() {
     ) {
       setSelectedItem(null);
       clearRoute();
+
       if (openSection === "details") {
         setOpenSection("");
       }
@@ -419,7 +489,9 @@ export default function TestMapPage() {
     if (!selectedItem && tripStops.length === 0) return;
 
     const now = Date.now();
+
     if (now - lastAutoRouteAtRef.current < 4000) return;
+
     lastAutoRouteAtRef.current = now;
 
     const run = async () => {
@@ -444,20 +516,60 @@ export default function TestMapPage() {
   ]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const raw = localStorage.getItem(ACTIVE_PLAN_KEY);
+
+    if (!raw) return;
+
+    try {
+      const plan: ActivePlan = JSON.parse(raw);
+
+      setActivePlan(plan);
+
+      const validSteps = plan.steps.filter(
+        (s) => s.latitude != null && s.longitude != null
+      );
+
+      const generatedPlanItems: RichMapItem[] = validSteps.map((step) => ({
+        id: `plan-step-${step.order}`,
+        name: `${step.order}. ${step.title}`,
+        type: planTypeToMapType(step.type),
+        position: [step.latitude!, step.longitude!] as [number, number],
+        source: "discovery" as const,
+        description: step.reason ?? step.description ?? undefined,
+        adresse: step.address ?? undefined,
+      }));
+
+      setPlanItems(generatedPlanItems);
+
+      if (generatedPlanItems.length > 0) {
+        setTripStops(generatedPlanItems);
+        setOpenSection("planner");
+        setIsMapExpanded(false);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (planItems.length < 1) return;
+
+    const timeoutId = setTimeout(() => {
+      void calculateTripRoute(false);
+    }, 1200);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planItems]);
+
+  useEffect(() => {
     const resizeTimeout = setTimeout(() => {
       window.dispatchEvent(new Event("resize"));
     }, 350);
 
     return () => clearTimeout(resizeTimeout);
   }, [isMapExpanded, selectedItem, openSection]);
-
-  useEffect(() => {
-    if (!selectedItem) return;
-
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setIsMapExpanded(true);
-    }
-  }, [selectedItem]);
 
   return (
     <main className="relative flex h-screen w-screen overflow-hidden bg-[#050505] font-sans text-white">
@@ -619,9 +731,7 @@ export default function TestMapPage() {
                           Point de départ actif
                         </p>
                         <p className="mt-1 text-sm font-bold text-white">
-                          {routeStartPoint
-                            ? `${routeStartPoint[0].toFixed(4)}, ${routeStartPoint[1].toFixed(4)}`
-                            : "Position réelle non disponible"}
+                          {`${routeStartPoint[0].toFixed(4)}, ${routeStartPoint[1].toFixed(4)}`}
                         </p>
                       </div>
 
@@ -825,6 +935,79 @@ export default function TestMapPage() {
             />
           </div>
 
+          {activePlan && (
+            <div className="pointer-events-auto absolute bottom-6 left-1/2 z-[400] w-[min(480px,90vw)] -translate-x-1/2">
+              <div className="rounded-2xl border border-[#FACC15]/25 bg-black/85 px-4 py-3 shadow-2xl shadow-black/60 backdrop-blur-xl">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">📍</span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#FACC15]">
+                      Programme GoMatch · {planItems.length} étapes
+                    </div>
+
+                    <div className="mt-0.5 truncate text-[11px] text-white/60">
+                      {activePlan.summary}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setActivePlan(null);
+                      setPlanItems([]);
+                      setTripStops([]);
+                      localStorage.removeItem(ACTIVE_PLAN_KEY);
+                    }}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/10 text-xs text-white/40 transition hover:bg-white/20 hover:text-white"
+                    title="Fermer le programme"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {activePlan.steps.filter((s) => s.latitude != null).length >
+                  0 && (
+                  <div
+                    className="mt-2 flex gap-1.5 overflow-x-auto"
+                    style={{ scrollbarWidth: "none" }}
+                  >
+                    {activePlan.steps
+                      .filter((s) => s.latitude != null)
+                      .map((step) => (
+                        <div
+                          key={step.order}
+                          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1"
+                        >
+                          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#FACC15] text-[8px] font-black text-black">
+                            {step.order}
+                          </span>
+
+                          <span className="whitespace-nowrap text-[10px] font-bold text-white/70">
+                            {step.title}
+                          </span>
+
+                          {step.startTime && (
+                            <span className="text-[9px] text-white/30">
+                              {step.startTime}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {routeDistanceLabel && (
+                  <div className="mt-2 flex items-center gap-3 text-[10px] text-white/40">
+                    <span className="font-black text-[#FACC15]">
+                      {routeDistanceLabel}
+                    </span>
+                    <span>{routeDurationLabel}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => setIsMapExpanded((prev) => !prev)}
             className="absolute left-4 top-4 z-[400] flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/80 text-white shadow-xl backdrop-blur-md transition-transform hover:scale-105"
@@ -865,5 +1048,13 @@ export default function TestMapPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function TestMapPage() {
+  return (
+    <Suspense fallback={null}>
+      <TestMapContent />
+    </Suspense>
   );
 }

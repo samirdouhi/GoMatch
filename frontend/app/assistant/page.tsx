@@ -1,851 +1,1065 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { PanelRight, ChevronRight, Map, Sparkles, Navigation, RotateCcw } from "lucide-react";
+
 import {
-  Sparkles,
-  Search,
-  Send,
-  Trash2,
-  Clock,
-  MapPin,
-  Star,
-  MessageSquare,
-  Plus,
-  Menu,
-  X,
-  Compass,
-} from "lucide-react";
-import {
-  sendConversationMessage,
+  sendChat,
+  requestBeforeMatch,
+  requestAfterMatch,
+  requestDayPlan,
+  getPrimaryItems,
+  getAlternativeItems,
   type ConversationMemory,
-  type ConversationResponse,
-  type RecommendationCard,
+  type RecommendationItemDto,
+  type PlanStep as ApiPlanStep,
+  type DayPlan as ApiDayPlan,
+  type ChatMessage as ApiChatMessage,
 } from "@/lib/recoApi";
 
-type Role = "user" | "assistant";
+import { AssistantInput }     from "@/app/components/assistant/AssistantInput";
+import { LoadingThinking }    from "@/app/components/assistant/LoadingThinking";
+import { WelcomeScreen }      from "@/app/components/assistant/WelcomeScreen";
+import { DetailDrawer }       from "@/app/components/assistant/DetailDrawer";
+import { RecommendationGrid } from "@/app/components/assistant/RecommendationGrid";
+import { DayPlanTimeline }    from "@/app/components/assistant/DayPlanTimeline";
+import type {
+  MatchContext,
+  UserContext,
+  ChatMessage,
+  RecommendationItem,
+  DayPlan,
+  PlanStep,
+  Mode,
+  Budget,
+  ConversationMemory as LocalMemory,
+} from "@/app/components/assistant/types";
 
-type ChatCard = RecommendationCard;
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-type ChatMessage = {
-  id: string;
-  role: Role;
-  content: string;
-  ts: number;
-  cards?: ChatCard[];
-  followups?: string[];
-  alternatives?: ChatCard[];
-  needsClarification?: boolean;
-};
+const PLAN_CONTEXT_KEY = "gomatch_plan_context";
+const ACTIVE_PLAN_KEY  = "gomatch_active_plan";
 
-type ChatContext = {
-  lastIntent?: string;
-  lastTopic?: string;
-};
-
-type ChatSession = {
-  id: string;
-  title: string;
-  createdAt: number;
-  messages: ChatMessage[];
-  context?: ChatContext;
-  memory?: ConversationMemory;
-  sessionRecommendedIds?: string[];
-};
-
-const quickPrompts = [
-  "Je veux une activité avant le match",
-  "Je veux un café calme proche de moi",
-  "Propose-moi une activité culturelle à Rabat",
-  "Trouve-moi un restaurant familial près de moi",
-];
+// ─── Normalizers ──────────────────────────────────────────────────────────────
 
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-function makeTitleFrom(text: string) {
-  const t = text.trim();
-  if (!t) return "Nouveau chat";
-  return t.length > 38 ? t.slice(0, 38) + "…" : t;
+/** Convert RecommendationItemDto (backend spec-v3) → local RecommendationItem */
+function normalizeItem(dto: RecommendationItemDto): RecommendationItem {
+  return {
+    id: dto.id,
+    source: dto.source as "business" | "discovery" | "event",
+    type: dto.type,
+    name: dto.name,
+    description: dto.description ?? undefined,
+    address: dto.address ?? undefined,
+    latitude: dto.latitude ?? undefined,
+    longitude: dto.longitude ?? undefined,
+    distanceKm: dto.distanceKm ?? undefined,
+    estimatedTravelMinutes: dto.estimatedTravelMinutes ?? undefined,
+    imageUrl: dto.imageUrl ?? undefined,
+    category: dto.category ?? undefined,
+    tags: dto.tags ?? [],
+    noteGlobale: dto.noteGlobale ?? undefined,
+    nombreAvis: dto.nombreAvis ?? undefined,
+    isOpen: dto.isOpen ?? undefined,
+    scoreTotal: dto.scoreTotal ?? 0,
+    scoreBreakdown: dto.scoreBreakdown,
+    reason: dto.reason ?? "",
+    callToAction: dto.callToAction,
+  };
 }
 
-function formatTime(ts: number) {
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+/** Convert backend ApiPlanStep → local PlanStep */
+function normalizeStep(s: ApiPlanStep): PlanStep {
+  return {
+    startTime: s.startTime ?? "00:00",
+    endTime: s.endTime ?? "00:00",
+    type: s.type ?? "default",
+    title: s.title ?? "",
+    description: s.description ?? undefined,
+    address: s.address ?? undefined,
+    latitude: s.latitude ?? undefined,
+    longitude: s.longitude ?? undefined,
+    durationMinutes: s.estimatedDurationMinutes ?? 30,
+    reason: s.reason ?? undefined,
+    imageUrl: s.photo_url ?? undefined,
+    source: s.source as PlanStep["source"],
+  };
 }
 
-function getStoredAccessToken(): string {
-  if (typeof window === "undefined") return "";
+/** Build a DayPlan from backend ApiDayPlan (first day) or plan steps array */
+function buildDayPlan(
+  days: ApiDayPlan[] | undefined,
+  steps: ApiPlanStep[] | undefined,
+  matchCtx: MatchContext | null,
+  mode: Mode,
+  safety?: { kickoff?: string | null; recommendedArrival?: string | null; latestDepartureToStadium?: string | null; warningMessage?: string | null } | null,
+): DayPlan | null {
+  let rawSteps: ApiPlanStep[] = [];
 
-  return (
-    localStorage.getItem("gomatch_access_token") ||
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("jwt") ||
-    localStorage.getItem("access_token") ||
-    ""
-  );
+  if (days && days.length > 0 && days[0].plan?.length > 0) {
+    rawSteps = days[0].plan;
+  } else if (steps && steps.length > 0) {
+    rawSteps = steps;
+  }
+
+  if (rawSteps.length === 0) return null;
+
+  const modeLabel =
+    mode === "before_match" ? "Avant match" :
+    mode === "after_match"  ? "Après match" :
+    mode === "day_plan"     ? "Journée complète" : "Programme";
+
+  const matchLabel = matchCtx
+    ? ` — ${matchCtx.homeTeam} vs ${matchCtx.awayTeam}`
+    : "";
+
+  return {
+    title: `${modeLabel}${matchLabel}`,
+    summary: matchCtx
+      ? `Programme avec arrivée au stade/fan zone avant ${matchCtx.kickoffTime}`
+      : "Programme personnalisé GoMatch",
+    mode,
+    matchId: matchCtx?.selectedMatchId,
+    steps: rawSteps.map(normalizeStep),
+    safety: safety
+      ? {
+          kickoff: safety.kickoff,
+          recommendedArrival: safety.recommendedArrival,
+          latestDepartureToStadium: safety.latestDepartureToStadium,
+          warningMessage: safety.warningMessage,
+        }
+      : undefined,
+  };
 }
 
-async function getCurrentPosition(): Promise<{ latitude: number; longitude: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("La géolocalisation n’est pas disponible sur cet appareil."));
-      return;
-    }
+/** Parse stored match context from localStorage */
+function loadMatchContext(): MatchContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PLAN_CONTEXT_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
 
+    // Support both old and new key formats
+    const matchId   = obj.selectedMatchId || obj.matchId || obj.id;
+    const homeTeam  = obj.homeTeam  || obj.equipe1 || "";
+    const awayTeam  = obj.awayTeam  || obj.equipe2 || "";
+    const stadium   = obj.stadium   || obj.stade   || "";
+    const city      = obj.city      || obj.ville   || "Rabat";
+    const kickoffT  = obj.kickoffTime || obj.kickoff || obj.heure || "18:00";
+    const kickoffD  = obj.kickoffDate || obj.date_iso || obj.date || "";
+    const kickoffISO= obj.kickoffISO  || obj.date    || "";
+
+    if (!matchId) return null;
+
+    return {
+      selectedMatchId: String(matchId),
+      homeTeam,
+      awayTeam,
+      stadium,
+      city,
+      kickoffTime:  kickoffT,
+      kickoffDate:  kickoffD,
+      kickoffISO:   kickoffISO,
+      hasTicket:    obj.hasTicket ?? true,
+      stadiumLat:   typeof obj.lat === "number" ? obj.lat : obj.stadiumLat,
+      stadiumLng:   typeof obj.lng === "number" ? obj.lng : obj.stadiumLng,
+      fanZones:     obj.fanZones ?? [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getPosition(): Promise<{ latitude: number; longitude: number }> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation)
+      return resolve({ latitude: 34.0209, longitude: -6.8416 });
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) {
-          reject(
-            new Error(
-              "Accès à la localisation refusé. Autorise la localisation pour localhost dans ton navigateur."
-            )
-          );
-          return;
-        }
-
-        if (error.code === error.POSITION_UNAVAILABLE) {
-          reject(
-            new Error(
-              "Position indisponible. Vérifie que la localisation est activée."
-            )
-          );
-          return;
-        }
-
-        if (error.code === error.TIMEOUT) {
-          reject(
-            new Error(
-              "La récupération de la position a expiré. Réessaie après avoir activé la localisation."
-            )
-          );
-          return;
-        }
-
-        reject(new Error("Impossible de récupérer ta position."));
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      }
+      (p) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude }),
+      () => resolve({ latitude: 34.0209, longitude: -6.8416 }),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
   });
 }
 
-const btnPrimary =
-  "inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FACC15] px-4 py-2 text-xs font-black text-black " +
-  "shadow-sm ring-1 ring-white/15 hover:bg-white hover:text-black transition-all duration-200";
-
-const btnPrimaryLg =
-  "inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FACC15] px-4 py-3 text-sm font-black text-black " +
-  "shadow-sm ring-1 ring-white/15 hover:bg-white hover:text-black transition-all duration-200 disabled:opacity-60";
-
-const btnSoft =
-  "inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-xs font-black text-white " +
-  "ring-1 ring-white/10 hover:bg-white hover:text-black transition-all duration-200";
-
-function AssistantSidebar(props: {
-  sessions: ChatSession[];
-  filteredSessions: ChatSession[];
-  activeId: string;
-  setActiveId: (id: string) => void;
-  setMobileOpen: (v: boolean) => void;
-  search: string;
-  setSearch: (v: string) => void;
-  createNewChat: () => void;
-  clearActiveChat: () => void;
-  deleteChat: (id: string) => void;
-  setInput: (v: string) => void;
-}) {
-  const {
-    filteredSessions,
-    activeId,
-    setActiveId,
-    setMobileOpen,
-    search,
-    setSearch,
-    createNewChat,
-    clearActiveChat,
-    deleteChat,
-    setInput,
-  } = props;
-
-  return (
-    <div className="flex h-full w-full flex-col">
-      <div className="p-4 border-b border-white/10">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
-              <MessageSquare className="h-5 w-5 text-white/80" />
-            </span>
-            <div>
-              <div className="text-sm font-black text-white uppercase tracking-tight">
-                Assistant GoMatch
-              </div>
-              <div className="text-xs text-white/60">Historique</div>
-            </div>
-          </div>
-
-          <button type="button" onClick={createNewChat} className={btnPrimary}>
-            <Plus className="h-4 w-4" />
-            New
-          </button>
-        </div>
-
-        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-          <Search className="h-4 w-4 text-white/55" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher…"
-            className="w-full bg-transparent text-sm font-semibold text-white placeholder:text-white/35 outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 pr-2">
-        {filteredSessions.map((s) => {
-          const active = s.id === activeId;
-          return (
-            <div
-              key={s.id}
-              onClick={() => {
-                setActiveId(s.id);
-                setMobileOpen(false);
-              }}
-              className={[
-                "group rounded-2xl border p-3 cursor-pointer transition mb-2",
-                active
-                  ? "border-[#FACC15]/40 bg-[#FACC15]/10"
-                  : "border-white/10 bg-white/5 hover:bg-white/10",
-              ].join(" ")}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div
-                    className={`text-sm font-black truncate ${
-                      active ? "text-[#FACC15]" : "text-white"
-                    }`}
-                  >
-                    {s.title}
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-white/60">
-                    <Clock className="h-3.5 w-3.5" />
-                    {new Date(s.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteChat(s.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition"
-                  aria-label="Delete chat"
-                >
-                  <Trash2 className="h-4 w-4 text-white/70" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs font-black uppercase text-white/70 tracking-widest">
-            Inspirations
-          </div>
-          <div className="mt-2 grid gap-2">
-            {quickPrompts.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setInput(p)}
-                className="text-left rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-bold text-white/80 hover:border-[#FACC15]/30 hover:bg-white/10 transition"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-3 border-t border-white/10">
-        <button type="button" onClick={clearActiveChat} className={"w-full " + btnSoft}>
-          <Trash2 className="h-4 w-4" />
-          Effacer le chat
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function RecommendationCardView({ card }: { card: ChatCard }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm font-black text-white">{card.title}</div>
-          <div className="mt-1 text-xs text-[#FACC15] font-bold uppercase tracking-wider">
-            {card.subtitle || card.type}
-          </div>
-        </div>
-
-        {card.distance_text ? (
-          <div className="shrink-0 rounded-xl bg-white/5 px-2 py-1 text-[10px] font-black text-white/70 uppercase">
-            {card.distance_text}
-          </div>
-        ) : null}
-      </div>
-
-      {card.description ? (
-        <p className="mt-3 text-sm text-white/75 leading-relaxed">{card.description}</p>
-      ) : null}
-
-      {card.reason ? (
-        <div className="mt-3 text-xs text-white/60">
-          <span className="font-black text-white/85">Pourquoi :</span> {card.reason}
-        </div>
-      ) : null}
-
-      {(card.tags?.length ?? 0) > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {card.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white/65"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {card.actions?.includes("view_on_map") && card.latitude && card.longitude ? (
-          <Link
-            href={`/test-map?lat=${card.latitude}&lng=${card.longitude}`}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
-          >
-            Voir sur la carte
-          </Link>
-        ) : null}
-
-        {card.actions?.includes("view_detail") ? (
-          <button
-            type="button"
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
-          >
-            Voir détail
-          </button>
-        ) : null}
-
-        {card.actions?.includes("favorite") ? (
-          <button
-            type="button"
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
-          >
-            Favori
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AssistantPage() {
-  const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    const first: ChatSession = {
-      id: uid(),
-      title: "Nouveau chat",
-      createdAt: Date.now(),
-      memory: {},
-      sessionRecommendedIds: [],
-      messages: [
-        {
-          id: uid(),
-          role: "assistant",
-          content:
-            "Salut 👋 Dis-moi ce que tu veux faire à Rabat, autour d’un match ou pas, et je vais te guider intelligemment.",
-          ts: Date.now(),
-          followups: [
-            "Je veux une activité",
-            "Je cherche un café calme",
-            "Que faire avant le match ?",
-          ],
-        },
-      ],
-    };
-    return [first];
+  const router = useRouter();
+
+  // ── Core state
+  const [messages, setMessages]           = useState<ChatMessage[]>([]);
+  const [matchContext, setMatchContext]   = useState<MatchContext | null>(null);
+  const [userContext, setUserContext]     = useState<UserContext>({
+    budget: "medium", mode: "general", preferences: [], hasTicket: true,
   });
+  const [isLoading, setIsLoading]         = useState(false);
+  const [quickReplies, setQuickReplies]   = useState<string[]>([]);
 
-  const [activeId, setActiveId] = useState<string>(() => sessions[0]?.id ?? "");
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [search, setSearch] = useState("");
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // ── Results panel state
+  const [primaryItems, setPrimaryItems]   = useState<RecommendationItem[]>([]);
+  const [altItems, setAltItems]           = useState<RecommendationItem[]>([]);
+  const [activePlan, setActivePlan]       = useState<DayPlan | null>(null);
+  const [showPlan, setShowPlan]           = useState(false);
+  const [activeFilter, setActiveFilter]   = useState<string | null>(null);
+  const [activeIntent, setActiveIntent]   = useState<string | null>(null);
 
-  const activeSession = useMemo(() => {
-    const found = sessions.find((s) => s.id === activeId);
-    return found ?? sessions[0];
-  }, [sessions, activeId]);
+  // ── Conversation memory
+  const [memory, setMemory]               = useState<LocalMemory>({});
+  const [sessionIds, setSessionIds]       = useState<string[]>([]);
+  const [history, setHistory]             = useState<ApiChatMessage[]>([]);
 
-  const filteredSessions = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return sessions;
-    return sessions.filter((s) => s.title.toLowerCase().includes(q));
-  }, [sessions, search]);
+  // ── Phase state machine
+  const [phase, setPhase]                 = useState<'welcome' | 'results'>('welcome');
 
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  // ── Detail drawer
+  const [detailItem, setDetailItem]       = useState<RecommendationItem | null>(null);
 
+  // ── Layout state
+  const [rightOpen, setRightOpen]         = useState(true);
+
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  // ── Init
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeSession?.messages?.length, isTyping]);
+    const ctx = loadMatchContext();
+    if (ctx) {
+      setMatchContext(ctx);
+      setUserContext((prev) => ({ ...prev, hasTicket: ctx.hasTicket }));
+    }
+    getPosition().then((pos) => {
+      setUserContext((prev) => ({ ...prev, latitude: pos.latitude, longitude: pos.longitude }));
+    });
+  }, []);
 
-  function updateActiveSession(updater: (session: ChatSession) => ChatSession) {
-    setSessions((prev) =>
-      prev.map((s) => (s.id === activeSession?.id ? updater(s) : s))
-    );
-  }
+  // ── Scroll to bottom
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [messages, isLoading]);
 
-  function createNewChat() {
-    const s: ChatSession = {
-      id: uid(),
-      title: "Nouveau chat",
-      createdAt: Date.now(),
-      memory: {},
-      sessionRecommendedIds: [],
-      messages: [
-        {
-          id: uid(),
-          role: "assistant",
-          content:
-            "Nouveau chat ✅ Dis-moi ce que tu veux faire et je te guiderai selon ton contexte.",
-          ts: Date.now(),
-          followups: [
-            "Je veux une activité culturelle",
-            "Je veux un café calme",
-            "Que faire ce soir ?",
-          ],
-        },
-      ],
-    };
+  // ── Add message
+  const addMessage = useCallback((msg: Omit<ChatMessage, "id" | "timestamp">) => {
+    setMessages((prev) => [...prev, { ...msg, id: uid(), timestamp: Date.now() }]);
+  }, []);
 
-    setSessions((prev) => [s, ...prev]);
-    setActiveId(s.id);
-    setInput("");
-    setMobileOpen(false);
-  }
-
-  function clearActiveChat() {
-    if (!activeId) return;
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeId
+  // ── Save plan to localStorage
+  const savePlanToStorage = useCallback(
+    (plan: DayPlan) => {
+      if (typeof window === "undefined") return;
+      const payload = {
+        source: "assistant",
+        mode: plan.mode,
+        summary: plan.summary,
+        match: matchContext
           ? {
-              ...s,
-              title: "Nouveau chat",
-              memory: {},
-              sessionRecommendedIds: [],
-              messages: [],
+              id: matchContext.selectedMatchId,
+              homeTeam: matchContext.homeTeam,
+              awayTeam: matchContext.awayTeam,
+              stadium: matchContext.stadium,
+              kickoff: `${matchContext.kickoffDate}T${matchContext.kickoffTime}`,
             }
-          : s
-      )
-    );
-  }
+          : null,
+        steps: plan.steps.map((s, i) => ({
+          order: i + 1,
+          title: s.title,
+          type: s.type,
+          source: s.source ?? "discovery",
+          description: s.description ?? "",
+          startTime: s.startTime,
+          endTime: s.endTime,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          address: s.address ?? "",
+          durationMinutes: s.durationMinutes,
+          reason: s.reason ?? "",
+        })),
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(ACTIVE_PLAN_KEY, JSON.stringify(payload));
+    },
+    [matchContext]
+  );
 
-  function deleteChat(id: string) {
-    setSessions((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      if (id === activeId) setActiveId(next[0]?.id ?? "");
-      if (next.length === 0) {
-        const fresh: ChatSession = {
-          id: uid(),
-          title: "Nouveau chat",
-          createdAt: Date.now(),
-          memory: {},
-          sessionRecommendedIds: [],
-          messages: [
-            {
-              id: uid(),
-              role: "assistant",
-              content:
-                "Salut 👋 Dis-moi ce que tu veux faire et je vais te proposer des recommandations intelligentes.",
-              ts: Date.now(),
-            },
-          ],
+  // ── Main send function
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim() || isLoading) return;
+      setPhase('results');
+      setIsLoading(true);
+
+      addMessage({ role: "user", content: text });
+
+      const newHistory: ApiChatMessage[] = [
+        ...history.slice(-10),
+        { role: "user", content: text },
+      ];
+
+      const hasTicket = matchContext ? userContext.hasTicket : undefined;
+
+      try {
+        let response;
+
+        const matchPayload = {
+          userLatitude:     userContext.latitude,
+          userLongitude:    userContext.longitude,
+          matchId:          matchContext?.selectedMatchId,
+          hasTicket,
+          availableMinutes: userContext.availableMinutes,
+          budget:           userContext.budget,
+          preferences:      userContext.preferences,
+          excludedIds:      sessionIds,
         };
-        setActiveId(fresh.id);
-        return [fresh];
+
+        const chatPayload = {
+          message:             text,
+          userLatitude:        userContext.latitude,
+          userLongitude:       userContext.longitude,
+          selectedMatchId:     matchContext?.selectedMatchId,
+          hasTicket,
+          availableMinutes:    userContext.availableMinutes,
+          budget:              userContext.budget,
+          preferences:         userContext.preferences,
+          excludedIds:         sessionIds,
+          conversationHistory: newHistory,
+          conversationMemory:  memory as ConversationMemory,
+        };
+
+        if (userContext.mode === "before_match" && matchContext) {
+          response = await requestBeforeMatch(matchPayload);
+        } else if (userContext.mode === "after_match" && matchContext) {
+          response = await requestAfterMatch(matchPayload);
+        } else if (userContext.mode === "day_plan") {
+          response = await requestDayPlan({
+            userLatitude:  userContext.latitude,
+            userLongitude: userContext.longitude,
+            matchId:       matchContext?.selectedMatchId,
+            hasTicket,
+            budget:        userContext.budget,
+            preferences:   userContext.preferences,
+            excludedIds:   sessionIds,
+            city:          matchContext?.city,
+          });
+        } else {
+          response = await sendChat(chatPayload);
+        }
+
+        const primary = getPrimaryItems(response).map(normalizeItem);
+        const alts    = getAlternativeItems(response).map(normalizeItem);
+
+        setPrimaryItems(primary);
+        setAltItems(alts);
+
+        const determinedMode: Mode =
+          userContext.mode !== "general"
+            ? userContext.mode
+            : response.mode === "match_day" || response.mode === "specific" && (response.plan?.length ?? 0) > 0
+            ? "before_match"
+            : "general";
+
+        const plan = buildDayPlan(
+          response.days,
+          response.plan,
+          matchContext,
+          determinedMode,
+          response.safety ?? undefined,
+        );
+
+        if (plan) {
+          setActivePlan(plan);
+          setShowPlan(true);
+          savePlanToStorage(plan);
+        } else {
+          setShowPlan(false);
+        }
+
+        const replies =
+          response.followUpQuestions?.length
+            ? response.followUpQuestions
+            : response.followups?.length
+            ? response.followups
+            : [];
+        setQuickReplies(replies.slice(0, 5));
+
+        if (response.memory_updates) {
+          const updates = response.memory_updates as LocalMemory & { resolved_type?: string };
+          setMemory((prev) => ({ ...prev, ...updates }));
+          if (updates.resolved_type) setActiveFilter(updates.resolved_type);
+          else if (!primary.length && !alts.length) setActiveFilter(null);
+        }
+        if (response.intent) setActiveIntent(response.intent);
+
+        const newIds = [...primary.map((i) => i.id), ...alts.map((i) => i.id)];
+        setSessionIds((prev) => {
+          const combined = [...new Set([...prev, ...newIds])];
+          return combined.slice(-80);
+        });
+
+        setHistory([...newHistory, { role: "assistant", content: response.summary || response.message || "" }]);
+
+        const assistantText =
+          (response.needs_clarification && response.clarification_question)
+            ? response.clarification_question
+            : response.summary || response.message || "Voilà mes recommandations !";
+
+        addMessage({
+          role: "assistant",
+          content: assistantText,
+          needsClarification: response.needs_clarification,
+          clarificationQuestion: response.clarification_question ?? undefined,
+          quickReplies: replies.slice(0, 5),
+          hasResults: primary.length > 0 || alts.length > 0 || !!plan,
+        });
+      } catch (err) {
+        addMessage({
+          role: "assistant",
+          content: "Désolé, une erreur est survenue. Veuillez réessayer.",
+        });
+      } finally {
+        setIsLoading(false);
       }
-      return next;
-    });
-  }
+    },
+    [isLoading, matchContext, userContext, memory, sessionIds, history, addMessage, savePlanToStorage]
+  );
 
-  async function fetchConversation(prompt: string): Promise<ConversationResponse> {
-    let position;
-
-    try {
-      position = await getCurrentPosition();
-    } catch {
-      position = {
-        latitude: 34.0209,
-        longitude: -6.8416,
-      };
-    }
-
-    const accessToken = getStoredAccessToken();
-
-    return sendConversationMessage({
-      message: prompt,
-      access_token: accessToken,
-      user_id: "test-user",
-      latitude: position.latitude,
-      longitude: position.longitude,
-      language: "fr",
-      current_match_id: null,
-      excluded_ids: [],
-      session_recommended_ids: activeSession?.sessionRecommendedIds ?? [],
-      conversation_memory: activeSession?.memory ?? {},
-    });
-  }
-
-  async function send(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || !activeSession || isTyping) return;
-
-    const userMsg: ChatMessage = {
-      id: uid(),
-      role: "user",
-      content: trimmed,
-      ts: Date.now(),
+  // ── View on map (single item)
+  const viewOnMap = useCallback((item: RecommendationItem) => {
+    if (typeof window === "undefined") return;
+    const plan: DayPlan = {
+      title: item.name,
+      summary: item.reason || "",
+      mode: "general",
+      steps: [{
+        startTime: "now", endTime: "now", type: item.type, title: item.name,
+        latitude: item.latitude, longitude: item.longitude,
+        address: item.address, durationMinutes: 60, source: item.source,
+      }],
     };
+    savePlanToStorage(plan);
+    router.push("/test-map");
+  }, [router, savePlanToStorage]);
 
-    updateActiveSession((s) => {
-      const nextTitle = s.title === "Nouveau chat" ? makeTitleFrom(trimmed) : s.title;
-
-      return {
-        ...s,
-        title: nextTitle,
-        context: {
-          lastTopic: trimmed,
-        },
-        messages: [...s.messages, userMsg],
-      };
-    });
-
-    setInput("");
-    setIsTyping(true);
-
-    try {
-      const data = await fetchConversation(trimmed);
-
-      const aiMsg: ChatMessage = {
-        id: uid(),
-        role: "assistant",
-        ts: Date.now(),
-        content: data.clarification_question || data.message,
-        cards: data.cards ?? [],
-        followups: data.followups ?? [],
-        alternatives: data.alternatives ?? [],
-        needsClarification: data.needs_clarification ?? false,
-      };
-
-      updateActiveSession((s) => ({
-        ...s,
-        memory: {
-          ...(s.memory ?? {}),
-          ...(data.memory_updates ?? {}),
-        },
-        sessionRecommendedIds: [
-          ...(s.sessionRecommendedIds ?? []),
-          ...(data.cards ?? []).map((c) => c.id),
-          ...(data.alternatives ?? []).map((c) => c.id),
-        ],
-        messages: [...s.messages, aiMsg],
-      }));
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-
-      const aiMsg: ChatMessage = {
-        id: uid(),
-        role: "assistant",
-        ts: Date.now(),
-        content:
-          "Je n’ai pas pu récupérer les recommandations réelles.\n\n" +
-          `Détail : ${message}`,
-      };
-
-      updateActiveSession((s) => ({
-        ...s,
-        messages: [...s.messages, aiMsg],
-      }));
-    } finally {
-      setIsTyping(false);
+  // ── View full plan on map
+  const viewFullMap = useCallback(() => {
+    if (activePlan) {
+      savePlanToStorage(activePlan);
+      router.push("/test-map");
     }
-  }
+  }, [activePlan, router, savePlanToStorage]);
+
+  // ── Reset conversation
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setPhase('welcome');
+    setPrimaryItems([]);
+    setAltItems([]);
+    setActivePlan(null);
+    setShowPlan(false);
+    setActiveFilter(null);
+    setActiveIntent(null);
+    setQuickReplies([]);
+    setMemory({});
+    setSessionIds([]);
+    setHistory([]);
+  }, []);
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  const hasResults = primaryItems.length > 0 || altItems.length > 0 || !!activePlan;
 
   return (
-    <main className="relative h-full min-h-0 overflow-hidden">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-[#0e0e10]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(250,204,21,0.12),rgba(0,0,0,0)_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.06),rgba(0,0,0,0)_60%)]" />
-        <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:56px_56px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/60" />
-      </div>
+    // h-full works because ClientShell gives main flex-1 min-h-0 overflow-hidden
+    <div className="flex flex-col h-full font-sans" style={{ background: '#06060a' }}>
 
-      <div className="h-full w-full flex">
-        <aside className="hidden lg:flex w-[320px] border-r border-white/10 bg-white/[0.02] backdrop-blur-2xl">
-          <AssistantSidebar
-            sessions={sessions}
-            filteredSessions={filteredSessions}
-            activeId={activeId}
-            setActiveId={setActiveId}
-            setMobileOpen={setMobileOpen}
-            search={search}
-            setSearch={setSearch}
-            createNewChat={createNewChat}
-            clearActiveChat={clearActiveChat}
-            deleteChat={deleteChat}
-            setInput={setInput}
-          />
-        </aside>
+      {/* ── MAIN ROW: chat + desktop panel ─────────────────────────────── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {mobileOpen && (
-          <div className="lg:hidden fixed inset-0 z-50">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/80"
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close overlay"
+      {/* ── CHAT COLUMN ─────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+
+        {/* Header */}
+        <header
+          className="flex items-center gap-3 px-5 py-3 flex-shrink-0 relative z-20"
+          style={{
+            background: 'rgba(6,6,10,0.92)',
+            backdropFilter: 'blur(24px)',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+          }}
+        >
+          {/* Logo */}
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(251,146,60,0.08))',
+              border: '1px solid rgba(250,204,21,0.22)',
+              boxShadow: '0 0 16px rgba(250,204,21,0.12)',
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+          </div>
+
+          {/* Title */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[14px] font-black text-white tracking-tight">GoMatch</span>
+              <span
+                className="text-[14px] font-black tracking-tight"
+                style={{ background: 'linear-gradient(90deg, #facc15, #fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+              >
+                Assistant
+              </span>
+              <span
+                className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(250,204,21,0.1)', color: '#facc15', border: '1px solid rgba(250,204,21,0.18)' }}
+              >
+                IA
+              </span>
+            </div>
+            {matchContext && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+                <p className="text-[10px] text-zinc-600 truncate">
+                  {matchContext.homeTeam} vs {matchContext.awayTeam}
+                  {matchContext.kickoffTime ? ` · ${matchContext.kickoffTime}` : ""}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* New chat */}
+            <motion.button
+              onClick={resetChat}
+              whileTap={{ scale: 0.9 }}
+              title="Nouveau chat"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#71717a' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#71717a'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span className="hidden sm:inline">Nouveau</span>
+            </motion.button>
+
+            {/* Results toggle */}
+            {!rightOpen && hasResults && (
+              <button
+                onClick={() => setRightOpen(true)}
+                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all"
+                style={{ background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.2)', color: '#facc15' }}
+              >
+                <PanelRight className="w-3 h-3" />
+                <span>Résultats</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Messages — scrollable, centered content */}
+        <div
+          ref={chatRef}
+          className="flex-1 overflow-y-auto"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: '#1c1c20 transparent' }}
+        >
+          {/* Subtle radial glow top */}
+          <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 opacity-20 blur-3xl rounded-full"
+            style={{ background: 'radial-gradient(ellipse, rgba(250,204,21,0.3), transparent 70%)' }} />
+
+          {phase === 'welcome' ? (
+            <WelcomeScreen matchContext={matchContext} onSelect={sendMessage} />
+          ) : (
+            <div className="px-4 sm:px-6 py-6 space-y-5 max-w-2xl mx-auto w-full">
+              <AnimatePresence initial={false}>
+                {messages.map((msg) => (
+                  <ChatBubble key={msg.id} message={msg} onQuickReply={sendMessage} />
+                ))}
+              </AnimatePresence>
+              {isLoading && <LoadingThinking />}
+              {/* Bottom padding so last message isn't hidden behind input */}
+              <div className="h-2" />
+            </div>
+          )}
+        </div>
+
+        {/* Bottom bar — filter chips + input, both centered at max-w-2xl */}
+        <div
+          className="flex-shrink-0 relative z-20"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(6,6,10,0.97)', backdropFilter: 'blur(24px)' }}
+        >
+          {/* Top glow line */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px"
+            style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.3), transparent)' }} />
+
+          <div className="max-w-2xl mx-auto w-full">
+            <FilterBar
+              activeMode={userContext.mode}
+              matchContext={matchContext}
+              isLoading={isLoading}
+              onSelect={(mode, prompt) => {
+                setUserContext((prev) => ({ ...prev, mode }));
+                sendMessage(prompt);
+              }}
             />
-            <div className="absolute left-0 top-0 h-full w-[86%] max-w-[360px] border-r border-white/10 bg-black/90 backdrop-blur-xl">
-              <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                <div className="text-sm font-black text-white uppercase tracking-tight">
-                  Historique
+            <AssistantInput
+              onSend={sendMessage}
+              isLoading={isLoading}
+              quickReplies={quickReplies}
+              placeholder={
+                userContext.mode === 'before_match' ? 'Demande avant le match…' :
+                userContext.mode === 'after_match'  ? 'Que faire après le match ?' :
+                userContext.mode === 'day_plan'     ? 'Planifiez votre journée…' :
+                'Café, restaurant, fan zone, programme…'
+              }
+            />
+          </div>
+        </div>
+      </div>{/* end chat column */}
+
+
+      {/* ── DESKTOP Results Panel (inside main row) ─────────────────────── */}
+      <AnimatePresence>
+        {rightOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 400, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+            className="hidden lg:flex flex-col overflow-hidden flex-shrink-0"
+            style={{ background: 'rgba(9,9,13,0.98)', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
+          >
+            {/* Panel header */}
+            <div
+              className="flex-shrink-0 px-5 py-4"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">
+                    {showPlan && activePlan ? "Itinéraire" : "Résultats"}
+                  </span>
+                  {hasResults && (
+                    <span
+                      className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(250,204,21,0.1)', color: '#facc15' }}
+                    >
+                      {primaryItems.length + altItems.length}
+                    </span>
+                  )}
                 </div>
                 <button
-                  type="button"
-                  className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 flex items-center justify-center text-white/80 hover:bg-white/10"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
+                  onClick={() => setRightOpen(false)}
+                  className="w-7 h-7 rounded-xl flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition-all"
                 >
-                  <X className="h-5 w-5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
-              <AssistantSidebar
-                sessions={sessions}
-                filteredSessions={filteredSessions}
-                activeId={activeId}
-                setActiveId={setActiveId}
-                setMobileOpen={setMobileOpen}
-                search={search}
-                setSearch={setSearch}
-                createNewChat={createNewChat}
-                clearActiveChat={clearActiveChat}
-                deleteChat={deleteChat}
-                setInput={setInput}
-              />
-            </div>
-          </div>
-        )}
-
-        <section className="flex-1 h-full min-h-0 flex flex-col">
-          <div className="px-4 sm:px-6 py-3 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                type="button"
-                onClick={() => setMobileOpen(true)}
-                className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FACC15] text-black shadow ring-1 ring-white/15">
-                <Sparkles className="h-5 w-5 fill-current" />
-              </span>
-
-              <div className="min-w-0">
-                <div className="text-sm font-black text-white truncate uppercase tracking-tight">
-                  {activeSession?.title ?? "Assistant GoMatch"}
-                </div>
-                <div className="text-xs text-white/50 font-bold uppercase tracking-tighter">
-                  Assistant conversationnel intelligent
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={createNewChat} className={"hidden sm:inline-flex " + btnSoft}>
-                <Plus className="h-4 w-4" />
-                Nouveau
-              </button>
-
-              <Link href="/map" className={btnPrimary}>
-                <MapPin className="h-4 w-4" />
-                Carte
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6">
-            <div className="mx-auto w-full max-w-3xl space-y-4">
-              {activeSession?.messages?.length ? (
-                <>
-                  {activeSession.messages.map((m) => {
-                    const isUser = m.role === "user";
-
-                    return (
-                      <div key={m.id} className={["flex", isUser ? "justify-end" : "justify-start"].join(" ")}>
-                        <div className="w-full max-w-[92%]">
-                          <div
-                            className={[
-                              "rounded-3xl px-5 py-3 text-sm leading-relaxed",
-                              isUser
-                                ? "bg-[#F43F5E] text-white shadow-sm font-semibold"
-                                : "bg-white/[0.05] border border-white/10 text-white/90 backdrop-blur-md",
-                            ].join(" ")}
-                          >
-                            <div className="whitespace-pre-line">{m.content}</div>
-
-                            <div
-                              className={[
-                                "mt-2 text-[11px] font-bold uppercase opacity-50",
-                                isUser ? "text-white" : "text-white/70",
-                              ].join(" ")}
-                            >
-                              {formatTime(m.ts)}
-                            </div>
-                          </div>
-
-                          {!isUser && m.cards && m.cards.length > 0 ? (
-                            <div className="mt-3 grid gap-3">
-                              {m.cards.map((card) => (
-                                <RecommendationCardView key={card.id} card={card} />
-                              ))}
-                            </div>
-                          ) : null}
-
-                          {!isUser && m.alternatives && m.alternatives.length > 0 ? (
-                            <div className="mt-3">
-                              <div className="mb-2 text-xs font-black uppercase tracking-widest text-white/45">
-                                Alternatives
-                              </div>
-                              <div className="grid gap-3">
-                                {m.alternatives.map((card) => (
-                                  <RecommendationCardView key={card.id} card={card} />
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          {!isUser && m.followups && m.followups.length > 0 ? (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {m.followups.map((f) => (
-                                <button
-                                  key={f}
-                                  type="button"
-                                  onClick={() => void send(f)}
-                                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-white hover:bg-white hover:text-black transition"
-                                >
-                                  {f}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="rounded-3xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white/80 backdrop-blur-md">
-                        <span className="inline-flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-white/70 animate-bounce" />
-                          <span className="h-2 w-2 rounded-full bg-[#FACC15] animate-bounce [animation-delay:120ms]" />
-                          <span className="h-2 w-2 rounded-full bg-white/70 animate-bounce [animation-delay:240ms]" />
-                          <span className="ml-2 text-xs font-black uppercase tracking-widest text-white/40">
-                            Réflexion...
-                          </span>
-                        </span>
-                      </div>
-                    </div>
+              {/* Tabs */}
+              {hasResults && (
+                <div
+                  className="flex gap-1 p-1 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  <button
+                    onClick={() => setShowPlan(false)}
+                    className="flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all"
+                    style={!showPlan ? {
+                      background: '#facc15',
+                      color: '#000',
+                      boxShadow: '0 2px 8px rgba(250,204,21,0.25)',
+                    } : { color: '#52525b' }}
+                  >
+                    Lieux
+                  </button>
+                  {activePlan && (
+                    <button
+                      onClick={() => setShowPlan(true)}
+                      className="flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all"
+                      style={showPlan ? {
+                        background: '#facc15',
+                        color: '#000',
+                        boxShadow: '0 2px 8px rgba(250,204,21,0.25)',
+                      } : { color: '#52525b' }}
+                    >
+                      Plan
+                    </button>
                   )}
+                </div>
+              )}
 
-                  <div ref={messagesEndRef} />
-                </>
+              {/* Active filter badge */}
+              {activeFilter && !showPlan && (() => {
+                const FILTER_META: Record<string, { icon: string; label: string }> = {
+                  cafe: { icon: '☕', label: 'Cafés' }, restaurant: { icon: '🍽️', label: 'Restaurants' },
+                  hotel: { icon: '🏨', label: 'Hôtels' }, activity: { icon: '🎭', label: 'Activités' },
+                  cultural: { icon: '🏛️', label: 'Culture' }, fanzone: { icon: '⚽', label: 'Fan zones' },
+                  nightlife: { icon: '🍸', label: 'Soirée' }, souk: { icon: '🛍️', label: 'Souks' },
+                }
+                const meta = FILTER_META[activeFilter]
+                if (!meta) return null
+                const total = primaryItems.length + altItems.length
+                return (
+                  <div
+                    className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold w-fit"
+                    style={{ background: 'rgba(250,204,21,0.06)', border: '1px solid rgba(250,204,21,0.2)', color: '#facc15' }}
+                  >
+                    <span>{meta.icon}</span><span>{meta.label}</span>
+                    <span className="opacity-40">·</span>
+                    <span>{total} résultat{total > 1 ? 's' : ''}</span>
+                    <button onClick={() => setActiveFilter(null)} className="ml-1 opacity-60 hover:opacity-100 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px]">✕</button>
+                  </div>
+                )
+              })()}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5" style={{ scrollbarWidth: 'thin', scrollbarColor: '#27272a transparent' }}>
+              {!hasResults ? (
+                <ResultsEmptyHint />
+              ) : showPlan && activePlan ? (
+                <DayPlanTimeline
+                  plan={activePlan}
+                  matchContext={matchContext}
+                  onViewOnMap={(step) => {
+                    if (step.latitude && step.longitude) {
+                      const fakeItem: RecommendationItem = {
+                        id: uid(), source: (step.source as "business" | "discovery" | "event") ?? "discovery",
+                        type: step.type, name: step.title, latitude: step.latitude,
+                        longitude: step.longitude, address: step.address, tags: [], scoreTotal: 0, reason: step.reason ?? "",
+                      };
+                      viewOnMap(fakeItem);
+                    }
+                  }}
+                  onReplace={(step) => sendMessage(`Remplace l'étape "${step.title}" dans mon programme`)}
+                  onViewFullMap={viewFullMap}
+                />
               ) : (
-                <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-white/80 backdrop-blur-md text-center">
-                  <div className="text-sm font-black uppercase tracking-widest">Aucun message</div>
-                  <div className="mt-2 text-sm text-white/40">Commencez une exploration locale.</div>
+                <RecommendationGrid
+                  primary={primaryItems}
+                  alternatives={altItems}
+                  activeFilter={activeFilter}
+                  activeIntent={activeIntent}
+                  onAddToPlan={(item) => sendMessage(`Ajoute "${item.name}" à mon programme`)}
+                  onViewOnMap={viewOnMap}
+                  onViewDetails={(item) => setDetailItem(item)}
+                  onQuickFilter={(filter) => sendMessage(filter)}
+                />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      </div>{/* end main row */}
+
+      {/* ── MOBILE: Results — below the main row ─────────────────────────── */}
+      <AnimatePresence>
+        {hasResults && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="lg:hidden flex-shrink-0 overflow-hidden"
+            style={{ background: 'rgba(9,9,13,0.98)', borderTop: '1px solid rgba(255,255,255,0.06)', maxHeight: '280px' }}
+          >
+            <div
+              className="flex items-center justify-between px-5 py-2.5"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                {showPlan && activePlan ? "Programme" : "Points d'intérêt"}
+              </span>
+              {activePlan && (
+                <button
+                  onClick={() => setShowPlan((v) => !v)}
+                  className="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all"
+                  style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.18)' }}
+                >
+                  {showPlan ? "Lieux" : "Itinéraire"}
+                </button>
+              )}
+            </div>
+            <div className="p-3 overflow-y-auto" style={{ maxHeight: '220px', scrollbarWidth: 'none' }}>
+              {showPlan && activePlan ? (
+                <DayPlanTimeline plan={activePlan} matchContext={matchContext} onViewFullMap={viewFullMap} />
+              ) : (
+                <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: 'none' }}>
+                  {primaryItems.map((item) => (
+                    <div key={item.id} className="flex-shrink-0 w-56 snap-start">
+                      <MobileCard item={item} onViewOnMap={viewOnMap} />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <div className="shrink-0 border-t border-white/10 bg-white/[0.02] backdrop-blur-xl">
-            <div className="px-4 sm:px-6 py-4">
-              <div className="mx-auto w-full max-w-3xl">
-                <div className="mb-2 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[10px] font-black text-white/50 uppercase tracking-widest">
-                    <Star className="h-3 w-3 text-[#FACC15] fill-current" />
-                    Intelligent
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[10px] font-black text-white/50 uppercase tracking-widest">
-                    <Compass className="h-3 w-3 text-[#FACC15]" />
-                    Contextuel
-                  </span>
-                </div>
+      {/* ── Detail Drawer ──────────────────────────────────────────────── */}
+      {detailItem && (
+        <DetailDrawer
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+          onAddToPlan={(item) => { setDetailItem(null); sendMessage(`Ajoute "${item.name}" à mon programme`); }}
+          onViewOnMap={(item) => { setDetailItem(null); viewOnMap(item); }}
+        />
+      )}
+    </div>
+  );
+}
 
-                <div className="flex items-end gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-md focus-within:border-[#FACC15]/30 transition-all">
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ex : Je veux une activité calme avant le match..."
-                    className="w-full resize-none bg-transparent text-sm font-semibold text-white placeholder:text-white/20 outline-none"
-                    rows={2}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void send(input);
-                      }
-                    }}
-                  />
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-                  <button
-                    type="button"
-                    onClick={() => void send(input)}
-                    className={btnPrimaryLg}
-                    disabled={isTyping}
-                  >
-                    <Send className="h-4 w-4" />
-                    Envoyer
-                  </button>
-                </div>
+const FILTER_ITEMS: {
+  value: Mode;
+  label: string;
+  icon: string;
+  color: string;
+  prompt: (mc: { homeTeam: string; awayTeam: string } | null) => string;
+}[] = [
+  { value: 'before_match', label: 'Avant match', icon: '⚽', color: '#22c55e', prompt: (mc) => mc ? `Programme avant ${mc.homeTeam} vs ${mc.awayTeam}` : 'Programme avant le match' },
+  { value: 'after_match',  label: 'Après match', icon: '🎉', color: '#a855f7', prompt: () => 'Que faire après le match ?' },
+  { value: 'day_plan',     label: 'Journée',     icon: '☀️', color: '#3b82f6', prompt: () => 'Programme pour toute la journée' },
+  { value: 'general',      label: 'Sans ticket', icon: '🎟️', color: '#f97316', prompt: () => "Je n'ai pas de ticket, que faire ?" },
+];
 
-                <div className="mt-2 text-[10px] text-white/30 text-center font-bold uppercase tracking-widest">
-                  GOMATCH AI peut générer des erreurs.
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+function FilterBar({ activeMode, matchContext, isLoading, onSelect }: {
+  activeMode: Mode;
+  matchContext: { homeTeam: string; awayTeam: string } | null;
+  isLoading: boolean;
+  onSelect: (mode: Mode, prompt: string) => void;
+}) {
+  return (
+    <div className="px-4 pt-3 pb-1 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+      {FILTER_ITEMS.map((f) => {
+        const isActive = activeMode === f.value;
+        return (
+          <motion.button
+            key={f.value}
+            whileTap={{ scale: 0.93 }}
+            onClick={() => onSelect(f.value, f.prompt(matchContext))}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl flex-shrink-0 text-[11px] font-bold transition-all duration-200 disabled:opacity-40"
+            style={
+              isActive
+                ? { background: `${f.color}18`, border: `1px solid ${f.color}40`, color: f.color, boxShadow: `0 0 16px ${f.color}14` }
+                : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: '#52525b' }
+            }
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.borderColor = `${f.color}28`;
+                e.currentTarget.style.color = '#a1a1aa';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
+                e.currentTarget.style.color = '#52525b';
+              }
+            }}
+          >
+            <span className="text-sm leading-none">{f.icon}</span>
+            <span>{f.label}</span>
+            {isActive && (
+              <motion.span
+                layoutId="filter-dot"
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ background: f.color }}
+              />
+            )}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ChatBubble({ message, onQuickReply }: { message: ChatMessage; onQuickReply: (t: string) => void }) {
+  const isUser = message.role === "user";
+
+  if (isUser) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20, scale: 0.97 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="flex justify-end"
+      >
+        <div
+          className="max-w-[78%] px-5 py-3.5 rounded-2xl rounded-tr-md text-[14px] font-medium text-black leading-relaxed"
+          style={{
+            background: 'linear-gradient(135deg, #facc15, #fbbf24)',
+            boxShadow: '0 4px 20px rgba(250,204,21,0.25), 0 1px 0 rgba(255,255,255,0.3) inset',
+          }}
+        >
+          {message.content}
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -16, scale: 0.97 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+      className="flex items-start gap-3"
+    >
+      {/* Avatar */}
+      <div
+        className="w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5 text-[11px] font-black"
+        style={{
+          background: 'linear-gradient(135deg, rgba(250,204,21,0.2), rgba(251,146,60,0.1))',
+          border: '1px solid rgba(250,204,21,0.22)',
+          color: '#facc15',
+          boxShadow: '0 0 14px rgba(250,204,21,0.08)',
+        }}
+      >
+        GM
       </div>
-    </main>
+
+      <div className="flex-1 min-w-0 space-y-2.5">
+        {/* Bubble */}
+        <div
+          className="relative rounded-2xl rounded-tl-md px-5 py-4 text-[14px] text-zinc-200 leading-relaxed max-w-[92%]"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderLeft: '2px solid rgba(250,204,21,0.25)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          }}
+        >
+          {message.content}
+
+          {message.hasResults && (
+            <div
+              className="flex items-center gap-2 mt-3 pt-3"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
+                style={{ background: '#facc15', boxShadow: '0 0 6px #facc15' }}
+              />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                Résultats mis à jour dans le panneau
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Quick replies */}
+        {message.quickReplies && message.quickReplies.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pl-1">
+            {message.quickReplies.map((r, i) => (
+              <motion.button
+                key={i}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => onQuickReply(r)}
+                className="text-[11px] font-medium px-3 py-1.5 rounded-xl transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: '#a1a1aa',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(250,204,21,0.3)'
+                  e.currentTarget.style.color = '#facc15'
+                  e.currentTarget.style.background = 'rgba(250,204,21,0.05)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                  e.currentTarget.style.color = '#a1a1aa'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                }}
+              >
+                {r}
+              </motion.button>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function ResultsEmptyHint() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center py-20 px-6">
+      <div
+        className="w-16 h-16 rounded-3xl flex items-center justify-center mb-5"
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+        }}
+      >
+        <Map className="w-7 h-7 text-zinc-700" />
+      </div>
+      <h3 className="text-[13px] font-black uppercase tracking-widest text-zinc-500 mb-2">En attente</h3>
+      <p className="text-[13px] text-zinc-700 max-w-[220px] leading-relaxed">
+        Vos recommandations apparaîtront ici après chaque échange.
+      </p>
+    </div>
+  );
+}
+
+function MobileCard({ item, onViewOnMap }: { item: RecommendationItem; onViewOnMap: (item: RecommendationItem) => void }) {
+  const typeIcons: Record<string, string> = {
+    cafe: "☕", restaurant: "🍽️", hotel: "🏨", activity: "🎭",
+    cultural: "🏛️", fanzone: "⚽", nightlife: "🍸", souk: "🛍️",
+  };
+  const icon = typeIcons[item.type?.toLowerCase?.()] ?? "📍";
+  const dist = item.distanceKm != null
+    ? item.distanceKm < 1 ? `${Math.round(item.distanceKm * 1000)}m` : `${item.distanceKm.toFixed(1)}km`
+    : null;
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden transition-all hover:translate-y-[-2px]"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+    >
+      <div className="relative h-28" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover opacity-80"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-3xl opacity-20">{icon}</div>
+        )}
+        <div
+          className="absolute top-2 right-2 px-2 py-1 rounded-lg"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+        >
+          <span className="text-xs">{icon}</span>
+        </div>
+      </div>
+      <div className="p-3">
+        <p className="text-[13px] font-bold text-zinc-200 truncate">{item.name}</p>
+        <div className="flex items-center justify-between mt-2.5">
+          {dist ? (
+            <span className="text-[10px] text-zinc-600 font-medium">{dist}</span>
+          ) : <span />}
+          <button
+            onClick={() => onViewOnMap(item)}
+            className="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:scale-105"
+            style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }}
+          >
+            Carte
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -3,14 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getMyCommerce, getPhotos, uploadPhoto, deletePhoto, photoUrl,
-  type Commerce, type PhotoCommerce,
+  getMyCommerce, getPhotos, uploadPhoto, deletePhoto, photoUrl, getAvis,
+  type Commerce, type PhotoCommerce, type Avis,
 } from "@/lib/commercesApi";
 import {
   MapPin, Clock, Tag, Store, ExternalLink,
   CheckCircle2, AlertTriangle, XCircle,
-  Eye, Pencil, Calendar, BarChart2,
+  Pencil, Calendar,
   Camera, Trash2, ImagePlus, Loader2,
+  Star, MessageSquare,
 } from "lucide-react";
 
 const JOURS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
@@ -191,6 +192,87 @@ function PhotosSection({ commerceId }: { commerceId: string }) {
   );
 }
 
+// ── Section Avis ─────────────────────────────────────────────────────────────
+
+function StarRating({ note }: { note: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className={`h-3.5 w-3.5 ${i <= note ? "fill-amber-400 text-amber-400" : "text-zinc-700"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AvisSection({ commerceId }: { commerceId: string }) {
+  const [avis,    setAvis]    = useState<Avis[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    getAvis(commerceId)
+      .then((data) => { if (mounted) { setAvis(data); setLoading(false); } })
+      .catch(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+  }, [commerceId]);
+
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(d);
+  }
+
+  return (
+    <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <MessageSquare className="h-5 w-5 text-orange-400" />
+        <div>
+          <h2 className="font-semibold">Avis clients</h2>
+          <p className="text-xs text-zinc-500">Retours laissés par les touristes</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/[0.04]" />
+          ))}
+        </div>
+      ) : avis.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/[0.07] py-10 text-center">
+          <MessageSquare className="mx-auto h-10 w-10 text-zinc-700" />
+          <p className="mt-3 text-sm text-zinc-500">Aucun avis pour l'instant</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {avis.map((a) => (
+            <div key={a.id} className="rounded-2xl border border-white/[0.07] bg-black/20 px-5 py-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/15 text-xs font-bold text-orange-300">
+                    {(a.utilisateurEmail[0] ?? "?").toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{a.utilisateurEmail}</p>
+                    <StarRating note={a.note} />
+                  </div>
+                </div>
+                <span className="text-xs text-zinc-600">{formatDate(a.dateCreation)}</span>
+              </div>
+              {a.commentaire && (
+                <p className="mt-3 text-sm leading-relaxed text-zinc-400">{a.commentaire}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function CommercantDashboardPage() {
@@ -246,10 +328,16 @@ export default function CommercantDashboardPage() {
           </div>
           <div className="flex flex-col items-start gap-3 sm:items-end">
             <StatutBadge statut={statut} />
-            <button type="button" onClick={() => router.push(`/commercant/edit/${commerce.id}`)}
-              className="inline-flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
-              <Pencil className="h-4 w-4" />Modifier
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => router.push(`/commercant/edit/${commerce.id}`)}
+                className="inline-flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
+                <Pencil className="h-4 w-4" />Modifier
+              </button>
+              <button type="button" onClick={() => router.push('/commercant/promotions')}
+                className="inline-flex items-center gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-500/20">
+                <Tag className="h-4 w-4" />Campagnes
+              </button>
+            </div>
           </div>
         </div>
         {statut === "EnAttente" && (
@@ -267,10 +355,10 @@ export default function CommercantDashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon={Eye}       label="Vues (bientôt)" value="—"               color="bg-blue-500/15 text-blue-400" />
-        <StatCard icon={Tag}       label="Tags culturels" value={commerce.tagsCulturels.length} color="bg-orange-500/15 text-orange-400" />
-        <StatCard icon={Calendar}  label="Jours ouverts"  value={`${joursOuverts}/7`} color="bg-emerald-500/15 text-emerald-400" />
-        <StatCard icon={BarChart2} label="Horaires"       value={horairesTries.length > 0 ? "OK" : "À faire"} color="bg-purple-500/15 text-purple-400" />
+        <StatCard icon={Star}      label="Note moyenne"   value={commerce.noteGlobale != null ? `${commerce.noteGlobale.toFixed(1)}/5` : "—"} color="bg-amber-500/15 text-amber-400" />
+        <StatCard icon={MessageSquare} label="Avis clients" value={commerce.nombreAvis}         color="bg-orange-500/15 text-orange-400" />
+        <StatCard icon={Calendar}  label="Jours ouverts"  value={`${joursOuverts}/7`}           color="bg-emerald-500/15 text-emerald-400" />
+        <StatCard icon={Tag}       label="Tags culturels" value={commerce.tagsCulturels.length} color="bg-purple-500/15 text-purple-400" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
@@ -330,6 +418,9 @@ export default function CommercantDashboardPage() {
 
       {/* Photos */}
       <PhotosSection commerceId={commerce.id} />
+
+      {/* Avis */}
+      <AvisSection commerceId={commerce.id} />
 
       {/* Horaires */}
       <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">

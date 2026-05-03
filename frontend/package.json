@@ -91,6 +91,9 @@
   "react-leaflet-cluster": "^4.1.3",
   
     
+  "recharts": "^2.15.4",
+  
+    
   "tailwind-merge": "^3.4.0",
   
     

@@ -27,7 +27,7 @@ namespace BusinessService.Services
         {
             var commerces = await _repository.ObtenirToutAsync();
             return commerces
-                .Where(c => c.EstValide)
+                .Where(c => c.Statut != StatutCommerce.Rejete)
                 .Select(CommerceMapper.ToResponse);
         }
 
@@ -199,7 +199,17 @@ namespace BusinessService.Services
 
             if (!string.IsNullOrWhiteSpace(email))
             {
-                await _emailClient.SendCommerceApprovedAsync(email, null, ct);
+                try
+                {
+                    await _emailClient.SendCommerceApprovedAsync(email, null, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Échec envoi email d'approbation pour commerce {CommerceId} vers {Email}",
+                        commerce.Id,
+                        email);
+                }
             }
             else
             {
@@ -240,11 +250,21 @@ namespace BusinessService.Services
                     ? "Non précisée"
                     : raison;
 
-                await _emailClient.SendCommerceRejectedAsync(
-                    email,
-                    raisonEmail,
-                    null,
-                    ct);
+                try
+                {
+                    await _emailClient.SendCommerceRejectedAsync(
+                        email,
+                        raisonEmail,
+                        null,
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Échec envoi email de rejet pour commerce {CommerceId} vers {Email}",
+                        commerce.Id,
+                        email);
+                }
             }
             else
             {

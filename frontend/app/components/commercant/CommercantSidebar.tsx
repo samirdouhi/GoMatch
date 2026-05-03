@@ -58,9 +58,9 @@ export default function CommercantSidebar() {
   return (
     <>
       {/* ── Sidebar desktop ── */}
-      <aside className="hidden h-full w-72 shrink-0 border-r border-white/[0.07] bg-[#04060b] text-white lg:flex lg:flex-col">
+      <aside className="hidden h-full w-72 shrink-0 border-r border-black/[0.07] bg-white text-slate-900 dark:border-white/[0.07] dark:bg-[#04060b] dark:text-white lg:flex lg:flex-col">
         {/* En-tête */}
-        <div className="border-b border-white/[0.07] px-6 py-6">
+        <div className="border-b border-black/[0.07] dark:border-white/[0.07] px-6 py-6">
           <div className="inline-flex items-center gap-2.5 rounded-2xl border border-orange-500/25 bg-orange-500/10 px-4 py-2">
             <ShoppingBag className="h-4 w-4 text-orange-400" />
             <span className="text-[11px] font-black uppercase tracking-[0.22em] text-orange-400">
@@ -81,7 +81,7 @@ export default function CommercantSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">
+          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
             Navigation
           </p>
           {menuItems.map((item) => {
@@ -93,22 +93,22 @@ export default function CommercantSidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
                   active
-                    ? "bg-gradient-to-r from-orange-500/20 to-orange-500/5 text-orange-300 ring-1 ring-orange-500/30"
-                    : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
+                    ? "bg-gradient-to-r from-orange-500/20 to-orange-500/5 text-orange-600 ring-1 ring-orange-500/30 dark:text-orange-300"
+                    : "text-slate-600 hover:bg-black/[0.04] hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-white"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-orange-400" : ""}`} />
+                <Icon className={`h-4 w-4 ${active ? "text-orange-500 dark:text-orange-400" : ""}`} />
                 <span>{item.label}</span>
               </Link>
             );
           })}
 
-          <div className="my-4 h-px bg-white/[0.06]" />
+          <div className="my-4 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
 
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-zinc-400 transition hover:bg-white/[0.04] hover:text-white"
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-black/[0.04] hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Espace touriste</span>
@@ -116,11 +116,11 @@ export default function CommercantSidebar() {
         </nav>
 
         {/* Bas */}
-        <div className="border-t border-white/[0.07] p-4">
+        <div className="border-t border-black/[0.07] dark:border-white/[0.07] p-4">
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-400/80 transition hover:bg-red-500/10 hover:text-red-300"
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 hover:text-red-600 dark:text-red-400/80 dark:hover:text-red-300"
           >
             <LogOut className="h-4 w-4" />
             <span>Déconnexion</span>
@@ -129,7 +129,7 @@ export default function CommercantSidebar() {
       </aside>
 
       {/* ── Bottom bar mobile (< lg) ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/[0.07] bg-[#04060b]/95 backdrop-blur-md lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-black/[0.07] bg-white/95 dark:border-white/[0.07] dark:bg-[#04060b]/95 backdrop-blur-md lg:hidden">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href, item.exact);
@@ -138,7 +138,7 @@ export default function CommercantSidebar() {
               key={item.href}
               href={item.href}
               className={`flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold transition-colors ${
-                active ? "text-orange-400" : "text-zinc-500 hover:text-zinc-300"
+                active ? "text-orange-500 dark:text-orange-400" : "text-slate-400 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300"
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -151,7 +151,7 @@ export default function CommercantSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold text-zinc-500 transition-colors hover:text-red-400"
+          className="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold text-slate-400 transition-colors hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400"
         >
           <LogOut className="h-5 w-5" />
           <span>Sortir</span>

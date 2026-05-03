@@ -13,6 +13,7 @@ namespace BusinessService.Data
         public DbSet<TagCulturel> TagsCulturels { get; set; }
         public DbSet<HoraireCommerce> HorairesCommerces { get; set; }
         public DbSet<PhotoCommerce> PhotosCommerces { get; set; }
+        public DbSet<Avis> Avis { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

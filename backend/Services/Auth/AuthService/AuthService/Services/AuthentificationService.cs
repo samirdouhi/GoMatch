@@ -110,17 +110,31 @@ public sealed class AuthentificationService : IAuthService
         user.Roles = new List<UserRole> { UserRole.Touriste };
         user.IsActive = true;
         user.CreatedAt = DateTime.UtcNow;
-        user.EmailConfirmed = false;
-        user.EmailConfirmationToken = Guid.NewGuid().ToString("N");
-        user.EmailConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+
+        var smtpConfigured = !string.IsNullOrWhiteSpace(_configuration["Smtp:Host"]);
+        if (smtpConfigured)
+        {
+            user.EmailConfirmed = false;
+            user.EmailConfirmationToken = Guid.NewGuid().ToString("N");
+            user.EmailConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+        }
+        else
+        {
+            user.EmailConfirmed = true;
+            user.EmailConfirmationToken = null;
+            user.EmailConfirmationTokenExpiresAt = null;
+        }
 
         await _users.AjouterAsync(user, ct);
         await _users.SauvegarderAsync(ct);
 
-        await _emailService.SendConfirmationEmailAsync(
-            user.Email,
-            user.EmailConfirmationToken!
-        );
+        if (smtpConfigured)
+        {
+            await _emailService.SendConfirmationEmailAsync(
+                user.Email,
+                user.EmailConfirmationToken!
+            );
+        }
 
         var response = _mapper.ToRegisterResponse(user);
         return (true, 201, null, response);
@@ -378,16 +392,30 @@ public sealed class AuthentificationService : IAuthService
             throw new ConflictException("Email déjà utilisé.", "AUTH.EMAIL_EXISTS");
 
         entity.Email = newEmail;
-        entity.EmailConfirmed = false;
-        entity.EmailConfirmationToken = Guid.NewGuid().ToString("N");
-        entity.EmailConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+
+        var smtpConfiguredForEmail = !string.IsNullOrWhiteSpace(_configuration["Smtp:Host"]);
+        if (smtpConfiguredForEmail)
+        {
+            entity.EmailConfirmed = false;
+            entity.EmailConfirmationToken = Guid.NewGuid().ToString("N");
+            entity.EmailConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+        }
+        else
+        {
+            entity.EmailConfirmed = true;
+            entity.EmailConfirmationToken = null;
+            entity.EmailConfirmationTokenExpiresAt = null;
+        }
 
         await _users.SauvegarderAsync(ct);
 
-        await _emailService.SendEmailChangeConfirmationAsync(
-            entity.Email,
-            entity.EmailConfirmationToken!
-        );
+        if (smtpConfiguredForEmail)
+        {
+            await _emailService.SendEmailChangeConfirmationAsync(
+                entity.Email,
+                entity.EmailConfirmationToken!
+            );
+        }
 
         return (true, 200, null);
     }

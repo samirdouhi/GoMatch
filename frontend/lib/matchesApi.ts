@@ -72,7 +72,9 @@ type EventMatchApiResponse = {
 };
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_GATEWAY_BASE_URL ?? "http://localhost:5266";
+  typeof window === "undefined"
+    ? (process.env.GATEWAY_API_TARGET ?? "http://gateway:8080")
+    : (process.env.NEXT_PUBLIC_GATEWAY_BASE_URL ?? "http://localhost:5006");
 
 function mapStageToPhase(stage: string): MatchPhase {
   const normalized = stage.trim().toLowerCase();

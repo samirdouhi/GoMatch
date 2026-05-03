@@ -13,7 +13,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<ContexteBdDecouverte>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
 
 builder.Services.AddScoped<IPlaceMapper, PlaceMapper>();
 builder.Services.AddScoped<IPlaceRepository, PlaceRepository>();
@@ -32,16 +33,36 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ContexteBdDecouverte>();
+    db.Database.Migrate();
+
+    if (!db.Places.Any())
+    {
+        var importService = scope.ServiceProvider.GetRequiredService<IGeoJsonImportService>();
+        var dataSeedPath = Path.Combine(app.Environment.ContentRootPath, "DataSeed");
+
+        await importService.ImportFileAsync(Path.Combine(dataSeedPath, "hotels-rabat.geojson"), "hotel");
+        await importService.ImportFileAsync(Path.Combine(dataSeedPath, "nightlife-rabat.geojson"), "nightlife");
+        await importService.ImportFileAsync(Path.Combine(dataSeedPath, "attractions-rabat.geojson"), "attraction");
+        await importService.ImportFileAsync(Path.Combine(dataSeedPath, "museums-rabat.geojson"), "museum");
+        await importService.ImportFileAsync(Path.Combine(dataSeedPath, "viewpoints-rabat.geojson"), "viewpoint");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
     {
-        options.Title = "API Service D�couverte";
+        options.Title = "API Service D�couverte";
     });
 }
 
-app.UseCors("FrontDev");
+// CORS géré par la gateway en production — on l'applique directement seulement en dev
+if (app.Environment.IsDevelopment())
+    app.UseCors("FrontDev");
 
 app.MapControllers();
 

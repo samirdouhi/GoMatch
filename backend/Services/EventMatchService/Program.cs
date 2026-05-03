@@ -21,7 +21,7 @@ builder.Services
     .Validate(options => !string.IsNullOrWhiteSpace(options.ApiKey), "FootballData:ApiKey est requis.")
     .Validate(options => !string.IsNullOrWhiteSpace(options.CompetitionCode), "FootballData:CompetitionCode est requis.")
     .Validate(options => options.SeasonYear >= 2025, "FootballData:SeasonYear est invalide.")
-    .Validate(options => options.CacheMinutes > 0, "FootballData:CacheMinutes doit être supérieur à 0.")
+    .Validate(options => options.CacheMinutes > 0, "FootballData:CacheMinutes doit ï¿½tre supï¿½rieur ï¿½ 0.")
     .ValidateOnStart();
 
 builder.Services.AddHttpClient<IFootballDataClient, FootballDataClient>((sp, client) =>
@@ -34,7 +34,7 @@ builder.Services.AddHttpClient<IFootballDataClient, FootballDataClient>((sp, cli
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-// Services métier existants
+// Services mï¿½tier existants
 builder.Services.AddScoped<IWorldCupMatchService, WorldCupMatchService>();
 
 // Nouveaux services d'enrichissement
@@ -55,7 +55,7 @@ app.UseExceptionHandler(errorApp =>
             context.Response.StatusCode = externalApiException.StatusCode;
 
             await Results.Problem(
-                title: "Erreur d'intégration externe",
+                title: "Erreur d'intï¿½gration externe",
                 detail: externalApiException.Message,
                 statusCode: externalApiException.StatusCode)
                 .ExecuteAsync(context);
@@ -80,7 +80,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 

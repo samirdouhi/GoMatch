@@ -12,6 +12,7 @@ import {
   Search,
   X,
   ArrowRight,
+  SlidersHorizontal,
 } from "lucide-react";
 
 type Props = {
@@ -61,18 +62,19 @@ function getUniqueTeams(matches: Match[]) {
   ).sort((a, b) => a.localeCompare(b));
 }
 
-function getStatusBadgeClasses(status: string) {
+function getStatusConfig(status: string) {
   switch (status.toUpperCase()) {
     case "FINISHED":
-      return "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20";
+      return { label: "Terminé", classes: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" };
     case "IN_PLAY":
+      return { label: "En cours", classes: "bg-red-500/10 text-red-400 ring-1 ring-red-500/20 animate-pulse" };
     case "PAUSED":
-      return "bg-red-500/15 text-red-300 border border-red-500/20";
+      return { label: "Pause", classes: "bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20" };
     case "TIMED":
     case "SCHEDULED":
-      return "bg-blue-500/15 text-blue-300 border border-blue-500/20";
+      return { label: "Programmé", classes: "bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20" };
     default:
-      return "bg-zinc-700/50 text-zinc-200 border border-zinc-600";
+      return { label: status, classes: "bg-zinc-800 text-zinc-400 ring-1 ring-zinc-700" };
   }
 }
 
@@ -91,50 +93,62 @@ function getFlagUrl(code: string): string {
 
 function TeamBadge({
   crest,
-  flag,
   code,
   team,
 }: {
   crest: string;
-  flag: string;
   code: string;
   team: string;
 }) {
   const imgSrc = crest || getFlagUrl(code);
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 shadow-inner ring-1 ring-zinc-800 overflow-hidden">
+    <div className="flex flex-col items-center gap-2 sm:gap-3">
+      <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-zinc-800/80 ring-1 ring-white/5 overflow-hidden shadow-lg">
         {imgSrc ? (
           <Image
             src={imgSrc}
             alt={team}
-            width={72}
-            height={54}
-            className="object-contain"
+            width={64}
+            height={48}
+            className="object-contain p-1"
             unoptimized
           />
         ) : (
-          <span className="text-lg font-black text-zinc-200">{code}</span>
+          <span className="text-lg font-black text-zinc-300">{code}</span>
         )}
       </div>
+      <p className="max-w-[88px] truncate text-center text-xs font-bold text-white sm:max-w-[140px] sm:text-sm">
+        {team}
+      </p>
+    </div>
+  );
+}
 
-      <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-          Équipe
-        </p>
-        <p className="truncate text-xl font-black text-white">{team}</p>
-      </div>
+function MetaPill({
+  icon: Icon,
+  text,
+}: {
+  icon: React.ElementType;
+  text: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 rounded-full bg-zinc-800/60 px-3 py-1.5 ring-1 ring-white/5">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+      <span className="text-xs font-medium text-zinc-300">{text}</span>
     </div>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-10 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur">
-      <h3 className="text-lg font-semibold text-white">Aucun match trouvé</h3>
-      <p className="mt-2 text-sm text-zinc-400">
-        Essaie de modifier les filtres pour afficher plus de résultats.
+    <div className="rounded-2xl border border-white/5 bg-zinc-900/50 p-10 text-center backdrop-blur-sm">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
+        <Search className="h-6 w-6 text-zinc-500" />
+      </div>
+      <h3 className="text-base font-semibold text-white">Aucun match trouvé</h3>
+      <p className="mt-1 text-sm text-zinc-500">
+        Modifie les filtres pour afficher plus de résultats.
       </p>
     </div>
   );
@@ -146,10 +160,7 @@ function CustomSelect({ label, value, options, onChange }: CustomSelectProps) {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     }
@@ -157,39 +168,34 @@ function CustomSelect({ label, value, options, onChange }: CustomSelectProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selected = options.find((option) => option.value === value) ?? options[0];
+  const selected = options.find((o) => o.value === value) ?? options[0];
 
   return (
     <div ref={wrapperRef} className="relative">
-      <label className="mb-2 block text-sm font-medium text-zinc-300">
+      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-500">
         {label}
       </label>
-
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-2xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-left text-sm text-white transition hover:border-amber-400"
+        className="flex w-full items-center justify-between rounded-xl border border-white/8 bg-zinc-800/60 px-3.5 py-2.5 text-left text-sm text-white transition-colors hover:border-amber-500/40 hover:bg-zinc-800"
       >
-        <span>{selected?.label}</span>
-        <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
+        <span className="font-medium">{selected?.label}</span>
+        <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-
       {open && (
-        <div className="absolute z-50 mt-2 max-h-64 w-full overflow-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-2 shadow-2xl">
+        <div className="absolute z-50 mt-1.5 max-h-60 w-full overflow-auto rounded-xl border border-white/8 bg-zinc-900 p-1.5 shadow-2xl shadow-black/50">
           {options.map((option) => {
             const isActive = option.value === value;
             return (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-                className={`mb-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm transition last:mb-0 ${
+                onClick={() => { onChange(option.value); setOpen(false); }}
+                className={`mb-0.5 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors last:mb-0 ${
                   isActive
-                    ? "bg-amber-500/15 text-amber-300"
-                    : "text-zinc-200 hover:bg-zinc-800"
+                    ? "bg-amber-500/15 font-semibold text-amber-400"
+                    : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
                 }`}
               >
                 {option.label}
@@ -203,88 +209,67 @@ function CustomSelect({ label, value, options, onChange }: CustomSelectProps) {
 }
 
 function MatchCalendarCard({ match }: { match: Match }) {
-  return (
-    <article className="overflow-hidden rounded-[30px] border border-zinc-800 bg-[linear-gradient(180deg,#09090b_0%,#070709_100%)] shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-      <div className="border-b border-zinc-800 px-6 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-              Calendrier {match.ville}
-            </p>
-          </div>
+  const status = getStatusConfig(match.status);
 
-          <span
-            className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${getStatusBadgeClasses(
-              match.status
-            )}`}
-          >
-            {match.status}
-          </span>
+  return (
+    <article className="group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/50 backdrop-blur-sm transition-all duration-300 hover:border-amber-500/15 hover:bg-zinc-900/80 hover:shadow-xl hover:shadow-black/30">
+      {/* Top accent line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <span className="font-semibold uppercase tracking-wider text-zinc-400">{match.phase}</span>
+          <span>·</span>
+          <span>{match.ville}</span>
         </div>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.classes}`}>
+          {status.label}
+        </span>
       </div>
 
-      <div className="p-6 md:p-7">
-        <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-          <TeamBadge
-            crest={match.crestEquipe1}
-            flag={match.drapeau1}
-            code={match.codeEquipe1}
-            team={match.equipe1}
-          />
+      <div className="h-px bg-white/4" />
 
+      {/* Teams */}
+      <div className="px-4 py-6 sm:px-8 sm:py-8">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-8">
           <div className="flex justify-center">
-            <div className="rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-bold text-zinc-300">
-              VS
+            <TeamBadge
+              crest={match.crestEquipe1}
+              code={match.codeEquipe1}
+              team={match.equipe1}
+            />
+          </div>
+
+          {/* VS */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="relative flex h-10 w-10 items-center justify-center sm:h-12 sm:w-12">
+              <div className="absolute inset-0 rounded-full bg-amber-500/5 ring-1 ring-amber-500/15" />
+              <span className="relative text-xs font-black tracking-widest text-zinc-400 sm:text-sm">VS</span>
             </div>
           </div>
 
-          <div className="flex justify-start lg:justify-end">
+          <div className="flex justify-center">
             <TeamBadge
               crest={match.crestEquipe2}
-              flag={match.drapeau2}
               code={match.codeEquipe2}
               team={match.equipe2}
             />
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <div className="flex items-center gap-4 rounded-2xl bg-zinc-900/90 p-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950">
-              <CalendarDays className="h-5 w-5 text-amber-400" />
-            </div>
-            <span className="font-medium text-zinc-100">
-              {formatMatchDate(match.date)}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4 rounded-2xl bg-zinc-900/90 p-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950">
-              <Clock3 className="h-5 w-5 text-amber-400" />
-            </div>
-            <span className="font-medium text-zinc-100">{match.heure}</span>
-          </div>
-
-          <div className="flex items-center gap-4 rounded-2xl bg-zinc-900/90 p-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950">
-              <MapPin className="h-5 w-5 text-amber-400" />
-            </div>
-            <span className="font-medium text-zinc-100">
-              {match.stade} · {match.ville}
-            </span>
-          </div>
+        {/* Meta pills */}
+        <div className="mt-5 flex flex-wrap gap-2">
+          <MetaPill icon={CalendarDays} text={formatMatchDate(match.date)} />
+          <MetaPill icon={Clock3} text={match.heure} />
+          <MetaPill icon={MapPin} text={match.stade} />
         </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
-          <button className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 text-sm font-black text-black transition hover:bg-amber-300">
-            Planifier ma journée
-            <ArrowRight className="h-4 w-4" />
-          </button>
-
-          <button className="rounded-2xl bg-red-500 px-5 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-red-400">
-            Avant / Après match
-          </button>
-        </div>
+        {/* CTA */}
+        <button className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 py-3 text-sm font-bold text-black transition-all duration-200 hover:bg-amber-300 active:scale-[0.98]">
+          Planifier ma journée
+          <ArrowRight className="h-4 w-4" />
+        </button>
       </div>
     </article>
   );
@@ -292,6 +277,7 @@ function MatchCalendarCard({ match }: { match: Match }) {
 
 export default function MatchesPageClient({ initialMatches }: Props) {
   const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState("Toutes");
   const [selectedPhase, setSelectedPhase] = useState<MatchPhase | "Toutes">("Toutes");
   const [selectedStatus, setSelectedStatus] = useState("Tous");
@@ -301,34 +287,24 @@ export default function MatchesPageClient({ initialMatches }: Props) {
   const teams = useMemo(() => getUniqueTeams(initialMatches), [initialMatches]);
 
   const citySelectOptions = useMemo<CustomSelectOption[]>(
-    () => [
-      { label: "Toutes", value: "Toutes" },
-      ...cities.map((city) => ({ label: city, value: city })),
-    ],
+    () => [{ label: "Toutes les villes", value: "Toutes" }, ...cities.map((c) => ({ label: c, value: c }))],
     [cities]
   );
-
   const phaseSelectOptions = useMemo<CustomSelectOption[]>(
-    () => phaseOptions.map((phase) => ({ label: phase, value: phase })),
+    () => phaseOptions.map((p) => ({ label: p, value: p })),
     []
   );
-
   const statusSelectOptions = useMemo<CustomSelectOption[]>(
-    () => statusOptions.map((status) => ({ label: status, value: status })),
+    () => statusOptions.map((s) => ({ label: s, value: s })),
     []
   );
-
   const teamSelectOptions = useMemo<CustomSelectOption[]>(
-    () => [
-      { label: "Toutes", value: "Toutes" },
-      ...teams.map((team) => ({ label: team, value: team })),
-    ],
+    () => [{ label: "Toutes les équipes", value: "Toutes" }, ...teams.map((t) => ({ label: t, value: t }))],
     [teams]
   );
 
   const filteredMatches = useMemo(() => {
     const q = search.trim().toLowerCase();
-
     return initialMatches.filter((match) => {
       const matchesSearch =
         !q ||
@@ -337,134 +313,124 @@ export default function MatchesPageClient({ initialMatches }: Props) {
         match.ville.toLowerCase().includes(q) ||
         match.stade.toLowerCase().includes(q) ||
         match.phase.toLowerCase().includes(q);
-
-      const matchesCity =
-        selectedCity === "Toutes" || match.ville === selectedCity;
-
-      const matchesPhase =
-        selectedPhase === "Toutes" || match.phase === selectedPhase;
-
+      const matchesCity = selectedCity === "Toutes" || match.ville === selectedCity;
+      const matchesPhase = selectedPhase === "Toutes" || match.phase === selectedPhase;
       const matchesStatus =
-        selectedStatus === "Tous" ||
-        match.status.toUpperCase() === selectedStatus.toUpperCase();
-
+        selectedStatus === "Tous" || match.status.toUpperCase() === selectedStatus.toUpperCase();
       const matchesTeam =
-        selectedTeam === "Toutes" ||
-        match.equipe1 === selectedTeam ||
-        match.equipe2 === selectedTeam;
-
+        selectedTeam === "Toutes" || match.equipe1 === selectedTeam || match.equipe2 === selectedTeam;
       return matchesSearch && matchesCity && matchesPhase && matchesStatus && matchesTeam;
     });
   }, [initialMatches, search, selectedCity, selectedPhase, selectedStatus, selectedTeam]);
 
+  const hasActiveFilters =
+    selectedCity !== "Toutes" ||
+    selectedPhase !== "Toutes" ||
+    selectedStatus !== "Tous" ||
+    selectedTeam !== "Toutes" ||
+    search !== "";
+
+  function resetFilters() {
+    setSearch("");
+    setSelectedCity("Toutes");
+    setSelectedPhase("Toutes");
+    setSelectedStatus("Tous");
+    setSelectedTeam("Toutes");
+  }
+
   return (
-    <main className="min-h-screen bg-[#050608] px-4 py-8 text-white md:px-8">
+    <main className="min-h-screen bg-[#050608] px-4 py-6 text-white sm:py-10 md:px-8">
       <div className="mx-auto max-w-7xl">
-        <section className="mb-8">
-          <div className="mb-3 inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
+
+        {/* Hero header */}
+        <section className="mb-8 sm:mb-10">
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/8 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-amber-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
             Coupe du Monde 2026
           </div>
-
-          <h1 className="max-w-4xl text-4xl font-black uppercase tracking-tight text-white md:text-6xl">
-            Matchs et <span className="text-amber-400">calendrier</span>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-5xl md:text-6xl">
+            Matchs &amp; <span className="text-amber-400">calendrier</span>
           </h1>
-
-          <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-400">
-            Consulte les rencontres, filtre par ville, phase, statut ou équipe,
-            puis prépare ton expérience autour du match.
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 sm:text-base">
+            Retrouve tous les matchs, filtre par ville, phase ou équipe, et prépare ta journée.
           </p>
         </section>
 
-        <section className="mb-8 rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur md:p-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <div className="xl:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-zinc-300">
-                Rechercher
-              </label>
-
-              <div className="flex items-center gap-3 rounded-2xl border border-zinc-700 bg-zinc-900/80 px-4 py-3">
-                <Search className="h-4 w-4 text-zinc-500" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Équipe, ville, stade, phase..."
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="rounded-full p-1 hover:bg-zinc-800"
-                  >
-                    <X className="h-4 w-4 text-zinc-500" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <CustomSelect
-              label="Ville"
-              value={selectedCity}
-              options={citySelectOptions}
-              onChange={setSelectedCity}
-            />
-
-            <CustomSelect
-              label="Phase"
-              value={selectedPhase}
-              options={phaseSelectOptions}
-              onChange={(value) => setSelectedPhase(value as MatchPhase | "Toutes")}
-            />
-
-            <CustomSelect
-              label="Statut"
-              value={selectedStatus}
-              options={statusSelectOptions}
-              onChange={setSelectedStatus}
-            />
-          </div>
-
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <div className="xl:col-span-2">
-              <CustomSelect
-                label="Équipe"
-                value={selectedTeam}
-                options={teamSelectOptions}
-                onChange={setSelectedTeam}
+        {/* Filter bar */}
+        <section className="relative z-10 mb-6 sm:mb-8">
+          {/* Search + toggle */}
+          <div className="flex gap-2 sm:gap-3">
+            <div className="flex flex-1 items-center gap-2.5 rounded-xl border border-white/8 bg-zinc-900/70 px-4 py-2.5 backdrop-blur-sm focus-within:border-amber-500/40">
+              <Search className="h-4 w-4 shrink-0 text-zinc-500" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Équipe, ville, stade, phase…"
+                className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
               />
+              {search && (
+                <button type="button" onClick={() => setSearch("")} className="rounded-full p-0.5 hover:bg-zinc-700">
+                  <X className="h-3.5 w-3.5 text-zinc-500" />
+                </button>
+              )}
             </div>
 
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setSelectedCity("Toutes");
-                  setSelectedPhase("Toutes");
-                  setSelectedStatus("Tous");
-                  setSelectedTeam("Toutes");
-                }}
-                className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
-              >
-                Réinitialiser les filtres
-              </button>
-            </div>
-
-            <div className="md:col-span-2 xl:col-span-2">
-              <div className="flex h-full items-end">
-                <div className="w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-                  <span className="font-semibold">{filteredMatches.length}</span>{" "}
-                  match(s) affiché(s)
-                </div>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${
+                filtersOpen || hasActiveFilters
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                  : "border-white/8 bg-zinc-900/70 text-zinc-400 hover:border-white/15 hover:text-white"
+              }`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">Filtres</span>
+              {hasActiveFilters && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-black">
+                  {[selectedCity !== "Toutes", selectedPhase !== "Toutes", selectedStatus !== "Tous", selectedTeam !== "Toutes"].filter(Boolean).length || ""}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* Expandable filters */}
+          {filtersOpen && (
+            <div className="mt-3 rounded-xl border border-white/5 bg-zinc-900/70 p-4 backdrop-blur-sm sm:p-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <CustomSelect label="Ville" value={selectedCity} options={citySelectOptions} onChange={setSelectedCity} />
+                <CustomSelect
+                  label="Phase"
+                  value={selectedPhase}
+                  options={phaseSelectOptions}
+                  onChange={(v) => setSelectedPhase(v as MatchPhase | "Toutes")}
+                />
+                <CustomSelect label="Statut" value={selectedStatus} options={statusSelectOptions} onChange={setSelectedStatus} />
+                <CustomSelect label="Équipe" value={selectedTeam} options={teamSelectOptions} onChange={setSelectedTeam} />
+              </div>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="mt-3 text-xs font-semibold text-zinc-500 underline underline-offset-2 hover:text-white"
+                >
+                  Réinitialiser tous les filtres
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Result count */}
+          <p className="mt-3 text-xs text-zinc-600">
+            <span className="font-semibold text-zinc-400">{filteredMatches.length}</span> match{filteredMatches.length !== 1 ? "s" : ""} affiché{filteredMatches.length !== 1 ? "s" : ""}
+          </p>
         </section>
 
+        {/* Cards */}
         {filteredMatches.length === 0 ? (
           <EmptyState />
         ) : (
-          <section className="grid gap-6">
+          <section className="grid gap-4 sm:gap-5 lg:grid-cols-2">
             {filteredMatches.map((match) => (
               <MatchCalendarCard key={match.id} match={match} />
             ))}

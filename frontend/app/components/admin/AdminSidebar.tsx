@@ -14,6 +14,7 @@ import {
   UserCircle2,
   LogOut,
   AlertCircle,
+  Bell,
 } from "lucide-react";
 import { getMyAdminProfileStatus } from "@/lib/adminProfileApi";
 import { logout } from "@/lib/logout";
@@ -26,9 +27,9 @@ const menuItems = [
   { label: "Tags culturels",        href: "/admin/tagsculturels",  icon: Tags },
   { label: "Utilisateurs",          href: "/admin/utilisateurs",   icon: Users },
   { label: "Statistiques",          href: "/admin/statistiques",   icon: BarChart3 },
+  { label: "Notifications",         href: "/admin/notifications",  icon: Bell },
 ];
 
-// Sous-ensemble affiché dans la bottom bar (max 5 items pour ne pas surcharger)
 const bottomBarItems = [
   { label: "Dashboard",   href: "/admin",               icon: LayoutDashboard },
   { label: "Demandes",    href: "/admin/commercants",   icon: Store },
@@ -78,8 +79,8 @@ export default function AdminSidebar() {
   return (
     <>
       {/* ── Sidebar desktop (lg+) ── */}
-      <aside className="hidden h-full w-72 shrink-0 border-r border-white/10 bg-[#05070c] text-white lg:flex lg:flex-col">
-        <div className="border-b border-white/10 px-6 py-6">
+      <aside className="hidden h-full w-72 shrink-0 border-r border-black/10 bg-white text-slate-900 dark:border-white/10 dark:bg-[#05070c] dark:text-white lg:flex lg:flex-col">
+        <div className="border-b border-black/10 dark:border-white/10 px-6 py-6">
           <div className="inline-flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2">
             <Shield className="h-4 w-4 text-amber-400" />
             <span className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-400">
@@ -87,7 +88,7 @@ export default function AdminSidebar() {
             </span>
           </div>
           <h2 className="mt-4 text-xl font-black tracking-tight">GOMATCH</h2>
-          <p className="mt-1 text-sm text-zinc-400">Espace administration sécurisé</p>
+          <p className="mt-1 text-sm text-zinc-500">Espace administration sécurisé</p>
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto p-4">
@@ -100,8 +101,8 @@ export default function AdminSidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                   active
-                    ? "bg-white text-slate-950"
-                    : "text-zinc-300 hover:bg-white/[0.05] hover:text-white"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950"
+                    : "text-slate-600 hover:bg-black/[0.05] hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-white/[0.05] dark:hover:text-white"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -111,13 +112,13 @@ export default function AdminSidebar() {
           })}
         </nav>
 
-        <div className="space-y-3 border-t border-white/10 p-4">
+        <div className="space-y-3 border-t border-black/10 dark:border-white/10 p-4">
           <Link
             href="/admin/profile"
             className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${
               pathname === "/admin/profile" || pathname.startsWith("/admin/profile/")
-                ? "bg-white text-slate-950"
-                : "text-zinc-300 hover:bg-white/[0.05] hover:text-white"
+                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950"
+                : "text-slate-600 hover:bg-black/[0.05] hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-white/[0.05] dark:hover:text-white"
             }`}
           >
             <span className="flex items-center gap-3">
@@ -125,7 +126,7 @@ export default function AdminSidebar() {
               <span>Profil</span>
             </span>
             {profileIncomplete && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-red-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-red-500 dark:text-red-300">
                 <AlertCircle className="h-3 w-3" />
                 Alerte
               </span>
@@ -135,7 +136,7 @@ export default function AdminSidebar() {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 hover:text-red-600 dark:text-red-300 dark:hover:text-red-200"
           >
             <LogOut className="h-4 w-4" />
             <span>Logout</span>
@@ -144,7 +145,7 @@ export default function AdminSidebar() {
       </aside>
 
       {/* ── Bottom bar mobile (< lg) ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/10 bg-[#05070c]/95 backdrop-blur-md lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-black/10 bg-white/95 dark:border-white/10 dark:bg-[#05070c]/95 backdrop-blur-md lg:hidden">
         {bottomBarItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -154,7 +155,7 @@ export default function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={`relative flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold transition-colors ${
-                active ? "text-amber-400" : "text-zinc-500 hover:text-zinc-300"
+                active ? "text-amber-500" : "text-slate-400 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300"
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -169,7 +170,7 @@ export default function AdminSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold text-zinc-500 transition-colors hover:text-red-400"
+          className="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold text-slate-400 transition-colors hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400"
         >
           <LogOut className="h-5 w-5" />
           <span>Logout</span>

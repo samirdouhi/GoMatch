@@ -34,14 +34,21 @@ function normalizePath(pathname: string) {
 const AUTH_REGEX = /(^|\/)(signin|login|register|forgot-password)(\/|$)/i;
 const NO_SCROLL_REGEX = /(^|\/)(signin|login|register|onboarding)(\/|$)/i;
 
-export default function ClientShell({ children }: { children: React.ReactNode }) {
+export default function ClientShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const rawPathname = usePathname() ?? "";
   const pathname = useMemo(() => normalizePath(rawPathname), [rawPathname]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isAuthPage = useMemo(() => AUTH_REGEX.test(pathname), [pathname]);
-  const noScrollPage = useMemo(() => NO_SCROLL_REGEX.test(pathname), [pathname]);
+  const noScrollPage = useMemo(
+    () => NO_SCROLL_REGEX.test(pathname),
+    [pathname]
+  );
 
   const isAssistant = useMemo(() => {
     return pathname === "/assistant" || pathname.startsWith("/assistant/");
@@ -78,8 +85,11 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   if (isAuthPage) {
     return (
-      <div key={shellKey} className="min-h-screen text-foreground bg-transparent">
-        <main className="min-h-screen overflow-hidden bg-transparent">
+      <div
+        key={shellKey}
+        className="min-h-screen bg-background text-foreground"
+      >
+        <main className="min-h-screen overflow-hidden bg-background text-foreground">
           {children}
         </main>
       </div>
@@ -88,8 +98,11 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   if (isOnboarding) {
     return (
-      <div key={shellKey} className="h-screen overflow-hidden text-foreground bg-transparent">
-        <main className="h-full overflow-hidden bg-transparent">
+      <div
+        key={shellKey}
+        className="h-screen overflow-hidden bg-background text-foreground"
+      >
+        <main className="h-full overflow-hidden bg-background text-foreground">
           {children}
         </main>
       </div>
@@ -98,16 +111,20 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   if (isAdminRoute || isCommercantRoute) {
     return (
-      <>
+      <div key={shellKey} className="min-h-screen bg-background text-foreground">
         <TokenKeepAlive />
         {children}
-      </>
+      </div>
     );
   }
 
   return (
-    <div key={shellKey} className="flex h-screen flex-col text-foreground bg-transparent">
+    <div
+      key={shellKey}
+      className="flex h-screen flex-col bg-background text-foreground"
+    >
       <TokenKeepAlive />
+
       <TopBar
         sidebarCollapsed={!sidebarOpen}
         sidebarOpen={sidebarOpen}
@@ -118,10 +135,13 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
       <main
         className={[
-          "flex-1 min-h-0 overscroll-contain",
-          isAssistant ? "overflow-hidden p-0" : noScrollPage ? "overflow-hidden" : "overflow-y-auto",
+          "flex-1 min-h-0 overscroll-contain bg-background text-foreground",
+          isAssistant
+            ? "overflow-hidden p-0"
+            : noScrollPage
+              ? "overflow-hidden"
+              : "overflow-y-auto",
           isAssistant ? "" : "pb-24 lg:pb-0",
-          "bg-transparent",
         ].join(" ")}
       >
         {children}

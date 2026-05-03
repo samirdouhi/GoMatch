@@ -22,6 +22,38 @@ namespace BusinessService.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("BusinessService.Models.Avis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Commentaire")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("CommerceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Note")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UtilisateurEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UtilisateurId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommerceId");
+
+                    b.ToTable("Avis");
+                });
+
             modelBuilder.Entity("BusinessService.Models.Categorie", b =>
                 {
                     b.Property<Guid>("Id")
@@ -215,6 +247,17 @@ namespace BusinessService.Migrations
                     b.ToTable("CommerceTagCulturel", (string)null);
                 });
 
+            modelBuilder.Entity("BusinessService.Models.Avis", b =>
+                {
+                    b.HasOne("BusinessService.Models.Commerce", "Commerce")
+                        .WithMany("Avis")
+                        .HasForeignKey("CommerceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Commerce");
+                });
+
             modelBuilder.Entity("BusinessService.Models.Commerce", b =>
                 {
                     b.HasOne("BusinessService.Models.Categorie", "Categorie")
@@ -270,6 +313,8 @@ namespace BusinessService.Migrations
 
             modelBuilder.Entity("BusinessService.Models.Commerce", b =>
                 {
+                    b.Navigation("Avis");
+
                     b.Navigation("Horaires");
 
                     b.Navigation("Photos");

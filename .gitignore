@@ -10,10 +10,21 @@ frontend/.env*
 .vs/
 **/.vs/
 
-# ENV
+# ENV — fichiers secrets à ne jamais committer
+.env
+!.env.example
 backend/.env
 backend/.env.*
 !backend/.env.example
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+**/__pycache__/
+**/*.pyc
 
 # LOGS
 *.log

@@ -61,6 +61,8 @@ type MapItemExtended = MapItem & {
   tags?: string[];
   tagsCulturels?: string[];
   note?: number | null;
+  noteGlobale?: number | null;
+  nombreAvis?: number | null;
   prixMoyen?: number | null;
   estOuvert?: boolean | null;
   horairesOuverture?: string | null;
@@ -72,16 +74,10 @@ function safeInvalidateMap(map: LeafletMap) {
     const container = map.getContainer?.();
     if (!container || !container.isConnected) return;
     map.invalidateSize(false);
-  } catch {
-    // ignore silently when map is already unmounted/destroyed
-  }
+  } catch {}
 }
 
-function MapInvalidateSize({
-  deps = [],
-}: {
-  deps?: Array<unknown>;
-}) {
+function MapInvalidateSize({ deps = [] }: { deps?: Array<unknown> }) {
   const map = useMap();
   const timeoutRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -102,8 +98,7 @@ function MapInvalidateSize({
 
       rafRef.current = window.requestAnimationFrame(() => {
         timeoutRef.current = window.setTimeout(() => {
-          if (cancelled) return;
-          safeInvalidateMap(map);
+          if (!cancelled) safeInvalidateMap(map);
         }, 120);
       });
     };
@@ -158,8 +153,8 @@ function MapOpenSelectedPopup({
 
     const tryOpenPopup = () => {
       if (cancelled) return;
-      attempts += 1;
 
+      attempts += 1;
       let opened = false;
 
       map.eachLayer((layer) => {
@@ -174,12 +169,8 @@ function MapOpenSelectedPopup({
             Math.abs(latLng.lng - selectedItem.position[1]) < 0.000001;
 
           if (sameLat && sameLng) {
-            try {
-              layer.openPopup();
-              opened = true;
-            } catch {
-              // ignore
-            }
+            layer.openPopup();
+            opened = true;
           }
         }
       });
@@ -193,9 +184,7 @@ function MapOpenSelectedPopup({
 
     return () => {
       cancelled = true;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
   }, [map, selectedItem?.id, focusKey, selectedItem]);
 
@@ -345,8 +334,9 @@ const createClusterCustomIcon = (cluster: ClusterLike) => {
     hotel: 0,
   };
 
-  childMarkers.forEach((marker: ClusterChildMarkerLike) => {
+  childMarkers.forEach((marker) => {
     const type = marker.options.title as MapItemType | undefined;
+
     if (type && counts[type] !== undefined) {
       counts[type] += 1;
     }
@@ -390,6 +380,29 @@ const createClusterCustomIcon = (cluster: ClusterLike) => {
   });
 };
 
+function getRatingValue(item: MapItemExtended): number | null {
+  if (typeof item.noteGlobale === "number") return item.noteGlobale;
+  if (typeof item.note === "number") return item.note;
+  return null;
+}
+
+function Stars({ value }: { value: number | null }) {
+  const rounded = value === null ? 0 : Math.round(value);
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          className={star <= rounded ? "text-[#ffbd13]" : "text-white/20"}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function formatPrice(value?: number | null): string {
   if (value === null || value === undefined) return "Prix non renseigné";
   if (value === 0) return "Gratuit";
@@ -410,104 +423,85 @@ function getOpenStatusLabel(
   return "Horaires non renseignés";
 }
 
-function PopupCommerceCard({ item }: { item: MapItemExtended }) {
-  const image =
-    item.imageUrl || item.image || item.photoUrl || item.photo || null;
-
+function PopupCommerceCard({
+  item,
+  onDetails,
+}: {
+  item: MapItemExtended;
+  onDetails?: (item: MapItem) => void;
+}) {
+  const image = item.imageUrl || item.image || item.photoUrl || item.photo || null;
   const address = item.adresse || item.address || null;
-  const category =
-    item.nomCategorie || item.category || getTypeLabel(item.type);
+  const category = item.nomCategorie || item.category || getTypeLabel(item.type);
   const tags = item.tagsCulturels || item.tags || [];
+  const rating = getRatingValue(item);
+  const avisCount = item.nombreAvis ?? 0;
 
   return (
-    <div className="flex h-[420px] w-[310px] flex-col overflow-hidden rounded-[20px] bg-[#0b1220] text-white shadow-[0_18px_40px_rgba(0,0,0,0.38)]">
-      <div className="h-1/2 w-full shrink-0">
+    <div className="w-[260px] overflow-hidden rounded-2xl bg-[#090d16] text-white shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+      <div className="h-[92px] w-full bg-white/5">
         {image ? (
-          <img
-            src={image}
-            alt={item.name}
-            className="h-full w-full object-cover"
-          />
+          <img src={image} alt={item.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-white/5">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-white/50"
-              >
-                <path d="M3 21h18" />
-                <path d="M5 21V7l8-4 6 4v14" />
-                <path d="M9 9h.01" />
-                <path d="M9 12h.01" />
-                <path d="M9 15h.01" />
-                <path d="M13 9h.01" />
-                <path d="M13 12h.01" />
-                <path d="M13 15h.01" />
-              </svg>
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white/45">
+              🏬
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex h-1/2 flex-col gap-2 overflow-hidden p-3">
-        <div className="min-h-0">
-          <h3 className="line-clamp-1 text-[17px] font-extrabold leading-tight text-white">
+      <div className="space-y-2.5 p-3">
+        <div>
+          <h3 className="line-clamp-1 text-[15px] font-black text-white">
             {item.name}
           </h3>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400">
+
+          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#ffbd13]">
             {category}
           </p>
         </div>
 
-        {item.description ? (
-          <p className="line-clamp-2 text-[12px] leading-5 text-white/75">
-            {item.description}
+        <div className="flex items-center justify-between rounded-xl border border-[#ffbd13]/20 bg-[#ffbd13]/10 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Stars value={rating} />
+            <span className="text-xs font-black text-[#ffbd13]">
+              {rating !== null ? `${rating.toFixed(1)}/5` : "N/A"}
+            </span>
+          </div>
+
+          <span className="text-[10px] font-bold text-white/45">
+            {avisCount} avis
+          </span>
+        </div>
+
+        {address ? (
+          <p className="line-clamp-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] leading-4 text-white/65">
+            {address}
           </p>
         ) : null}
 
-        {address ? (
-          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-            <p className="line-clamp-2 text-[11px] leading-4 text-white/70">
-              {address}
-            </p>
-          </div>
-        ) : null}
-
         {item.source === "discovery" ? (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2">
-              <p className="text-[9px] uppercase tracking-[0.14em] text-white/45">
-                Prix
-              </p>
-              <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-white/90">
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+              <p className="text-[8px] uppercase text-white/35">Prix</p>
+              <p className="line-clamp-1 text-[9px] font-bold text-white/80">
                 {formatPrice(item.prixMoyen)}
               </p>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2">
-              <p className="text-[9px] uppercase tracking-[0.14em] text-white/45">
-                Pop.
-              </p>
-              <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-white/90">
+            <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+              <p className="text-[8px] uppercase text-white/35">Pop.</p>
+              <p className="line-clamp-1 text-[9px] font-bold text-white/80">
                 {item.popularite !== null && item.popularite !== undefined
                   ? `${item.popularite}/100`
                   : "N/A"}
               </p>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2">
-              <p className="text-[9px] uppercase tracking-[0.14em] text-white/45">
-                Hor.
-              </p>
-              <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-white/90">
+            <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+              <p className="text-[8px] uppercase text-white/35">Hor.</p>
+              <p className="line-clamp-1 text-[9px] font-bold text-white/80">
                 {getOpenStatusLabel(item.estOuvert, item.horairesOuverture)}
               </p>
             </div>
@@ -519,17 +513,21 @@ function PopupCommerceCard({ item }: { item: MapItemExtended }) {
             {tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-0.5 text-[9px] font-semibold text-orange-300"
+                className="rounded-full border border-[#ffbd13]/20 bg-[#ffbd13]/10 px-2 py-0.5 text-[8px] font-bold text-[#ffbd13]"
               >
-                {tag}
+                #{tag}
               </span>
             ))}
           </div>
         ) : null}
 
-        <div className="mt-auto border-t border-white/8 pt-2 text-[10px] text-white/45">
-          Lat: {item.position[0].toFixed(4)} | Lng: {item.position[1].toFixed(4)}
-        </div>
+        <button
+          type="button"
+          onClick={() => onDetails?.(item)}
+          className="mt-1 w-full rounded-xl bg-[#ffbd13] px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-black transition hover:bg-white active:scale-[0.98]"
+        >
+          Voir détails
+        </button>
       </div>
     </div>
   );
@@ -553,9 +551,7 @@ export default function ExperienceMap({
   navigationMode = "live",
   onSelectStartPoint,
 }: ExperienceMapProps) {
-  const filteredItems = items.filter((item) =>
-    visibleTypes.includes(item.type)
-  );
+  const filteredItems = items.filter((item) => visibleTypes.includes(item.type));
 
   const initialCenter = liveUserPosition ?? startPoint ?? center;
   const autoFitEnabled =
@@ -600,10 +596,7 @@ export default function ExperienceMap({
           focusKey={focusKey}
         />
 
-        <MapOpenSelectedPopup
-          selectedItem={selectedItem}
-          focusKey={focusKey}
-        />
+        <MapOpenSelectedPopup selectedItem={selectedItem} focusKey={focusKey} />
 
         {onSelectStartPoint ? (
           <MapClickToSetStartPoint
@@ -661,17 +654,22 @@ export default function ExperienceMap({
                   <span className="text-xs font-medium">{item.name}</span>
                 </Tooltip>
 
-              <Popup
-  className="gomatch-popup-card"
-  maxWidth={320}
-  minWidth={310}
-  autoPan
-  keepInView
-  autoPanPaddingTopLeft={[20, 20]}
-  autoPanPaddingBottomRight={[20, 100]}
->
-  <PopupCommerceCard item={extendedItem} />
-</Popup>
+                <Popup
+                  className="gomatch-popup-card"
+                  maxWidth={280}
+                  minWidth={260}
+                  autoPan
+                  keepInView
+                  autoPanPaddingTopLeft={[20, 90]}
+                  autoPanPaddingBottomRight={[20, 90]}
+                >
+                  <PopupCommerceCard
+                    item={extendedItem}
+                    onDetails={(clickedItem) => {
+                      onSelectItem?.(clickedItem);
+                    }}
+                  />
+                </Popup>
               </Marker>
             );
           })}
@@ -683,7 +681,7 @@ export default function ExperienceMap({
           background: transparent;
           box-shadow: none;
           padding: 0;
-          border-radius: 20px;
+          border-radius: 18px;
         }
 
         .gomatch-popup-card .leaflet-popup-content {
@@ -692,14 +690,27 @@ export default function ExperienceMap({
         }
 
         .gomatch-popup-card .leaflet-popup-tip {
-          background: #0b1220;
+          background: #090d16;
         }
 
         .gomatch-popup-card .leaflet-popup-close-button {
+          z-index: 20;
+          width: 26px;
+          height: 26px;
+          border-radius: 9999px;
+          background: rgba(0, 0, 0, 0.65);
           color: white;
           font-size: 18px;
-          right: 10px;
+          right: 8px;
           top: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .gomatch-popup-card .leaflet-popup-close-button:hover {
+          background: rgba(255, 255, 255, 0.16);
+          color: white;
         }
 
         @media (max-width: 1023px) {

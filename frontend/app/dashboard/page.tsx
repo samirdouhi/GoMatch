@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -134,9 +134,9 @@ function getMerchantStatusMeta(status: MerchantStatus) {
         description:
           "Votre demande commerçant est en cours d’analyse par l’administrateur.",
         icon: Clock3,
-        color: "text-yellow-400",
-        border: "border-yellow-400/20",
-        bg: "bg-yellow-400/10",
+        color: "text-yellow-700 dark:text-yellow-400",
+        border: "border-yellow-300 dark:border-yellow-400/20",
+        bg: "bg-yellow-50 dark:bg-yellow-400/10",
       };
     case "Approved":
       return {
@@ -144,9 +144,9 @@ function getMerchantStatusMeta(status: MerchantStatus) {
         description:
           "Votre demande a été acceptée. Vous pouvez maintenant accéder à votre espace commerçant.",
         icon: CheckCircle2,
-        color: "text-green-400",
-        border: "border-green-400/20",
-        bg: "bg-green-400/10",
+        color: "text-green-700 dark:text-green-400",
+        border: "border-green-300 dark:border-green-400/20",
+        bg: "bg-green-50 dark:bg-green-400/10",
       };
     case "Rejected":
       return {
@@ -154,9 +154,9 @@ function getMerchantStatusMeta(status: MerchantStatus) {
         description:
           "Votre demande a été refusée. Vous pouvez corriger les informations et refaire une demande.",
         icon: AlertTriangle,
-        color: "text-red-400",
-        border: "border-red-400/20",
-        bg: "bg-red-400/10",
+        color: "text-red-700 dark:text-red-400",
+        border: "border-red-300 dark:border-red-400/20",
+        bg: "bg-red-50 dark:bg-red-400/10",
       };
     default:
       return {
@@ -164,9 +164,9 @@ function getMerchantStatusMeta(status: MerchantStatus) {
         description:
           "Vous profitez actuellement de l’expérience GoMatch en tant qu’utilisateur standard.",
         icon: Sparkles,
-        color: "text-sky-400",
-        border: "border-sky-400/20",
-        bg: "bg-sky-400/10",
+        color: "text-sky-700 dark:text-sky-400",
+        border: "border-sky-300 dark:border-sky-400/20",
+        bg: "bg-sky-50 dark:bg-sky-400/10",
       };
   }
 }
@@ -192,11 +192,11 @@ const DynamicSpaceBackground = () => {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#facc1503_1px,transparent_1px),linear-gradient(to_bottom,#facc1503_1px,transparent_1px)] bg-[size:60px_60px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.045)_1px,transparent_1px)] bg-[size:60px_60px] dark:bg-[linear-gradient(to_right,#facc1503_1px,transparent_1px),linear-gradient(to_bottom,#facc1503_1px,transparent_1px)]" />
       {elements.orbes.map((orbe) => (
         <motion.div
           key={orbe.id}
-          className="absolute rounded-full bg-[#facc15]/5 blur-[120px]"
+          className="absolute rounded-full bg-[#facc15]/10 blur-[120px] dark:bg-[#facc15]/5"
           style={{
             width: orbe.size,
             height: orbe.size,
@@ -232,21 +232,21 @@ function FollowedMatchMiniCard({
   return (
     <motion.article
       whileHover={{ y: -4, scale: 1.01 }}
-      className="rounded-[1.8rem] border border-white/5 bg-[#0f0f10] p-5 shadow-xl transition"
+      className="rounded-[1.8rem] border border-slate-200 bg-white p-5 text-slate-900 shadow-xl transition dark:border-white/10 dark:bg-[#0f0f10] dark:text-white"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/30">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-white/30">
           {match.isExperienceMatch ? "Match expérience" : "Match suivi"}
         </p>
 
         <div className="flex items-center gap-2">
           {match.locationSource === "gomatch_override" && (
-            <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-300">
+            <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
               Maroc
             </span>
           )}
 
-          <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-yellow-300">
+          <span className="rounded-full border border-yellow-300 bg-yellow-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-yellow-700 dark:border-yellow-400/20 dark:bg-yellow-400/10 dark:text-yellow-300">
             {match.status}
           </span>
         </div>
@@ -262,7 +262,7 @@ function FollowedMatchMiniCard({
         />
 
         <div className="flex justify-center">
-          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-black text-white/70">
+          <div className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
             VS
           </div>
         </div>
@@ -289,7 +289,7 @@ function FollowedMatchMiniCard({
         <>
           {!!match.fanZones?.length && (
             <div className="mt-4">
-              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/35">
                 Fan zones
               </p>
 
@@ -297,7 +297,7 @@ function FollowedMatchMiniCard({
                 {match.fanZones.slice(0, 2).map((zone) => (
                   <span
                     key={zone.name}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] text-white/75"
+                    className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/75"
                   >
                     {zone.name}
                   </span>
@@ -315,7 +315,7 @@ function FollowedMatchMiniCard({
           </button>
         </>
       ) : (
-        <div className="mt-5 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-center text-xs text-white/45">
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-600 dark:border-white/5 dark:bg-white/[0.03] dark:text-white/45">
           Recommandations bientôt disponibles
         </div>
       )}
@@ -342,7 +342,7 @@ function MiniTeam({
   return (
     <div className={`min-w-0 ${isRight ? "text-right" : "text-left"}`}>
       <div className={`mb-2 flex ${isRight ? "justify-end" : "justify-start"}`}>
-        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800">
+        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200 dark:bg-zinc-900 dark:ring-zinc-800">
           {imgSrc ? (
             <Image
               src={imgSrc}
@@ -353,14 +353,14 @@ function MiniTeam({
               unoptimized
             />
           ) : (
-            <span className="text-xs font-black text-zinc-200">
+            <span className="text-xs font-black text-slate-700 dark:text-zinc-200">
               {code || "TBD"}
             </span>
           )}
         </div>
       </div>
 
-      <p className="line-clamp-2 text-sm font-black leading-tight text-white">
+      <p className="line-clamp-2 text-sm font-black leading-tight text-slate-900 dark:text-white">
         {name}
       </p>
     </div>
@@ -375,14 +375,14 @@ function MiniInfo({
   text: string;
 }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2.5">
+    <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-white/5 dark:bg-white/[0.03]">
       <Icon className="h-4 w-4 shrink-0 text-[#facc15]" />
-      <span className="truncate text-xs text-white/75">{text}</span>
+      <span className="truncate text-xs text-slate-700 dark:text-white/75">{text}</span>
     </div>
   );
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -582,7 +582,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#050505]">
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-[#050505]">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -593,7 +593,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-[#050505] pb-20 font-sans text-white selection:bg-[#facc15]/30">
+    <main className="relative min-h-screen bg-slate-50 pb-20 font-sans text-slate-900 selection:bg-[#facc15]/30 dark:bg-[#050505] dark:text-white">
       <DynamicSpaceBackground />
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-10 px-6 py-10 lg:px-16 lg:py-12">
@@ -613,7 +613,7 @@ export default function DashboardPage() {
             {getGreeting(firstName)}
           </h1>
 
-          <p className="max-w-2xl text-xs font-medium leading-relaxed text-white/40 md:text-sm">
+          <p className="max-w-2xl text-xs font-medium leading-relaxed text-slate-600 md:text-sm dark:text-white/40">
             {merchantMeta.description}
           </p>
         </motion.div>
@@ -624,18 +624,18 @@ export default function DashboardPage() {
             <div className="relative rounded-[2rem] border border-yellow-400/20 bg-yellow-400/10 px-6 py-5">
               <button
                 onClick={() => setShowRequestBanner(false)}
-                className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/20 p-2 text-white/70 hover:bg-black/30"
+                className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white/70 p-2 text-slate-600 hover:bg-white dark:border-white/10 dark:bg-black/20 dark:text-white/70 dark:hover:bg-black/30"
               >
                 <X className="h-4 w-4" />
               </button>
 
               <div className="pr-12">
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-yellow-700 dark:text-yellow-300">
                   Confirmation requise
                 </p>
-                <p className="text-sm leading-relaxed text-white/85">
+                <p className="text-sm leading-relaxed text-slate-700 dark:text-white/85">
                   Un email de confirmation a été envoyé à{" "}
-                  <span className="font-semibold text-yellow-200">
+                  <span className="font-semibold text-yellow-700 dark:text-yellow-200">
                     {emailParam}
                   </span>
                   . Veuillez confirmer votre email professionnel pour transmettre
@@ -649,18 +649,18 @@ export default function DashboardPage() {
           <div className="relative rounded-[2rem] border border-green-400/20 bg-green-400/10 px-6 py-5">
             <button
               onClick={() => setShowVerifiedBanner(false)}
-              className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/20 p-2 text-white/70 hover:bg-black/30"
+              className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white/70 p-2 text-slate-600 hover:bg-white dark:border-white/10 dark:bg-black/20 dark:text-white/70 dark:hover:bg-black/30"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="flex items-start gap-3 pr-12">
-              <MailCheck className="mt-0.5 h-5 w-5 text-green-300" />
+              <MailCheck className="mt-0.5 h-5 w-5 text-green-700 dark:text-green-300" />
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-green-300">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-green-700 dark:text-green-300">
                   Email professionnel vérifié
                 </p>
-                <p className="text-sm leading-relaxed text-white/85">
+                <p className="text-sm leading-relaxed text-slate-700 dark:text-white/85">
                   Votre email professionnel a été confirmé avec succès. Votre
                   demande commerçant est maintenant en cours d’analyse.
                 </p>
@@ -670,7 +670,7 @@ export default function DashboardPage() {
         )}
 
         {loadError && (
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-300">
+          <div className="rounded-3xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
             {loadError}
           </div>
         )}
@@ -710,7 +710,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between gap-6">
               <div>
-                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 dark:text-white/50">
                   Statut du compte
                 </p>
                 <div className="flex items-center gap-3">
@@ -720,17 +720,17 @@ export default function DashboardPage() {
                   </h2>
                 </div>
 
-                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/65">
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-700 dark:text-white/65">
                   {merchantMeta.description}
                 </p>
 
                 {merchantStatus === "Rejected" &&
                   merchantProfile?.rejectionReason && (
-                    <div className="mt-5 rounded-2xl border border-red-400/20 bg-black/20 p-4">
-                      <p className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-red-300">
+                    <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-50 p-4 dark:bg-black/20">
+                      <p className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-red-700 dark:text-red-300">
                         Raison du refus
                       </p>
-                      <p className="text-sm text-white/70">
+                      <p className="text-sm text-slate-700 dark:text-white/70">
                         {merchantProfile.rejectionReason}
                       </p>
                     </div>
@@ -738,7 +738,7 @@ export default function DashboardPage() {
 
                 {merchantStatus === "Pending" &&
                   merchantProfile?.submittedAt && (
-                    <p className="mt-5 text-xs uppercase tracking-[0.2em] text-yellow-300">
+                    <p className="mt-5 text-xs uppercase tracking-[0.2em] text-yellow-700 dark:text-yellow-300">
                       Dossier soumis le{" "}
                       {new Date(
                         merchantProfile.submittedAt
@@ -747,7 +747,7 @@ export default function DashboardPage() {
                   )}
               </div>
 
-              <div className="hidden h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5 md:flex">
+              <div className="hidden h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white/80 md:flex dark:border-white/10 dark:bg-white/5">
                 <StatusIcon className={`h-8 w-8 ${merchantMeta.color}`} />
               </div>
             </div>
@@ -755,9 +755,9 @@ export default function DashboardPage() {
 
           <motion.div
             whileHover={{ scale: 1.01 }}
-            className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl"
+            className="rounded-[2.5rem] border border-slate-200 bg-white p-8 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#111] dark:text-white"
           >
-            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-white/30">
               Prochaine action
             </p>
 
@@ -771,7 +771,7 @@ export default function DashboardPage() {
                 : "Passer au niveau supérieur"}
             </h3>
 
-            <p className="mb-6 text-sm leading-relaxed text-white/50">
+            <p className="mb-6 text-sm leading-relaxed text-slate-600 dark:text-white/50">
               {merchantStatus === "Approved"
                 ? "Accédez à votre futur espace commerçant et commencez à gérer votre présence."
                 : merchantStatus === "Pending"
@@ -808,10 +808,10 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        <div className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl">
+        <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#111] dark:text-white">
           <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-white/30">
                 Vos équipes suivies
               </p>
               <h3 className="text-2xl font-black uppercase italic tracking-tight">
@@ -836,21 +836,21 @@ export default function DashboardPage() {
               />
             </div>
           ) : teams.length === 0 ? (
-            <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] px-6 py-8 text-center">
-              <p className="text-lg font-bold text-white">
+            <div className="rounded-[2rem] border border-slate-200 bg-slate-50 px-6 py-8 text-center dark:border-white/5 dark:bg-white/[0.03]">
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
                 Aucune équipe suivie
               </p>
-              <p className="mt-2 text-sm text-white/45">
+              <p className="mt-2 text-sm text-slate-600 dark:text-white/45">
                 Ajoute des équipes dans ton profil pour voir ici leurs prochains
                 matchs.
               </p>
             </div>
           ) : followedMatches.length === 0 ? (
-            <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] px-6 py-8 text-center">
-              <p className="text-lg font-bold text-white">
+            <div className="rounded-[2rem] border border-slate-200 bg-slate-50 px-6 py-8 text-center dark:border-white/5 dark:bg-white/[0.03]">
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
                 Aucun match à venir
               </p>
-              <p className="mt-2 text-sm text-white/45">
+              <p className="mt-2 text-sm text-slate-600 dark:text-white/45">
                 Il n’y a pas encore de match programmé pour les équipes que tu
                 suis.
               </p>
@@ -861,9 +861,22 @@ export default function DashboardPage() {
                 <FollowedMatchMiniCard
                   key={match.id}
                   match={match}
-                  onPlanMatch={(selectedMatch) =>
-                    router.push(`/dashboard/match-day?matchId=${selectedMatch.id}`)
-                  }
+                  onPlanMatch={(selectedMatch) => {
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("gomatch_plan_context", JSON.stringify({
+                        matchId: selectedMatch.id,
+                        equipe1: selectedMatch.equipe1,
+                        equipe2: selectedMatch.equipe2,
+                        stade: selectedMatch.stade,
+                        ville: selectedMatch.ville,
+                        kickoff: selectedMatch.heure,
+                        date: selectedMatch.date,
+                        lat: selectedMatch.latitude ?? null,
+                        lng: selectedMatch.longitude ?? null,
+                      }));
+                    }
+                    router.push("/assistant");
+                  }}
                 />
               ))}
             </div>
@@ -872,7 +885,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <Panel title="Résumé du profil" icon={User}>
-            <div className="space-y-3 text-sm text-white/70">
+            <div className="space-y-3 text-sm text-slate-700 dark:text-white/70">
               <Row label="Prénom" value={profile?.userProfile?.prenom || "-"} />
               <Row label="Nom" value={profile?.userProfile?.nom || "-"} />
               <Row
@@ -894,7 +907,7 @@ export default function DashboardPage() {
           <Panel title="Préférences" icon={Languages}>
             <div className="space-y-4">
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/30">
                   Centres d’intérêt
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -902,13 +915,13 @@ export default function DashboardPage() {
                     preferences.map((item) => (
                       <span
                         key={item}
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70"
+                        className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70"
                       >
                         {item}
                       </span>
                     ))
                   ) : (
-                    <span className="text-sm text-white/40">
+                    <span className="text-sm text-slate-600 dark:text-white/40">
                       Aucun centre d’intérêt enregistré.
                     </span>
                   )}
@@ -916,7 +929,7 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/30">
                   Équipes suivies
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -924,13 +937,13 @@ export default function DashboardPage() {
                     teams.map((item) => (
                       <span
                         key={item}
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70"
+                        className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70"
                       >
                         {item}
                       </span>
                     ))
                   ) : (
-                    <span className="text-sm text-white/40">
+                    <span className="text-sm text-slate-600 dark:text-white/40">
                       Aucune équipe suivie enregistrée.
                     </span>
                   )}
@@ -944,20 +957,20 @@ export default function DashboardPage() {
               {recentEvents.map((event) => (
                 <div
                   key={event}
-                  className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3"
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/5 dark:bg-white/[0.03]"
                 >
                   <span className="h-2 w-2 rounded-full bg-[#facc15]" />
-                  <span className="text-sm text-white/70">{event}</span>
+                  <span className="text-sm text-slate-700 dark:text-white/70">{event}</span>
                 </div>
               ))}
             </div>
           </Panel>
         </div>
 
-        <div className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl">
+        <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#111] dark:text-white">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-white/30">
                 Accès rapides
               </p>
               <h3 className="text-2xl font-black uppercase italic tracking-tight">
@@ -975,7 +988,7 @@ export default function DashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={action.onClick}
-                  className="rounded-[1.8rem] border border-white/5 bg-white/[0.03] p-5 text-left transition hover:border-[#facc15]/30 hover:bg-white/[0.05]"
+                  className="rounded-[1.8rem] border border-slate-200 bg-slate-50 p-5 text-left text-slate-900 transition hover:border-[#facc15]/30 hover:bg-white dark:border-white/5 dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.05]"
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#facc15]/10 text-[#facc15]">
                     <Icon className="h-5 w-5" />
@@ -983,7 +996,7 @@ export default function DashboardPage() {
                   <h4 className="mb-2 text-base font-black uppercase tracking-tight">
                     {action.title}
                   </h4>
-                  <p className="text-sm leading-relaxed text-white/45">
+                  <p className="text-sm leading-relaxed text-slate-600 dark:text-white/45">
                     {action.desc}
                   </p>
                 </motion.button>
@@ -1001,14 +1014,14 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="relative rounded-[2.45rem] border border-white/5 bg-[#0A0A0A]/80 p-8 backdrop-blur-3xl lg:p-12">
+          <div className="relative rounded-[2.45rem] border border-slate-200 bg-white/90 p-8 text-slate-900 backdrop-blur-3xl dark:border-white/5 dark:bg-[#0A0A0A]/80 dark:text-white lg:p-12">
             <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div>
                 <h3 className="flex items-center gap-3 text-3xl font-black uppercase italic tracking-tighter">
                   <Newspaper className="text-[#facc15]" /> Actualités GOMATCH
                 </h3>
               </div>
-              <button className="self-start rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-[#facc15] hover:text-black">
+              <button className="self-start rounded-xl border border-slate-200 bg-slate-100 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-[#facc15] hover:text-black dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-[#facc15] dark:hover:text-black">
                 Tout explorer
               </button>
             </div>
@@ -1016,7 +1029,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
               <motion.div
                 whileHover={{ y: -5 }}
-                className="group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900 shadow-2xl lg:col-span-7"
+                className="group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-[2rem] border border-slate-200 bg-zinc-900 shadow-2xl dark:border-white/10 lg:col-span-7"
               >
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000')] bg-cover bg-center transition-all duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
@@ -1079,7 +1092,7 @@ function Panel({
   return (
     <motion.div
       whileHover={{ scale: 1.01 }}
-      className="rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl"
+      className="rounded-[2.5rem] border border-slate-200 bg-white p-8 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#111] dark:text-white"
     >
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#facc15]/10 text-[#facc15]">
@@ -1096,9 +1109,9 @@ function Panel({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-2">
-      <span className="text-white/35">{label}</span>
-      <span className="text-right font-semibold text-white/80">{value}</span>
+    <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-2 dark:border-white/5">
+      <span className="text-slate-500 dark:text-white/35">{label}</span>
+      <span className="text-right font-semibold text-slate-800 dark:text-white/80">{value}</span>
     </div>
   );
 }
@@ -1113,15 +1126,15 @@ function StatCard({
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="group relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-[#111] p-8 shadow-xl transition-all duration-500 hover:border-[#facc15]/40"
+      className="group relative overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-8 text-slate-900 shadow-xl transition-all duration-500 hover:border-[#facc15]/40 dark:border-white/10 dark:bg-[#111] dark:text-white"
     >
-      <div className="absolute -right-4 -top-4 rounded-full bg-white/5 p-10 transition-colors group-hover:bg-[#facc15]/10">
+      <div className="absolute -right-4 -top-4 rounded-full bg-slate-100 p-10 transition-colors group-hover:bg-[#facc15]/10 dark:bg-white/5">
         <Icon
           size={40}
-          className="text-white/5 transition-colors group-hover:text-[#facc15]/20"
+          className="text-slate-200 transition-colors group-hover:text-[#facc15]/30 dark:text-white/5 dark:group-hover:text-[#facc15]/20"
         />
       </div>
-      <p className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
+      <p className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-white/30">
         <Icon size={12} style={{ color }} /> {title}
       </p>
       <div className="relative z-10">
@@ -1129,7 +1142,7 @@ function StatCard({
           {value}
         </span>
       </div>
-      <div className="mt-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/50">
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-white/50">
         <span className="h-1 w-1 rounded-full" style={{ backgroundColor: color }} />
         {detail}
       </div>
@@ -1139,11 +1152,11 @@ function StatCard({
 
 function NewsItem({ title, category, date }: NewsItemProps) {
   return (
-    <div className="group flex cursor-pointer items-center gap-6 rounded-2xl border border-transparent p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/5">
-      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-white/5 bg-[#facc15]/5 transition-all group-hover:border-[#facc15]/50">
+    <div className="group flex cursor-pointer items-center gap-6 rounded-2xl border border-transparent p-5 transition-all duration-300 hover:border-slate-200 hover:bg-slate-50 dark:hover:border-white/10 dark:hover:bg-white/5">
+      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-[#facc15]/10 transition-all group-hover:border-[#facc15]/50 dark:border-white/5 dark:bg-[#facc15]/5">
         <ArrowUpRight
           size={20}
-          className="text-white/20 transition-all group-hover:text-[#facc15]"
+          className="text-slate-400 transition-all group-hover:text-[#facc15] dark:text-white/20"
         />
       </div>
       <div className="flex-1">
@@ -1151,14 +1164,22 @@ function NewsItem({ title, category, date }: NewsItemProps) {
           <p className="text-[9px] font-black uppercase tracking-widest text-[#facc15]">
             {category}
           </p>
-          <span className="text-[9px] font-bold uppercase text-white/20">
+          <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-white/20">
             {date}
           </span>
         </div>
-        <p className="text-sm font-bold leading-tight text-white/70 transition-colors group-hover:text-white">
+        <p className="text-sm font-bold leading-tight text-slate-700 transition-colors group-hover:text-slate-950 dark:text-white/70 dark:group-hover:text-white">
           {title}
         </p>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   );
 }

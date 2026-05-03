@@ -1,96 +1,173 @@
 import re
-
 from app.utils.budget import normalize_budget
+
+_MOROCCAN_CITIES = [
+    "rabat", "casablanca", "casa", "marrakech", "marrakesh",
+    "tanger", "tangier", "fès", "fes", "agadir", "oujda",
+    "meknès", "meknes", "kenitra", "tetouan", "tétouan",
+    "el jadida", "safi", "mohammedia",
+]
+
+_GROUP_KEYWORDS = {
+    "family":  ["famille", "enfant", "enfants", "kids", "family", "familles"],
+    "couple":  ["couple", "romantique", "amoureux", "amoureuse", "en amour", "en couple"],
+    "friends": ["amis", "potes", "groupe", "bande", "friends", "avec des amis"],
+    "solo":    ["solo", "seul", "seule", "alone", "tout seul", "toute seule"],
+}
+
+_AMBIANCE_KEYWORDS = {
+    "calm":     ["calme", "tranquille", "reposant", "quiet", "peaceful", "zen", "détendu"],
+    "animated": ["festif", "animé", "anime", "convivial", "vivant", "ambiance", "festive"],
+    "cultural": ["culturel", "culturelle", "culture", "histoire", "historique", "art", "musée"],
+    "sport":    ["foot", "football", "sport", "supporter", "supporters", "match", "fan"],
+}
+
+_PLACE_TYPE_KEYWORDS = {
+    "cafe": [
+        "café", "cafe", "coffee", "terrasse", "salon de thé", "thé", "tea",
+        "breakfast", "petit déjeuner", "brunch", "un café", "un coffee",
+    ],
+    "restaurant": [
+        "restaurant", "resto", "manger", "déjeuner", "diner", "dîner",
+        "cuisine", "repas", "tajine", "couscous", "grill", "pizz", "burger",
+        "brasserie", "fast food", "snack", "faim", "j'ai faim",
+        "je veux manger", "trouver à manger",
+    ],
+    "hotel": [
+        "hotel", "hôtel", "hébergement", "hebergement", "riad", "dormir",
+        "chambre", "nuitée", "séjour", "maison d'hôtes", "auberge", "gîte",
+        "où dormir", "passer la nuit",
+    ],
+    "activity": [
+        "activité", "activite", "activités", "sortie", "visite", "à faire",
+        "explorer", "découvrir", "découverte", "excursion", "randonnée",
+        "que faire", "quoi faire",
+    ],
+    "cultural": [
+        "musée", "musee", "monument", "attraction", "culture", "historique",
+        "patrimoine", "médina", "site", "kasbah", "remparts", "galerie",
+        "archéologie", "tradition",
+    ],
+    "fanzone": [
+        "fan zone", "fanzone", "bar foot", "bar sport", "sports bar",
+        "écran géant", "grand écran", "sans ticket", "sans billet",
+        "pas de ticket", "pas de billet", "n'ai pas de ticket",
+        "je n'ai pas de ticket", "regarder le match", "voir le match",
+        "diffusion", "retransmission", "watch party",
+    ],
+    "nightlife": [
+        "bar", "nightlife", "club", "boîte", "boite", "discothèque",
+        "discotheque", "soirée", "après match", "fêter", "celebrer",
+    ],
+}
+
+
+def _extract_budget(text: str, memory: dict) -> str | None:
+    if any(x in text for x in ["pas cher", "cheap", "economique", "économique", "petit budget", "$"]):
+        return "low"
+    if any(x in text for x in ["moyen", "medium", "raisonnable", "$$"]):
+        return "medium"
+    if any(x in text for x in ["luxe", "haut de gamme", "expensive", "premium", "$$$", "chic"]):
+        return "high"
+    return normalize_budget(memory.get("budget"))
+
+
+def _extract_time_available(text: str, memory: dict) -> int | None:
+    hours_match = re.search(r"(\d+)\s*h(?:eure|eures)?(?!\d)", text)
+    minutes_match = re.search(r"(\d+)\s*(?:minute|minutes|min)", text)
+    if hours_match:
+        return int(hours_match.group(1)) * 60
+    if minutes_match:
+        return int(minutes_match.group(1))
+    return memory.get("time_available_minutes")
+
+
+def _extract_group_type(text: str, memory: dict) -> str | None:
+    for group, keywords in _GROUP_KEYWORDS.items():
+        if any(k in text for k in keywords):
+            return group
+    return memory.get("group_type")
+
+
+def _extract_ambiance(text: str, memory: dict) -> str | None:
+    for ambiance, keywords in _AMBIANCE_KEYWORDS.items():
+        if any(k in text for k in keywords):
+            return ambiance
+    return memory.get("ambiance")
+
+
+def _extract_place_type(text: str, memory: dict) -> tuple[str | None, bool]:
+    nightlife_explicit = memory.get("nightlife_explicit", False)
+    for place_type, keywords in _PLACE_TYPE_KEYWORDS.items():
+        if any(k in text for k in keywords):
+            if place_type == "nightlife":
+                nightlife_explicit = True
+            return place_type, nightlife_explicit
+    return memory.get("requested_place_type"), nightlife_explicit
+
+
+def _extract_city(text: str, memory: dict) -> str | None:
+    for city in _MOROCCAN_CITIES:
+        if city in text:
+            normalized = {
+                "casa": "Casablanca",
+                "marrakesh": "Marrakech",
+                "tangier": "Tanger",
+                "fes": "Fès",
+                "meknes": "Meknès",
+            }.get(city, city.capitalize())
+            return normalized
+    return memory.get("city")
+
+
+def _needs_clarification(text: str, requested_type: str | None) -> tuple[bool, str | None]:
+    if requested_type:
+        return False, None
+
+    vague_request = any(x in text for x in [
+        "je veux sortir", "propose-moi quelque chose", "propose moi quelque chose",
+        "je sais pas quoi faire", "je ne sais pas quoi faire",
+    ])
+
+    if vague_request:
+        return True, (
+            "Pas de problème ! Tu préfères plutôt : un café calme, "
+            "un restaurant, une activité culturelle, ou une ambiance festive ?"
+        )
+
+    return False, None
+
+
+_FOLLOWUP_SIGNALS = [
+    "et après", "et ensuite", "et puis", "suite", "continuer", "après ça",
+    "quoi d'autre", "autre chose", "autre option", "maintenant", "ok et",
+    "et pour", "aussi", "sinon", "encore", "plus de",
+]
+
+
+def _is_followup(text: str) -> bool:
+    return any(x in text for x in _FOLLOWUP_SIGNALS)
 
 
 def extract_constraints(message: str, memory: dict | None = None) -> dict:
     text = message.lower()
     memory = memory or {}
 
-    budget = None
-    if any(x in text for x in ["pas cher", "cheap", "economique", "économique", "$"]):
-        budget = "low"
-    elif any(x in text for x in ["moyen", "medium", "$$"]):
-        budget = "medium"
-    elif any(x in text for x in ["luxe", "haut de gamme", "expensive", "$$$"]):
-        budget = "high"
+    budget = _extract_budget(text, memory)
+    time_available_minutes = _extract_time_available(text, memory)
+    group_type = _extract_group_type(text, memory)
+    ambiance = _extract_ambiance(text, memory)
+    requested_place_type, nightlife_explicit = _extract_place_type(text, memory)
+    city = _extract_city(text, memory)
+    clarification_needed, clarification_question = _needs_clarification(text, requested_place_type)
 
-    budget = normalize_budget(budget) or memory.get("budget")
+    # For follow-up messages, inherit city from memory if not found in message
+    if not city and _is_followup(text):
+        city = memory.get("city")
 
-    time_available_minutes = memory.get("time_available_minutes")
-    hours_match = re.search(r"(\d+)\s*(heure|heures|h)", text)
-    minutes_match = re.search(r"(\d+)\s*(minute|minutes|min)", text)
-
-    if hours_match:
-        time_available_minutes = int(hours_match.group(1)) * 60
-    elif minutes_match:
-        time_available_minutes = int(minutes_match.group(1))
-
-    ambiance = memory.get("ambiance")
-    if "calme" in text:
+    # Defaults: activity without nightlife context gets calm ambiance
+    if requested_place_type == "activity" and not nightlife_explicit and ambiance is None:
         ambiance = "calm"
-    elif any(x in text for x in ["festif", "animé", "anime", "convivial"]):
-        ambiance = "animated"
-    elif any(x in text for x in ["culture", "culturel", "culturelle"]):
-        ambiance = "cultural"
-
-    group_type = memory.get("group_type")
-    if "famille" in text:
-        group_type = "family"
-    elif "couple" in text:
-        group_type = "couple"
-    elif "amis" in text:
-        group_type = "friends"
-    elif "solo" in text or "seul" in text:
-        group_type = "solo"
-
-    requested_place_type = memory.get("requested_place_type")
-    nightlife_explicit = memory.get("nightlife_explicit", False)
-
-    if any(x in text for x in ["café", "cafe", "coffee"]):
-        requested_place_type = "cafe"
-
-    elif any(x in text for x in ["restaurant", "resto", "manger", "déjeuner", "dejeuner", "dîner", "diner"]):
-        requested_place_type = "restaurant"
-
-    elif any(x in text for x in ["hotel", "hôtel", "hébergement", "hebergement"]):
-        requested_place_type = "hotel"
-
-    elif any(x in text for x in [
-        "activité", "activite", "activités", "activites",
-        "sortie", "visite", "chose à faire", "choses à faire",
-        "a faire", "à faire", "découvrir", "decouvrir"
-    ]):
-        requested_place_type = "activity"
-
-    elif any(x in text for x in ["musée", "musee", "monument", "attraction", "culture"]):
-        requested_place_type = "cultural"
-
-    elif any(x in text for x in ["bar", "nightlife", "club", "boîte", "boite", "night club", "discothèque", "discotheque"]):
-        requested_place_type = "nightlife"
-        nightlife_explicit = True
-
-    clarification_needed = False
-    clarification_question = None
-
-    generic_request = any(x in text for x in [
-        "que faire", "quoi faire", "activité", "activite", "activités", "activites",
-        "je veux sortir", "propose-moi quelque chose", "propose moi quelque chose",
-        "je veux une activité"
-    ])
-
-    if generic_request and not requested_place_type:
-        clarification_needed = True
-        clarification_question = (
-            "Tu préfères plutôt une activité culturelle, un café calme, un restaurant convivial, "
-            "ou une ambiance plus animée ?"
-        )
-
-    # si l'utilisateur veut une activité mais n'a pas précisé le style,
-    # on force un comportement safe par défaut
-    if requested_place_type == "activity" and not nightlife_explicit:
-        if ambiance is None:
-            ambiance = "calm"
 
     return {
         "budget": budget,
@@ -99,6 +176,7 @@ def extract_constraints(message: str, memory: dict | None = None) -> dict:
         "group_type": group_type,
         "requested_place_type": requested_place_type,
         "nightlife_explicit": nightlife_explicit,
+        "city": city,
         "clarification_needed": clarification_needed,
         "clarification_question": clarification_question,
     }

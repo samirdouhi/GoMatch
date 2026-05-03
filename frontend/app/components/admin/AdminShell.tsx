@@ -8,7 +8,7 @@ type AdminShellProps = {
 
 export default function AdminShell({ children }: AdminShellProps) {
   return (
-    <div className="h-screen overflow-hidden bg-[#06080d] text-white">
+    <div className="h-screen overflow-hidden bg-slate-100 text-slate-900 dark:bg-[#06080d] dark:text-white">
       <div className="flex h-full">
         <AdminSidebar />
 

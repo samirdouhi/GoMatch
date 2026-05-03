@@ -1,13 +1,19 @@
-version: "3.9"
+# ─────────────────────────────────────────────────────────────────────────────
+# GoMatch — docker-compose complet
+# Prérequis : créer un fichier .env à la racine (voir .env.example)
+# Lancement : docker compose up --build
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
+
+  # ── Base de données SQL Server ──────────────────────────────────────────────
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: pfa-sqlserver
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
-      MSSQL_PID: "${MSSQL_PID}"
+      MSSQL_PID: "${MSSQL_PID:-Developer}"
     ports:
       - "1433:1433"
     volumes:
@@ -20,14 +26,195 @@ services:
       timeout: 5s
       retries: 20
 
+  # ── Auth Service (.NET 9) ───────────────────────────────────────────────────
+  authservice:
+    build:
+      context: ./backend/Services/Auth/AuthService/AuthService
+    container_name: pfa-auth
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchAuthDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+      Jwt__ExpiryMinutes: "15"
+      Authentication__Google__ClientId: "${GOOGLE_CLIENT_ID}"
+      Smtp__Host: "${SMTP_HOST}"
+      Smtp__Port: "${SMTP_PORT}"
+      Smtp__Username: "${SMTP_USERNAME}"
+      Smtp__Password: "${SMTP_PASSWORD}"
+      Smtp__From: "${SMTP_FROM}"
+      InternalApiKey: "INTERNAL_SECRET_KEY_GOMATCH"
+    ports:
+      - "5001:8080"
+    networks:
+      - pfa-network
+    restart: on-failure
+
+  # ── Business Service (.NET 9) ───────────────────────────────────────────────
+  businessservice:
+    build:
+      context: ./backend/Services/BusinessService
+    container_name: pfa-business
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      authservice:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchBusinessDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+      Services__AuthService__BaseUrl: "http://authservice:8080"
+    ports:
+      - "5002:8080"
+    networks:
+      - pfa-network
+    restart: on-failure
+
+  # ── Profile Service (.NET 9) ────────────────────────────────────────────────
+  profileservice:
+    build:
+      context: ./backend/Services/ProfileService/ProfileService
+    container_name: pfa-profile
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      authservice:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchProfileDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+      Services__AuthServiceBaseUrl: "http://authservice:8080"
+    volumes:
+      - profile_photos:/app/Storage/ProfilePhotos
+    ports:
+      - "5003:8080"
+    networks:
+      - pfa-network
+    restart: on-failure
+
+  # ── Notification Service (.NET 9 + SQLite) ──────────────────────────────────
+  notificationservice:
+    build:
+      context: ./backend/Services/NotificationService
+    container_name: pfa-notification
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+      ConnectionStrings__DefaultConnection: "Data Source=/data/gomatch_notifications.db"
+    volumes:
+      - notification_data:/data
+    ports:
+      - "5008:8080"
+    networks:
+      - pfa-network
+    restart: always
+
+  # ── Event Match Service (.NET 9) ────────────────────────────────────────────
+  eventmatchservice:
+    build:
+      context: ./backend/Services/EventMatchService
+    container_name: pfa-eventmatch
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchEventMatchDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+      FootballData__ApiKey: "${FOOTBALL_API_KEY}"
+      FootballData__BaseUrl: "https://api.football-data.org/v4/"
+      FootballData__CompetitionCode: "WC"
+      FootballData__SeasonYear: "2026"
+      FootballData__CacheMinutes: "5"
+    ports:
+      - "5005:8080"
+    networks:
+      - pfa-network
+    restart: on-failure
+
+  # ── Service Découverte (.NET 9) ─────────────────────────────────────────────
+  decouverte:
+    build:
+      context: ./backend/Services/ServiceDecouverte/ServiceDecouverte
+    container_name: pfa-decouverte
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchDecouverteDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+    ports:
+      - "5007:8080"
+    networks:
+      - pfa-network
+    restart: on-failure
+
+  # ── Reco Service (Python FastAPI) ───────────────────────────────────────────
+  recoservice:
+    build:
+      context: ./backend/Services/RecoService
+    container_name: pfa-reco
+    environment:
+      GATEWAY_BASE_URL: "http://gateway:8080"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      LLM_MODEL: "${LLM_MODEL:-claude-haiku-4-5-20251001}"
+      LLM_MAX_TOKENS: "${LLM_MAX_TOKENS:-350}"
+      VERIFY_SSL: "false"
+    ports:
+      - "5004:8000"
+    networks:
+      - pfa-network
+    restart: on-failure
+
+  # ── API Gateway (YARP / .NET 9) ─────────────────────────────────────────────
   gateway:
     build:
       context: ./backend/Gateway/ApiGateway
     container_name: pfa-gateway
     environment:
       ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+      # HttpClients directs (utilisés par les controllers du Gateway)
+      Services__AuthService: "http://authservice:8080/"
+      Services__ProfileService: "http://profileservice:8080/"
+      Services__BusinessService: "http://businessservice:8080/"
+      Services__ServiceDecouverte: "http://decouverte:8080/"
+      # Clusters YARP — remplace les adresses localhost de appsettings.json
+      ReverseProxy__Clusters__auth-cluster__Destinations__destination1__Address: "http://authservice:8080/"
+      ReverseProxy__Clusters__profile-cluster__Destinations__destination1__Address: "http://profileservice:8080/"
+      ReverseProxy__Clusters__business-cluster__Destinations__destination1__Address: "http://businessservice:8080/"
+      ReverseProxy__Clusters__event-match-cluster__Destinations__destination1__Address: "http://eventmatchservice:8080/"
+      ReverseProxy__Clusters__reco-cluster__Destinations__destination1__Address: "http://recoservice:8000/"
+      ReverseProxy__Clusters__service-decouverte-cluster__Destinations__destination1__Address: "http://decouverte:8080/"
+      ReverseProxy__Clusters__notification-cluster__Destinations__destination1__Address: "http://notificationservice:8080/"
     ports:
-      - "5000:8080"
+      - "5006:8080"
     depends_on:
       authservice:
         condition: service_started
@@ -39,140 +226,42 @@ services:
         condition: service_started
       eventmatchservice:
         condition: service_started
-      statsservice:
+      decouverte:
         condition: service_started
-      cultureservice:
+      notificationservice:
         condition: service_started
     networks:
       - pfa-network
+    restart: on-failure
 
-  authservice:
-    build:
-      context: ./backend/Services/Auth/AuthService/AuthService
-    container_name: pfa-auth
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchAuthDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
-      Jwt__Key: "${JWT_KEY}"
-    ports:
-      - "5001:8080"
-    networks:
-      - pfa-network
-
-  businessservice:
-    build:
-      context: ./backend/Services/BusinessService
-    container_name: pfa-business
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchBusinessDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
-      Jwt__Key: "${JWT_KEY}"
-    ports:
-      - "5002:8080"
-    networks:
-      - pfa-network
-
-  profileservice:
-    build:
-      context: ./backend/Services/ProfileService/ProfileService
-    container_name: pfa-profile
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchProfileDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
-      Jwt__Key: "${JWT_KEY}"
-    ports:
-      - "5003:8080"
-    networks:
-      - pfa-network
-
-  recoservice:
-    build:
-      context: ./backend/Services/RecoService
-    container_name: pfa-reco
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      Jwt__Key: "${JWT_KEY}"
-    ports:
-      - "5004:8080"
-    networks:
-      - pfa-network
-
-  eventmatchservice:
-    build:
-      context: ./backend/Services/EventMatchService
-    container_name: pfa-eventmatch
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchEventMatchDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
-      Jwt__Key: "${JWT_KEY}"
-    ports:
-      - "5005:8080"
-    networks:
-      - pfa-network
-
-  statsservice:
-    build:
-      context: ./backend/Services/StatsService
-    container_name: pfa-stats
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchStatsDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
-      Jwt__Key: "${JWT_KEY}"
-    ports:
-      - "5006:8080"
-    networks:
-      - pfa-network
-
-  cultureservice:
-    build:
-      context: ./backend/Services/CultureService
-    container_name: pfa-culture
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      APP_ENV: dev
-      APP_DEBUG: 1
-      DATABASE_URL: "sqlsrv://sa:${SA_PASSWORD}@sqlserver:1433/GoMatchCultureDb?TrustServerCertificate=true"
-    ports:
-      - "5007:80"
-    networks:
-      - pfa-network
-
+  # ── Frontend (Next.js) ──────────────────────────────────────────────────────
+  # NEXT_PUBLIC_* doivent être définis au BUILD (Next.js les intègre dans le bundle)
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_GATEWAY_BASE_URL: "http://localhost:5006"
+        NEXT_PUBLIC_PROFILE_ASSET_BASE_URL: "http://localhost:5006"
+        GATEWAY_API_TARGET: "http://gateway:8080"
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
     container_name: pfa-frontend
     depends_on:
       gateway:
         condition: service_started
     environment:
-      NEXT_PUBLIC_API_BASE_URL: "http://localhost:5000"
+      GATEWAY_API_TARGET: "http://gateway:8080"
+      NODE_ENV: production
     ports:
       - "3000:3000"
     networks:
       - pfa-network
+    restart: on-failure
 
 volumes:
   sql_data:
+  notification_data:
+  profile_photos:
 
 networks:
   pfa-network:
+    driver: bridge

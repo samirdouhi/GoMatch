@@ -20,6 +20,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Horaires)
                 .Include(c => c.Photos)
+                .Include(c => c.Avis)
                 .ToListAsync();
         }
 
@@ -30,6 +31,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Horaires)
                 .Include(c => c.Photos)
+                .Include(c => c.Avis)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
@@ -103,6 +105,7 @@ namespace BusinessService.Repositories
                 .Include(c => c.TagsCulturels)
                 .Include(c => c.Horaires)
                 .Include(c => c.Photos)
+                .Include(c => c.Avis)
                 .Where(c => c.EstValide)
                 .ToListAsync();
 

@@ -104,7 +104,9 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<ProfileDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
@@ -147,6 +149,12 @@ builder.Services.AddScoped<IExceptionMapper, ExceptionMapper>();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ProfileDbContext>();
+    db.Database.Migrate();
+}
+
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 {
     app.MapOpenApi();
@@ -155,9 +163,14 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseCors("FrontDev");
+
+// CORS géré par la gateway en production — on l'applique directement seulement en dev
+if (app.Environment.IsDevelopment())
+    app.UseCors("FrontDev");
+
 app.UseAuthentication();
 app.UseAuthorization();
 

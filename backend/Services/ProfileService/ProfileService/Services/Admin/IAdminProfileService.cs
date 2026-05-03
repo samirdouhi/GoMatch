@@ -29,4 +29,6 @@ public interface IAdminProfileService
         UpdateCommercantStatusRequestDto request,
         CancellationToken ct);
     Task<AdminProfileStatusResponseDto> GetProfileStatusAsync(CancellationToken ct);
+    Task<IReadOnlyList<AdminUserListItemDto>> GetAllUsersAsync(CancellationToken ct);
+    Task<bool> ToggleUserActiveAsync(Guid userId, CancellationToken ct);
 }

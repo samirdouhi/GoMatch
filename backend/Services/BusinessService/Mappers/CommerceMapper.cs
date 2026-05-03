@@ -8,6 +8,7 @@ namespace BusinessService.Mappers
     {
         public static CommerceReponseDto ToResponse(Commerce commerce)
         {
+            var notes = commerce.Avis?.Select(a => a.Note).ToList() ?? new List<int>();
             return new CommerceReponseDto
             {
                 Id = commerce.Id,
@@ -38,7 +39,9 @@ namespace BusinessService.Mappers
                         Ordre = p.Ordre,
                         DateAjout = p.DateAjout,
                         UrlImage = $"/api/commerces/{p.CommerceId}/photos/{p.Id}/image"
-                    }).ToList()
+                    }).ToList(),
+                NoteGlobale = notes.Count > 0 ? Math.Round(notes.Average(), 1) : null,
+                NombreAvis = notes.Count,
             };
         }
 

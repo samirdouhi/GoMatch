@@ -1,7 +1,7 @@
 import { authFetch } from "@/lib/authApi";
 
 const GATEWAY_BASE_URL =
-  (process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:5266").replace(/\/$/, "");
+  (process.env.NEXT_PUBLIC_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:5266").replace(/\/$/, "");
 
 function buildGatewayUrl(path: string): string {
   if (!path.startsWith("/")) return `${GATEWAY_BASE_URL}/${path}`;
@@ -46,6 +46,18 @@ export type Commerce = {
   tagsCulturels: string[];
   horaires: HoraireCommerce[];
   photos: PhotoCommerce[];
+  noteGlobale?: number | null;
+  nombreAvis: number;
+};
+
+export type Avis = {
+  id: string;
+  commerceId: string;
+  utilisateurId: string;
+  utilisateurEmail: string;
+  note: number;
+  commentaire?: string | null;
+  dateCreation: string;
 };
 
 export type CreerCommerceDto = {
@@ -414,6 +426,31 @@ export async function deletePhoto(commerceId: string, photoId: string): Promise<
     });
     throw new Error(extractMessage(data, "Erreur suppression photo"));
   }
+}
+
+// ── Avis ──────────────────────────────────────────────────────────────────────
+
+export async function getAvis(commerceId: string): Promise<Avis[]> {
+  const url = buildGatewayUrl(`/business/api/commerces/${commerceId}/avis`);
+  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const data = await parseJsonSafe(res);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur récupération avis"));
+  return data as Avis[];
+}
+
+export async function posterAvis(
+  commerceId: string,
+  note: number,
+  commentaire?: string
+): Promise<Avis> {
+  const res = await authFetch(`/business/api/commerces/${commerceId}/avis`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note, commentaire: commentaire || null }),
+  });
+  const data = await parseJsonSafe(res);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur soumission avis"));
+  return data as Avis;
 }
 
 // ── Horaires ──────────────────────────────────────────────────────────────────

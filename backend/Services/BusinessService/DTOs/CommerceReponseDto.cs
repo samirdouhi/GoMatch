@@ -19,5 +19,7 @@
         public List<string> TagsCulturels { get; set; } = new();
         public List<HoraireCommerceReponseDto> Horaires { get; set; } = new();
         public List<PhotoCommerceReponseDto> Photos { get; set; } = new();
+        public double? NoteGlobale { get; set; }
+        public int NombreAvis { get; set; }
     }
 }

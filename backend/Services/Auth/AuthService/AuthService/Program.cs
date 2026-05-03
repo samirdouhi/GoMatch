@@ -37,7 +37,9 @@ builder.Services.AddCors(options =>
 
 // DB
 builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
 
 // Options
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
@@ -95,30 +97,27 @@ using (var scope = app.Services.CreateScope())
 
     db.Database.Migrate();
 
-    if (app.Environment.IsDevelopment())
+    var adminExiste = db.Users
+        .AsEnumerable()
+        .Any(u => u.Roles.Contains(UserRole.Admin));
+
+    if (!adminExiste)
     {
-        var adminExiste = db.Users
-            .AsEnumerable()
-            .Any(u => u.Roles.Contains(UserRole.Admin));
-
-        if (!adminExiste)
+        var admin = new User
         {
-            var admin = new User
-            {
-                Id = Guid.NewGuid(),
-                Email = "admin@gomatch.com",
-                PasswordHash = passwordHasher.Hasher("Admin123!"),
-                Roles = new List<UserRole> { UserRole.Admin },
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                EmailConfirmed = true,
-                EmailConfirmationToken = null,
-                EmailConfirmationTokenExpiresAt = null
-            };
+            Id = Guid.NewGuid(),
+            Email = "admin@gomatch.com",
+            PasswordHash = passwordHasher.Hasher("Admin123!"),
+            Roles = new List<UserRole> { UserRole.Admin },
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmed = true,
+            EmailConfirmationToken = null,
+            EmailConfirmationTokenExpiresAt = null
+        };
 
-            db.Users.Add(admin);
-            db.SaveChanges();
-        }
+        db.Users.Add(admin);
+        db.SaveChanges();
     }
 }
 
@@ -132,9 +131,13 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 
-app.UseCors("FrontDev");
+// CORS géré par la gateway en production — on l'applique directement seulement en dev
+if (app.Environment.IsDevelopment())
+    app.UseCors("FrontDev");
+
 app.UseAuthentication();
 app.UseAuthorization();
 

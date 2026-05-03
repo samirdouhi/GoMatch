@@ -3,14 +3,25 @@ import type { MapItem, MapItemType } from "../app/components/map/types";
 const GATEWAY_BASE_URL =
   process.env.NEXT_PUBLIC_GATEWAY_BASE_URL ?? "http://localhost:5266";
 
-const EVENT_MATCHES_ENDPOINT =
-  `${GATEWAY_BASE_URL}/event-matches/matches/world-cup`;
+const EVENT_MATCHES_ENDPOINT = `${GATEWAY_BASE_URL}/event-matches/matches/world-cup`;
+const BUSINESSES_ENDPOINT = `${GATEWAY_BASE_URL}/business/api/commerces`;
+const DISCOVERY_ENDPOINT = `${GATEWAY_BASE_URL}/decouverte/api/places`;
 
-const BUSINESSES_ENDPOINT =
-  `${GATEWAY_BASE_URL}/business/api/commerces`;
+type ApiHoraire = {
+  id: string;
+  jourSemaine: number;
+  heureOuverture?: string | null;
+  heureFermeture?: string | null;
+  estFerme?: boolean;
+};
 
-const DISCOVERY_ENDPOINT =
-  `${GATEWAY_BASE_URL}/decouverte/api/places`;
+type ApiAvis = {
+  id: string;
+  note: number;
+  commentaire: string | null;
+  utilisateurEmail: string | null;
+  dateCreation?: string;
+};
 
 type EventMatchFanZoneApiItem = {
   name?: string;
@@ -22,36 +33,21 @@ type EventMatchFanZoneApiItem = {
 type EventMatchApiItem = {
   id?: string | number;
   matchId?: string | number;
-  competitionCode?: string;
-  competitionName?: string;
   homeTeam?: string;
   awayTeam?: string;
   homeTeamName?: string;
   awayTeamName?: string;
-  utcDate?: string;
-  status?: string;
-  stage?: string;
-  matchdayLabel?: string;
-  homeScore?: number | null;
-  awayScore?: number | null;
-  venue?: string;
   city?: string;
   stadiumName?: string;
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
-  isOfficialLocation?: boolean;
-  locationSource?: string;
   isExperienceMatch?: boolean;
   fanZones?: EventMatchFanZoneApiItem[];
 };
 
 type BusinessApiPhoto = {
   id?: string;
-  commerceId?: string;
-  nomFichier?: string;
-  typeContenu?: string;
-  tailleFichier?: number;
   ordre?: number;
   dateAjout?: string;
   urlImage?: string;
@@ -71,23 +67,34 @@ type BusinessApiItem = {
   categoryName?: string;
   categorieName?: string;
   nomCategorie?: string;
-
-  categorie?: {
-    nom?: string;
-    name?: string;
-  };
-
+  categorie?: { nom?: string; name?: string };
   category?: string | { nom?: string; name?: string };
 
   culturalTags?: string[];
   tagsCulturels?: string[];
-  tags?: Array<{
-    nom?: string;
-    name?: string;
-  }>;
+  tags?: Array<{ nom?: string; name?: string }>;
 
   photos?: BusinessApiPhoto[];
   businessType?: "Hotel" | "Restaurant" | "Activity" | string;
+
+  note?: number | null;
+  noteGlobale?: number | null;
+  moyenneAvis?: number | null;
+  moyenneNote?: number | null;
+  rating?: number | null;
+
+  nombreAvis?: number | null;
+  nbAvis?: number | null;
+  avisCount?: number | null;
+  totalAvis?: number | null;
+
+  horaires?: ApiHoraire[];
+  horairesCommerces?: ApiHoraire[];
+  horairesCommerce?: ApiHoraire[];
+
+  avis?: ApiAvis[];
+  avisClients?: ApiAvis[];
+  reviews?: ApiAvis[];
 };
 
 type DiscoveryApiItem = {
@@ -100,7 +107,6 @@ type DiscoveryApiItem = {
   longitude?: number | null;
   ville?: string;
   tags?: string[];
-  note?: number | null;
   prixMoyen?: number | null;
   images?: string[];
   estOuvert?: boolean | null;
@@ -110,15 +116,6 @@ type DiscoveryApiItem = {
 
 export type RichMapItem = MapItem & {
   source?: "business" | "discovery" | "event";
-  imageUrl?: string;
-  adresse?: string;
-  nomCategorie?: string;
-  tagsCulturels?: string[];
-  note?: number | null;
-  prixMoyen?: number | null;
-  estOuvert?: boolean | null;
-  horairesOuverture?: string | null;
-  popularite?: number | null;
 };
 
 function isValidCoordinate(value: unknown): value is number {
@@ -129,6 +126,17 @@ function safeString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;
+}
+
+function safeNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 function normalizeText(value: unknown): string {
@@ -157,15 +165,82 @@ function ensureUniqueIds(items: RichMapItem[]): RichMapItem[] {
     const count = seen.get(item.id) ?? 0;
     seen.set(item.id, count + 1);
 
-    if (count === 0) {
-      return item;
-    }
+    if (count === 0) return item;
 
     return {
       ...item,
       id: `${item.id}-${count + 1}`,
     };
   });
+}
+
+function getBusinessRating(business: BusinessApiItem): number | null {
+  return (
+    safeNumber(business.noteGlobale) ??
+    safeNumber(business.note) ??
+    safeNumber(business.moyenneAvis) ??
+    safeNumber(business.moyenneNote) ??
+    safeNumber(business.rating) ??
+    null
+  );
+}
+
+function getBusinessAvis(business: BusinessApiItem): ApiAvis[] {
+  const rawAvis = business.avis ?? business.avisClients ?? business.reviews ?? [];
+
+  if (!Array.isArray(rawAvis)) return [];
+
+  return rawAvis
+    .map((avis, index) => {
+      const note = safeNumber(avis.note);
+      if (note === null) return null;
+
+      return {
+        id: safeString(avis.id) ?? `avis-${index}`,
+        note,
+        commentaire: safeString(avis.commentaire) ?? null,
+        utilisateurEmail: safeString(avis.utilisateurEmail) ?? null,
+        dateCreation: safeString(avis.dateCreation),
+      };
+    })
+    .filter((avis) => avis !== null) as ApiAvis[];
+}
+
+function getBusinessReviewCount(business: BusinessApiItem): number {
+  const explicitCount =
+    safeNumber(business.nombreAvis) ??
+    safeNumber(business.nbAvis) ??
+    safeNumber(business.avisCount) ??
+    safeNumber(business.totalAvis);
+
+  if (explicitCount !== null) return explicitCount;
+
+  return getBusinessAvis(business).length;
+}
+
+function getBusinessHoraires(business: BusinessApiItem): ApiHoraire[] {
+  const horaires =
+    business.horaires ??
+    business.horairesCommerces ??
+    business.horairesCommerce ??
+    [];
+
+  if (!Array.isArray(horaires)) return [];
+
+  return horaires
+    .map((h, index) => {
+      const jour = safeNumber(h.jourSemaine);
+      if (jour === null) return null;
+
+      return {
+        id: safeString(h.id) ?? `horaire-${index}`,
+        jourSemaine: jour,
+        heureOuverture: safeString(h.heureOuverture) ?? null,
+        heureFermeture: safeString(h.heureFermeture) ?? null,
+        estFerme: Boolean(h.estFerme),
+      };
+    })
+    .filter((h) => h !== null) as ApiHoraire[];
 }
 
 function extractBusinessCategory(business: BusinessApiItem): string | undefined {
@@ -176,9 +251,17 @@ function extractBusinessCategory(business: BusinessApiItem): string | undefined 
     safeString(business.categorieName) ||
     safeString(business.categorie?.nom) ||
     safeString(business.categorie?.name) ||
-    safeString(typeof business.category === "string" ? business.category : undefined) ||
-    safeString(typeof business.category === "object" ? business.category?.nom : undefined) ||
-    safeString(typeof business.category === "object" ? business.category?.name : undefined)
+    safeString(
+      typeof business.category === "string" ? business.category : undefined
+    ) ||
+    safeString(
+      typeof business.category === "object" ? business.category?.nom : undefined
+    ) ||
+    safeString(
+      typeof business.category === "object"
+        ? business.category?.name
+        : undefined
+    )
   );
 }
 
@@ -357,7 +440,9 @@ function mapMatchToMapItems(
     name:
       safeString(match.stadiumName) ||
       `${safeString(match.homeTeamName) || safeString(match.homeTeam) || "Équipe A"} vs ${
-        safeString(match.awayTeamName) || safeString(match.awayTeam) || "Équipe B"
+        safeString(match.awayTeamName) ||
+        safeString(match.awayTeam) ||
+        "Équipe B"
       }`,
     type: "stadium",
     position: [stadiumLatitude, stadiumLongitude],
@@ -368,11 +453,15 @@ function mapMatchToMapItems(
     adresse: safeString(match.address) || safeString(match.city),
     nomCategorie: "Stade",
     tagsCulturels: [],
+    note: null,
+    noteGlobale: null,
+    nombreAvis: null,
+    horaires: [],
+    avis: [],
     prixMoyen: null,
     popularite: null,
     estOuvert: null,
     horairesOuverture: null,
-    note: null,
   });
 
   const fanZones = Array.isArray(match.fanZones) ? match.fanZones : [];
@@ -404,11 +493,15 @@ function mapMatchToMapItems(
       adresse: safeString(fanZone.address) || safeString(match.city),
       nomCategorie: "Fan zone",
       tagsCulturels: [],
+      note: null,
+      noteGlobale: null,
+      nombreAvis: null,
+      horaires: [],
+      avis: [],
       prixMoyen: null,
       popularite: null,
       estOuvert: null,
       horairesOuverture: null,
-      note: null,
     });
   });
 
@@ -421,13 +514,19 @@ function extractPrimaryPhotoUrl(business: BusinessApiItem): string | undefined {
   }
 
   const sortedPhotos = [...business.photos].sort((a, b) => {
-    const ordreA = typeof a.ordre === "number" ? a.ordre : Number.MAX_SAFE_INTEGER;
-    const ordreB = typeof b.ordre === "number" ? b.ordre : Number.MAX_SAFE_INTEGER;
+    const ordreA =
+      typeof a.ordre === "number" ? a.ordre : Number.MAX_SAFE_INTEGER;
+    const ordreB =
+      typeof b.ordre === "number" ? b.ordre : Number.MAX_SAFE_INTEGER;
 
     if (ordreA !== ordreB) return ordreA - ordreB;
 
-    const dateA = a.dateAjout ? new Date(a.dateAjout).getTime() : Number.MAX_SAFE_INTEGER;
-    const dateB = b.dateAjout ? new Date(b.dateAjout).getTime() : Number.MAX_SAFE_INTEGER;
+    const dateA = a.dateAjout
+      ? new Date(a.dateAjout).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    const dateB = b.dateAjout
+      ? new Date(b.dateAjout).getTime()
+      : Number.MAX_SAFE_INTEGER;
 
     return dateA - dateB;
   });
@@ -436,6 +535,7 @@ function extractPrimaryPhotoUrl(business: BusinessApiItem): string | undefined {
   const relativeUrl = safeString(firstPhoto?.urlImage);
 
   if (!relativeUrl) return undefined;
+
   if (relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://")) {
     return relativeUrl;
   }
@@ -451,48 +551,39 @@ function mapBusinessToMapItem(business: BusinessApiItem): RichMapItem | null {
     return null;
   }
 
-  const latitude = business.latitude;
-  const longitude = business.longitude;
-
   const category = extractBusinessCategory(business);
   const tags = extractBusinessTags(business);
+
   const name =
-    safeString(business.nom) ||
-    safeString(business.name) ||
-    "Commerce local";
+    safeString(business.nom) || safeString(business.name) || "Commerce local";
 
-  const type = mapCategoryToType(
-    category,
-    tags,
-    name,
-    business.businessType
-  );
+  const type = mapCategoryToType(category, tags, name, business.businessType);
 
-  const businessDescription =
-    safeString(business.description) || "Commerce partenaire GoMatch";
-
-  const address =
-    safeString(business.adresse) ||
-    safeString(business.address);
-
-  const imageUrl = extractPrimaryPhotoUrl(business);
+  const rating = getBusinessRating(business);
+  const horaires = getBusinessHoraires(business);
+  const avis = getBusinessAvis(business);
+  const reviewCount = getBusinessReviewCount(business);
 
   return {
     id: `business-${safeString(business.id) ?? crypto.randomUUID()}`,
     source: "business",
     name,
     type,
-    position: [latitude, longitude],
-    description: businessDescription,
-    adresse: address,
+    position: [business.latitude, business.longitude],
+    description: safeString(business.description) || "Commerce partenaire GoMatch",
+    adresse: safeString(business.adresse) || safeString(business.address),
     nomCategorie: category ?? "Commerce local",
     tagsCulturels: tags,
-    imageUrl,
+    imageUrl: extractPrimaryPhotoUrl(business),
+    note: rating,
+    noteGlobale: rating,
+    nombreAvis: reviewCount,
+    horaires,
+    avis,
     prixMoyen: null,
     popularite: null,
     estOuvert: null,
     horairesOuverture: null,
-    note: null,
   };
 }
 
@@ -519,10 +610,13 @@ function getDiscoveryFallbackImage(type?: string): string {
 
 function buildDiscoveryTags(item: DiscoveryApiItem): string[] {
   const tags = Array.isArray(item.tags)
-    ? item.tags.map((tag) => safeString(tag)).filter((tag): tag is string => Boolean(tag))
+    ? item.tags
+        .map((tag) => safeString(tag))
+        .filter((tag): tag is string => Boolean(tag))
     : [];
 
   const type = safeString(item.type);
+
   if (type && !tags.includes(type)) {
     tags.unshift(type);
   }
@@ -567,10 +661,7 @@ function extractDiscoveryImageUrl(item: DiscoveryApiItem): string | undefined {
 }
 
 function mapDiscoveryToMapItem(item: DiscoveryApiItem): RichMapItem | null {
-  if (
-    !isValidCoordinate(item.latitude) ||
-    !isValidCoordinate(item.longitude)
-  ) {
+  if (!isValidCoordinate(item.latitude) || !isValidCoordinate(item.longitude)) {
     return null;
   }
 
@@ -587,13 +678,18 @@ function mapDiscoveryToMapItem(item: DiscoveryApiItem): RichMapItem | null {
     name,
     type: mapType,
     position: [item.latitude, item.longitude],
-    description:
-      safeString(item.description) || "Lieu touristique à Rabat.",
+    description: safeString(item.description) || "Lieu touristique à Rabat.",
     adresse: safeString(item.adresse) || safeString(item.ville) || "Rabat",
     nomCategorie: getDiscoveryCategoryLabel(discoveryType),
     tagsCulturels: tags,
     imageUrl,
-    note: item.note ?? null,
+
+    note: null,
+    noteGlobale: null,
+    nombreAvis: null,
+    horaires: [],
+    avis: [],
+
     prixMoyen: item.prixMoyen ?? null,
     estOuvert: item.estOuvert ?? null,
     horairesOuverture: safeString(item.horairesOuverture) ?? null,
@@ -625,12 +721,12 @@ function spreadOverlappingItems(items: RichMapItem[]): RichMapItem[] {
     group.forEach((item, index) => {
       const angle = (index / group.length) * 2 * Math.PI;
 
-      const adjustedLat = baseLat + Math.sin(angle) * radius;
-      const adjustedLng = baseLng + Math.cos(angle) * radius;
-
       result.push({
         ...item,
-        position: [adjustedLat, adjustedLng],
+        position: [
+          baseLat + Math.sin(angle) * radius,
+          baseLng + Math.cos(angle) * radius,
+        ],
       });
     });
   }
@@ -638,21 +734,34 @@ function spreadOverlappingItems(items: RichMapItem[]): RichMapItem[] {
   return result;
 }
 
-async function readJsonOrThrow<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
+async function readJsonSafe<T>(url: string): Promise<T[]> {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} sur ${url}`);
+    if (!response.ok) {
+      console.warn(`fetchMapItems: HTTP ${response.status} pour ${url}`);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) return data as T[];
+    if (Array.isArray(data?.items)) return data.items as T[];
+    if (Array.isArray(data?.data)) return data.data as T[];
+    if (Array.isArray(data?.result)) return data.result as T[];
+
+    return [];
+  } catch (err) {
+    console.warn(`fetchMapItems: erreur réseau pour ${url}`, err);
+    return [];
   }
-
-  return (await response.json()) as T;
 }
 
 export async function fetchMapItems(): Promise<RichMapItem[]> {
   const [matchesData, businessesData, discoveryData] = await Promise.all([
-    readJsonOrThrow<EventMatchApiItem[]>(EVENT_MATCHES_ENDPOINT),
-    readJsonOrThrow<BusinessApiItem[]>(BUSINESSES_ENDPOINT),
-    readJsonOrThrow<DiscoveryApiItem[]>(DISCOVERY_ENDPOINT),
+    readJsonSafe<EventMatchApiItem>(EVENT_MATCHES_ENDPOINT),
+    readJsonSafe<BusinessApiItem>(BUSINESSES_ENDPOINT),
+    readJsonSafe<DiscoveryApiItem>(DISCOVERY_ENDPOINT),
   ]);
 
   const matchItems = matchesData.flatMap((match, index) =>
@@ -667,8 +776,7 @@ export async function fetchMapItems(): Promise<RichMapItem[]> {
     .map(mapDiscoveryToMapItem)
     .filter((item): item is RichMapItem => item !== null);
 
-  const allItems = [...matchItems, ...businessItems, ...discoveryItems];
-  const spreadItems = spreadOverlappingItems(allItems);
-
-  return ensureUniqueIds(spreadItems);
+  return ensureUniqueIds(
+    spreadOverlappingItems([...matchItems, ...businessItems, ...discoveryItems])
+  );
 }

@@ -23,9 +23,11 @@ builder.Services.AddControllers()
 // OpenAPI
 builder.Services.AddOpenApi();
 
-// Base de données
+// Base de donnï¿½es
 builder.Services.AddDbContext<ContexteBdCommerce>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
 
 // Repositories
 builder.Services.AddScoped<ICommerceRepository, CommerceRepository>();
@@ -40,6 +42,8 @@ builder.Services.AddScoped<IServiceHoraireCommerce, ServiceHoraireCommerce>();
 builder.Services.AddScoped<IServiceCategorie, ServiceCategorie>();
 builder.Services.AddScoped<IServiceTagCulturel, ServiceTagCulturel>();
 builder.Services.AddScoped<IServicePhotoCommerce, ServicePhotoCommerce>();
+builder.Services.AddScoped<IAvisRepository, AvisRepository>();
+builder.Services.AddScoped<IServiceAvis, ServiceAvis>();
 
 // HTTP client vers AuthService pour les emails
 var authServiceUrl = builder.Configuration["Services:AuthService:BaseUrl"]
@@ -86,6 +90,12 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ContexteBdCommerce>();
+    db.Database.Migrate();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -96,7 +106,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

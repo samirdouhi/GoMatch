@@ -1,5 +1,5 @@
-import { authFetch } from "../authApi";
 import { getAccessToken } from "../authTokens";
+import { buildUrl } from "../utils";
 import { jwtDecode } from "jwt-decode";
 
 type ProfileRouteResponse = {
@@ -66,13 +66,21 @@ export async function getFirstRoute(): Promise<string> {
   }
 
   try {
-    const res = await authFetch("/profile/me", {
+    // On utilise fetch directement (pas authFetch) pour éviter d'effacer les tokens
+    // si le profile service retourne 401 temporairement après un login tout frais
+    const url = buildUrl("/profile/me");
+    const res = await fetch(url, {
       method: "GET",
       cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (res.status === 401 || res.status === 403) {
-      return "/signin";
+      // Le token vient d'être émis — si le profile service le rejette c'est un problème
+      // de configuration. On envoie vers onboarding plutôt que de bloquer sur signin.
+      return "/onboarding";
     }
 
     if (res.status === 404) {
@@ -87,6 +95,8 @@ export async function getFirstRoute(): Promise<string> {
 
     return isOnboardingDone(profile) ? "/dashboard" : "/onboarding";
   } catch {
-    return "/signin";
+    // Erreur réseau (ex : CORS, gateway indisponible) : l'utilisateur vient de se connecter,
+    // on ne le renvoie pas sur signin — il verra l'erreur depuis onboarding si besoin.
+    return "/onboarding";
   }
 }

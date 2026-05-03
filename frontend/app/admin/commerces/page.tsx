@@ -21,8 +21,12 @@ import {
   getAllCommercesAdmin,
   validateCommerce,
   rejectCommerce,
+  photoUrl,
   type Commerce,
 } from "@/lib/commercesApi";
+
+const JOURS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+function formatHeure(v: string) { return v ? v.slice(0, 5) : "--:--"; }
 
 type TabKey = "tous" | "EnAttente" | "Approuve" | "Rejete";
 
@@ -285,6 +289,62 @@ function CommerceCard({
               </div>
             )}
           </div>
+
+          {/* Photos */}
+          {commerce.photos && commerce.photos.length > 0 && (
+            <div className="mt-5">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+                Photos ({commerce.photos.length})
+              </p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                {commerce.photos.map((photo) => (
+                  <div key={photo.id} className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoUrl(photo.urlImage)}
+                      alt={photo.nomFichier}
+                      className="h-full w-full object-cover"
+                    />
+                    {photo.ordre === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded-md bg-orange-500/80 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                        Principale
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Horaires */}
+          {commerce.horaires && commerce.horaires.length > 0 && (
+            <div className="mt-5">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+                Horaires d'ouverture
+              </p>
+              <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+                <div className="divide-y divide-white/[0.04]">
+                  {[...commerce.horaires]
+                    .sort((a, b) => a.jourSemaine - b.jourSemaine)
+                    .map((h) => (
+                      <div
+                        key={h.id}
+                        className="flex items-center justify-between px-4 py-2.5 text-xs"
+                      >
+                        <span className="font-medium text-zinc-300">
+                          {JOURS[h.jourSemaine] ?? `Jour ${h.jourSemaine}`}
+                        </span>
+                        <span className={`font-semibold ${h.estFerme ? "text-red-400" : "text-emerald-300"}`}>
+                          {h.estFerme
+                            ? "Fermé"
+                            : `${formatHeure(h.heureOuverture)} → ${formatHeure(h.heureFermeture)}`}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

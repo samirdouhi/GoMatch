@@ -42,6 +42,15 @@ module.exports = {
         "red-glow": "0 18px 60px rgba(225,29,72,0.35)",
         "emerald-glow": "0 18px 60px rgba(16,185,129,0.22)",
       },
+      keyframes: {
+        shimmer: {
+          "0%": { transform: "translateX(-50%)" },
+          "100%": { transform: "translateX(0%)" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 1.5s ease-in-out infinite",
+      },
     },
   },
   plugins: [],

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { ArrowLeft, Zap, ArrowRight } from "lucide-react";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import NationaliteSelect from "@/components/NationaliteSelect";
@@ -342,7 +342,7 @@ async function finalizeExistingGoogleLogin(
 }
 
 /* -------------------- PAGE -------------------- */
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1046,5 +1046,13 @@ export default function RegisterPage() {
         `}</style>
       </main>
     </>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterContent />
+    </Suspense>
   );
 }

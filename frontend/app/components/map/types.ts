@@ -20,6 +20,25 @@ export type MapItem = {
   tagsCulturels?: string[];
 
   note?: number | null;
+  noteGlobale?: number | null;
+  nombreAvis?: number | null;
+
+  horaires?: {
+    id: string;
+    jourSemaine: number;
+    heureOuverture?: string | null;
+    heureFermeture?: string | null;
+    estFerme?: boolean;
+  }[];
+
+  avis?: {
+    id: string;
+    note: number;
+    commentaire: string | null;
+    utilisateurEmail: string | null;
+    dateCreation?: string;
+  }[];
+
   prixMoyen?: number | null;
   estOuvert?: boolean | null;
   horairesOuverture?: string | null;

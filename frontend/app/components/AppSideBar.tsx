@@ -200,11 +200,11 @@ export function AppSidebar({ open, onClose }: Props) {
       >
         <div
           onClick={onClose}
-          className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          className="absolute inset-0 bg-slate-900/20 backdrop-blur-md dark:bg-black/60"
         />
 
         <aside
-          className={`absolute left-0 top-0 h-screen w-[320px] border-r border-white/10 bg-[#0a0a0a] shadow-2xl transition-transform duration-500 ease-out ${
+          className={`absolute left-0 top-0 h-screen w-[320px] border-r border-black/10 bg-white dark:border-white/10 dark:bg-[#0a0a0a] shadow-2xl transition-transform duration-500 ease-out ${
             open ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -215,7 +215,7 @@ export function AppSidebar({ open, onClose }: Props) {
               <div className="mb-8 flex items-center justify-between">
                 <Link href="/" onClick={onClose} className="relative h-10 w-32">
                   <Image
-                    src="/logoGoMatch2030.png"
+                    src="/LogoGoMatch2030.png"
                     alt="Logo"
                     fill
                     className="object-contain object-left"
@@ -225,36 +225,36 @@ export function AppSidebar({ open, onClose }: Props) {
 
                 <button
                   onClick={onClose}
-                  className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/40 transition-all hover:border-[#facc15] hover:text-white"
+                  className="rounded-xl border border-black/10 bg-black/5 p-2 text-slate-500 transition-all hover:border-[#facc15] hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white/40 dark:hover:text-white"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="relative group">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/20 transition-colors group-focus-within:text-[#facc15]" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[#facc15] dark:text-white/20" />
                 <input
                   value={recherche}
                   onChange={(e) => setRecherche(e.target.value)}
                   placeholder="Rechercher..."
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-xs text-white outline-none transition-all placeholder:text-white/20 focus:border-[#facc15]/50"
+                  className="w-full rounded-xl border border-black/10 bg-black/5 py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#facc15]/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/20"
                 />
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-6 [scrollbar-width:none]">
               <div className="space-y-2">
-                <div className="h-4 w-24 rounded bg-white/5" />
+                <div className="h-4 w-24 rounded bg-black/5 dark:bg-white/5" />
                 <div className="space-y-1">
-                  <div className="h-14 rounded-xl bg-white/5" />
-                  <div className="h-14 rounded-xl bg-white/5" />
-                  <div className="h-14 rounded-xl bg-white/5" />
+                  <div className="h-14 rounded-xl bg-black/5 dark:bg-white/5" />
+                  <div className="h-14 rounded-xl bg-black/5 dark:bg-white/5" />
+                  <div className="h-14 rounded-xl bg-black/5 dark:bg-white/5" />
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-white/5 bg-black/40 p-4">
-              <p className="mt-2 text-center text-[9px] font-bold uppercase tracking-widest text-white/10">
+            <div className="border-t border-black/10 bg-slate-50 dark:border-white/5 dark:bg-black/40 p-4">
+              <p className="mt-2 text-center text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/10">
                 © GoMatch Maroc 2030
               </p>
             </div>
@@ -272,11 +272,11 @@ export function AppSidebar({ open, onClose }: Props) {
     >
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        className="absolute inset-0 bg-slate-900/20 backdrop-blur-md dark:bg-black/60"
       />
 
       <aside
-        className={`absolute left-0 top-0 h-screen w-[320px] border-r border-white/10 bg-[#0a0a0a] shadow-2xl transition-transform duration-500 ease-out ${
+        className={`absolute left-0 top-0 h-screen w-[320px] border-r border-black/10 bg-white dark:border-white/10 dark:bg-[#0a0a0a] shadow-2xl transition-transform duration-500 ease-out ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -297,19 +297,19 @@ export function AppSidebar({ open, onClose }: Props) {
 
               <button
                 onClick={onClose}
-                className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/40 transition-all hover:border-[#facc15] hover:text-white"
+                className="rounded-xl border border-black/10 bg-black/5 p-2 text-slate-500 transition-all hover:border-[#facc15] hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white/40 dark:hover:text-white"
               >
                 <X size={20} />
               </button>
             </div>
 
             <div className="relative group">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/20 transition-colors group-focus-within:text-[#facc15]" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[#facc15] dark:text-white/20" />
               <input
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
                 placeholder="Rechercher..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-xs text-white outline-none transition-all placeholder:text-white/20 focus:border-[#facc15]/50"
+                className="w-full rounded-xl border border-black/10 bg-black/5 py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#facc15]/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/20"
               />
             </div>
 
@@ -323,7 +323,7 @@ export function AppSidebar({ open, onClose }: Props) {
                     className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
                       a.variant === "primary"
                         ? "bg-[#facc15] text-black shadow-lg shadow-[#facc15]/10 hover:scale-[1.02]"
-                        : "border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        : "border border-black/10 bg-black/5 text-slate-700 hover:bg-black/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                     }`}
                   >
                     <a.icon size={14} />
@@ -349,7 +349,7 @@ export function AppSidebar({ open, onClose }: Props) {
             ) : (
               authSectionsFiltrees.map((section) => (
                 <div key={section.titre} className="space-y-2">
-                  <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                  <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/20">
                     {section.titre}
                   </h3>
 
@@ -368,7 +368,7 @@ export function AppSidebar({ open, onClose }: Props) {
             )}
           </div>
 
-          <div className="border-t border-white/5 bg-black/40 p-4">
+          <div className="border-t border-black/10 bg-slate-50 dark:border-white/5 dark:bg-black/40 p-4">
             {authed && (
               <button
                 onClick={handleLogout}
@@ -379,7 +379,7 @@ export function AppSidebar({ open, onClose }: Props) {
               </button>
             )}
 
-            <p className="mt-2 text-center text-[9px] font-bold uppercase tracking-widest text-white/10">
+            <p className="mt-2 text-center text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/10">
               © GoMatch Maroc 2030
             </p>
           </div>
@@ -407,14 +407,14 @@ function SidebarLink({
       className={`group flex items-center gap-4 rounded-xl border px-4 py-3 transition-all ${
         actif
           ? "border-[#facc15]/20 bg-[#facc15]/10 shadow-[0_0_20px_rgba(250,204,21,0.05)]"
-          : "border-transparent hover:bg-white/5"
+          : "border-transparent hover:bg-black/5 dark:hover:bg-white/5"
       }`}
     >
       <div
         className={`rounded-lg p-2 transition-colors ${
           actif
             ? "bg-[#facc15] text-black"
-            : "bg-white/5 text-white/40 group-hover:text-white"
+            : "bg-black/5 text-slate-500 group-hover:text-slate-900 dark:bg-white/5 dark:text-white/40 dark:group-hover:text-white"
         }`}
       >
         <Icon size={18} />
@@ -426,7 +426,7 @@ function SidebarLink({
             className={`text-[11px] font-black uppercase tracking-wider transition-colors ${
               actif
                 ? "text-[#facc15]"
-                : "text-white/60 group-hover:text-white"
+                : "text-slate-600 group-hover:text-slate-900 dark:text-white/60 dark:group-hover:text-white"
             }`}
           >
             {item.nom}
@@ -439,7 +439,7 @@ function SidebarLink({
           )}
         </div>
 
-        <p className="truncate text-[10px] text-white/20">{item.description}</p>
+        <p className="truncate text-[10px] text-slate-400 dark:text-white/20">{item.description}</p>
       </div>
 
       {actif && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -14,7 +14,7 @@ import { confirmProfessionalEmailRequest } from "@/lib/authApi";
 
 type ConfirmState = "loading" | "success" | "error";
 
-export default function ConfirmProfessionalEmailPage() {
+function ConfirmProfessionalEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -142,7 +142,7 @@ export default function ConfirmProfessionalEmailPage() {
                 {isSuccess && (
                   <p className="mt-3 text-sm text-slate-400">
                     Votre adresse email professionnelle est confirmée. Votre
-                    demande commerçant est maintenant en cours d’analyse.
+                    demande commerçant est maintenant en cours d'analyse.
                   </p>
                 )}
 
@@ -175,5 +175,13 @@ export default function ConfirmProfessionalEmailPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ConfirmProfessionalEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmProfessionalEmailContent />
+    </Suspense>
   );
 }

@@ -1,11 +1,13 @@
-﻿using System.Net;
-using System.Net.Mail;
+using System.Net;
 using AuthService.Configuration;
 using AuthService.DTOs;
 using AuthService.Exceptions;
 using AuthService.Logging;
 using AuthService.Repositories;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Options;
+using MimeKit;
 
 namespace AuthService.Services.Email;
 
@@ -13,15 +15,23 @@ public sealed class EmailService : IEmailService
 {
     private readonly SmtpOptions _smtp;
     private readonly IUserRepository _users;
+    private readonly ILogger<EmailService> _logger;
 
     public EmailService(
         IOptions<SmtpOptions> smtp,
         IUserRepository users,
-        IConfiguration configuration)
+        ILogger<EmailService> logger)
     {
         _smtp = smtp.Value;
         _users = users;
+        _logger = logger;
     }
+
+    private bool IsSmtpConfigured =>
+        !string.IsNullOrWhiteSpace(_smtp.Host) &&
+        !string.IsNullOrWhiteSpace(_smtp.Username) &&
+        !string.IsNullOrWhiteSpace(_smtp.Password) &&
+        !string.IsNullOrWhiteSpace(_smtp.From);
 
     public async Task SendAsync(string to, string subject, string body)
     {
@@ -34,22 +44,23 @@ public sealed class EmailService : IEmailService
         if (string.IsNullOrWhiteSpace(body))
             throw new ValidationException("Le contenu de l'email est obligatoire.", "AUTH.EMAIL_BODY_REQUIRED");
 
-        using var client = new SmtpClient(_smtp.Host, _smtp.Port)
+        if (!IsSmtpConfigured)
         {
-            Credentials = new NetworkCredential(_smtp.Username, _smtp.Password),
-            EnableSsl = true
-        };
+            _logger.LogWarning("SMTP non configuré — email vers {To} ignoré.", to);
+            return;
+        }
 
-        using var mail = new MailMessage(
-            from: _smtp.From,
-            to: to.Trim(),
-            subject: subject,
-            body: body)
-        {
-            IsBodyHtml = true
-        };
+        var message = new MimeMessage();
+        message.From.Add(MailboxAddress.Parse(_smtp.From));
+        message.To.Add(MailboxAddress.Parse(to.Trim()));
+        message.Subject = subject;
+        message.Body = new TextPart("html") { Text = body };
 
-        await client.SendMailAsync(mail);
+        using var client = new SmtpClient();
+        await client.ConnectAsync(_smtp.Host, _smtp.Port, SecureSocketOptions.StartTls);
+        await client.AuthenticateAsync(_smtp.Username, _smtp.Password);
+        await client.SendAsync(message);
+        await client.DisconnectAsync(true);
     }
 
     public async Task SendConfirmationEmailAsync(string to, string confirmationToken)
@@ -208,16 +219,15 @@ public sealed class EmailService : IEmailService
         var safeName = string.IsNullOrWhiteSpace(fullName) ? "cher utilisateur" : WebUtility.HtmlEncode(fullName.Trim());
 
         var subject = "Demande commerçant reçue - GoMatch";
-
         var body = $"""
         <div style='font-family:Arial,sans-serif;line-height:1.6;color:#111'>
             <h2 style='color:#f59e0b;'>Demande reçue</h2>
             <p>Bonjour {safeName},</p>
             <p>Nous confirmons la bonne réception de votre demande de compte commerçant sur <strong>GoMatch</strong>.</p>
-            <p>Votre dossier est actuellement en cours d’examen par notre équipe. Vous recevrez une réponse de notre support dans un délai maximum de <strong>24 heures</strong>.</p>
+            <p>Votre dossier est actuellement en cours d'examen par notre équipe. Vous recevrez une réponse de notre support dans un délai maximum de <strong>24 heures</strong>.</p>
             <p>Nous vous informerons par email dès que votre demande sera traitée.</p>
             <p>Merci pour votre confiance.</p>
-            <p><strong>L’équipe GoMatch</strong></p>
+            <p><strong>L'équipe GoMatch</strong></p>
         </div>
         """;
 
@@ -238,12 +248,11 @@ public sealed class EmailService : IEmailService
             $"http://localhost:3000/merchant/confirm-email?token={Uri.EscapeDataString(token)}";
 
         var subject = "Vérifiez votre email professionnel - GoMatch";
-
         var body = $"""
         <div style='font-family:Arial,sans-serif;line-height:1.6;color:#111'>
             <h2 style='color:#f59e0b;'>Vérification de votre email professionnel</h2>
             <p>Bonjour {safeName},</p>
-            <p>Avant d’envoyer votre demande commerçant à notre équipe, nous devons vérifier votre adresse email professionnelle.</p>
+            <p>Avant d'envoyer votre demande commerçant à notre équipe, nous devons vérifier votre adresse email professionnelle.</p>
             <p>Cliquez sur le bouton ci-dessous pour confirmer votre adresse :</p>
             <p style='margin:24px 0;'>
                 <a href='{confirmationUrl}'
@@ -252,14 +261,12 @@ public sealed class EmailService : IEmailService
                 </a>
             </p>
             <p>Ce lien expire dans 24 heures.</p>
-            <p><strong>L’équipe GoMatch</strong></p>
+            <p><strong>L'équipe GoMatch</strong></p>
         </div>
         """;
 
         await SendAsync(to, subject, body);
     }
-
-    // Nouveaux emails pour le commerce
 
     public async Task SendCommerceSubmissionReceivedEmailAsync(
         string to,
@@ -271,10 +278,10 @@ public sealed class EmailService : IEmailService
         var body = $"""
         <h2>Commerce reçu</h2>
         <p>Bonjour {greeting},</p>
-        <p>Nous confirmons la bonne réception de votre demande d’ajout de commerce sur <strong>GoMatch</strong>.</p>
+        <p>Nous confirmons la bonne réception de votre demande d'ajout de commerce sur <strong>GoMatch</strong>.</p>
         <p>Votre commerce est actuellement en cours de vérification par notre équipe.</p>
         <p>Vous recevrez une réponse dans un délai maximum de <strong>24 heures</strong>.</p>
-        <p><strong>L’équipe GoMatch</strong></p>
+        <p><strong>L'équipe GoMatch</strong></p>
         """;
 
         await SendAsync(to, subject, body);
@@ -290,10 +297,10 @@ public sealed class EmailService : IEmailService
         var body = $"""
         <h2>Commerce approuvé</h2>
         <p>Bonjour {greeting},</p>
-        <p>Bonne nouvelle : votre commerce a été validé par l’équipe <strong>GoMatch</strong>.</p>
+        <p>Bonne nouvelle : votre commerce a été validé par l'équipe <strong>GoMatch</strong>.</p>
         <p>Il est maintenant visible sur la plateforme.</p>
         <p>Vous pouvez continuer à enrichir votre fiche commerce depuis votre espace commerçant.</p>
-        <p><strong>L’équipe GoMatch</strong></p>
+        <p><strong>L'équipe GoMatch</strong></p>
         """;
 
         await SendAsync(to, subject, body);
@@ -314,10 +321,10 @@ public sealed class EmailService : IEmailService
         var body = $"""
         <h2>Commerce rejeté</h2>
         <p>Bonjour {greeting},</p>
-        <p>Votre demande d’ajout de commerce n’a pas pu être validée pour le moment.</p>
+        <p>Votre demande d'ajout de commerce n'a pas pu être validée pour le moment.</p>
         <p><strong>Raison :</strong> {safeReason}</p>
         <p>Vous pouvez corriger les informations puis soumettre à nouveau votre commerce.</p>
-        <p><strong>L’équipe GoMatch</strong></p>
+        <p><strong>L'équipe GoMatch</strong></p>
         """;
 
         await SendAsync(to, subject, body);

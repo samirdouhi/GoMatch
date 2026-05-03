@@ -6,11 +6,12 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bell, Menu, X, ChevronDown, User, Settings, Home,
+  Menu, X, ChevronDown, User, Settings, Home,
   Calendar, Landmark, Map as CarteIcon, Heart,
   LogOut, CreditCard, Ticket, HelpCircle, LucideIcon
 } from "lucide-react";
 import { logout } from "@/lib/logout";
+import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 
 type TopBarProps = {
   sidebarCollapsed?: boolean;
@@ -29,16 +30,13 @@ const NAV_ITEMS = [
 
 ];
 
-// N'oublie pas d'ajouter sidebarCollapsed dans les props ici
 export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [authed, setAuthed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
 
   const moreRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAuth = () => setAuthed(!!localStorage.getItem("gomatch_access_token"));
@@ -54,7 +52,6 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(event.target as Node)) setMoreOpen(false);
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) setNotifOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -68,17 +65,16 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-[110] w-full bg-black/40 backdrop-blur-3xl">
+      <header className="sticky top-0 z-[110] w-full bg-white/80 dark:bg-black/40 backdrop-blur-3xl border-b border-black/5 dark:border-transparent">
         <div className="mx-auto max-w-[1600px] px-4 sm:px-8">
           <div className="grid grid-cols-3 h-20 items-center">
 
             {/* GAUCHE : BURGER (PC UNIQUEMENT) & LOGO */}
             <div className="flex items-center gap-4 justify-self-start">
-              
-              {/* Le bouton Burger est remis, mais caché sur mobile (hidden) et visible sur PC (lg:block) */}
+
               <button
                 onClick={onToggleSidebar}
-                className="hidden lg:block p-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:border-[#facc15] transition-all"
+                className="hidden lg:block p-2.5 rounded-xl bg-black/5 border border-black/10 text-slate-700 hover:border-[#facc15] transition-all dark:bg-white/5 dark:border-white/10 dark:text-white"
               >
                 {sidebarCollapsed ? <Menu size={22} /> : <X size={22} />}
               </button>
@@ -88,7 +84,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                   <Image src="/LogoGoMatch2030.png" alt="Logo" fill className="object-contain" priority />
                 </div>
                 <motion.h1
-                  className="hidden md:block text-xl font-[1000] tracking-tighter italic uppercase bg-clip-text text-transparent bg-gradient-to-r from-[#facc15] via-white to-[#facc15] bg-[length:200%_auto]"
+                  className="hidden md:block text-xl font-[1000] tracking-tighter italic uppercase bg-clip-text text-transparent bg-gradient-to-r from-[#facc15] via-[#f59e0b] to-[#facc15] dark:via-white bg-[length:200%_auto]"
                   animate={{ backgroundPosition: ["0% center", "200% center"] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                 >
@@ -103,7 +99,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                 <nav className="hidden lg:flex items-center gap-8">
                   {NAV_ITEMS.map((item) => (
                     <Link key={item.href} href={item.href} className="relative py-2 group">
-                      <span className={`text-[11px] font-black uppercase tracking-[0.2em] transition-colors ${isActive(item.href) ? "text-[#facc15]" : "text-white/40 group-hover:text-white"}`}>
+                      <span className={`text-[11px] font-black uppercase tracking-[0.2em] transition-colors ${isActive(item.href) ? "text-[#facc15]" : "text-slate-500 group-hover:text-slate-900 dark:text-white/40 dark:group-hover:text-white"}`}>
                         {item.label}
                       </span>
                       {isActive(item.href) && (
@@ -119,31 +115,13 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
             <div className="flex items-center gap-4 justify-self-end">
 
               {authed ? (
-                /* MODE CONNECTÉ : BOUTON NOTIFICATION */
-                <div className="relative" ref={notifRef}>
-                  <button
-                    onClick={() => setNotifOpen(!notifOpen)}
-                    className={`p-2.5 rounded-xl border transition-all ${notifOpen ? "border-[#facc15] bg-[#facc15]/10 shadow-[0_0_15px_#facc15]" : "border-white/5 bg-white/5 hover:border-[#facc15]/50"}`}
-                  >
-                    <Bell size={20} className={notifOpen ? "text-[#facc15]" : "text-white/40"} />
-                  </button>
-                  <AnimatePresence>
-                    {notifOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 12 }} exit={{ opacity: 0, y: 15 }}
-                        className="absolute right-0 top-full w-72 rounded-2xl border border-white/10 bg-black/95 p-4 shadow-2xl backdrop-blur-3xl z-[150]"
-                      >
-                        <h3 className="text-[10px] font-black uppercase text-[#facc15] mb-2">Alertes</h3>
-                        <p className="text-[11px] text-white/40">Aucune notification.</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                /* MODE CONNECTÉ : NOTIFICATION BELL */
+                <NotificationBell />
               ) : (
                 /* MODE INVITÉ : BOUTON AIDE */
                 <Link
                   href="/aide"
-                  className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-white/40 hover:text-[#facc15] hover:border-[#facc15]/50 transition-all"
+                  className="p-2.5 rounded-xl border border-black/10 bg-black/5 text-slate-500 hover:text-[#facc15] hover:border-[#facc15]/50 transition-all dark:border-white/5 dark:bg-white/5 dark:text-white/40"
                 >
                   <HelpCircle size={20} />
                 </Link>
@@ -170,9 +148,9 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                     </motion.div>
                   </Link>
                 ) : (
-                  <button onClick={() => setMoreOpen(!moreOpen)} className="flex items-center gap-2 p-1 border border-white/10 rounded-xl bg-black/40 hover:border-[#facc15]/30 transition-all">
+                  <button onClick={() => setMoreOpen(!moreOpen)} className="flex items-center gap-2 p-1 border border-black/10 rounded-xl bg-white/60 hover:border-[#facc15]/30 transition-all dark:border-white/10 dark:bg-black/40">
                     <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-[#facc15] to-[#ef4444] flex items-center justify-center text-black font-black text-xs">JD</div>
-                    <ChevronDown size={14} className={`text-white/20 transition-transform ${moreOpen ? "rotate-180 text-[#facc15]" : ""}`} />
+                    <ChevronDown size={14} className={`text-slate-400 transition-transform dark:text-white/20 ${moreOpen ? "rotate-180 text-[#facc15]" : ""}`} />
                   </button>
                 )}
 
@@ -180,7 +158,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
                   {moreOpen && authed && (
                     <motion.div
                       initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 12 }} exit={{ opacity: 0, y: 15 }}
-                      className="absolute right-0 top-full w-64 rounded-2xl border border-white/10 bg-[#0a0a0a] p-2 shadow-2xl z-[150]"
+                      className="absolute right-0 top-full w-64 rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#0a0a0a] p-2 shadow-2xl z-[150]"
                     >
                       <div className="grid grid-cols-1">
                         <MenuLink href="/profile" icon={User} label="Profil" />
@@ -203,22 +181,21 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
       </header>
 
       {/* --- BOTTOM BAR MOBILE --- */}
-      {/* Cachée sur grand écran (lg:hidden), visible sur mobile */}
-      <nav className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-[110] bg-black/80 backdrop-blur-2xl border border-white/10 rounded-3xl px-4 py-2 shadow-2xl">
+      <nav className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-[110] bg-white/90 dark:bg-black/80 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl px-4 py-2 shadow-2xl">
         <div className="flex items-center justify-between">
-          <Link href="/" className={`p-2 ${isActive('/') ? 'text-[#facc15]' : 'text-white/40'}`}><Home size={22} /></Link>
-          <Link href="/matches" className={`p-2 ${isActive('/matches') ? 'text-[#facc15]' : 'text-white/40'}`}><Calendar size={22} /></Link>
-          
-          <button 
-            onClick={onToggleSidebar} 
+          <Link href="/" className={`p-2 ${isActive('/') ? 'text-[#facc15]' : 'text-slate-400 dark:text-white/40'}`}><Home size={22} /></Link>
+          <Link href="/matches" className={`p-2 ${isActive('/matches') ? 'text-[#facc15]' : 'text-slate-400 dark:text-white/40'}`}><Calendar size={22} /></Link>
+
+          <button
+            onClick={onToggleSidebar}
             className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#facc15] text-black shadow-lg active:scale-90 transition-transform"
           >
             <Menu size={24} />
           </button>
-          
-          <Link href="/assistant" className={`p-2 ${isActive('/assistant') ? 'text-[#facc15]' : 'text-white/40'}`}><Landmark size={22} /></Link>
-          <Link href="/test-map" className={`p-2 ${isActive('/test-map') ? 'text-[#facc15]' : 'text-white/40'}`}><CarteIcon size={22} /></Link>
-          
+
+          <Link href="/assistant" className={`p-2 ${isActive('/assistant') ? 'text-[#facc15]' : 'text-slate-400 dark:text-white/40'}`}><Landmark size={22} /></Link>
+          <Link href="/test-map" className={`p-2 ${isActive('/test-map') ? 'text-[#facc15]' : 'text-slate-400 dark:text-white/40'}`}><CarteIcon size={22} /></Link>
+
         </div>
       </nav>
     </>
@@ -227,7 +204,7 @@ export function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProps) {
 
 function MenuLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase text-white/40 hover:text-[#facc15] hover:bg-white/5 transition-all">
+    <Link href={href} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-[#facc15] hover:bg-black/5 transition-all dark:text-white/40 dark:hover:bg-white/5">
       <Icon size={14} /> {label}
     </Link>
   );

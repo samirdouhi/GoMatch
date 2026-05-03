@@ -96,4 +96,22 @@ public sealed class AdminProfileController : ControllerBase
         var response = await _service.GetProfileStatusAsync(ct);
         return Ok(response);
     }
+
+    [HttpGet("users")]
+    [ProducesResponseType(typeof(IReadOnlyList<AdminUserListItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AdminUserListItemDto>>> GetAllUsers(CancellationToken ct)
+    {
+        var response = await _service.GetAllUsersAsync(ct);
+        return Ok(response);
+    }
+
+    [HttpPatch("users/{userId:guid}/toggle-active")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ToggleUserActive(Guid userId, CancellationToken ct)
+    {
+        var success = await _service.ToggleUserActiveAsync(userId, ct);
+        if (!success) return NotFound(new { message = "Utilisateur introuvable." });
+        return NoContent();
+    }
 }

@@ -28,6 +28,16 @@ public sealed class UserProfileRepository : IUserProfileRepository
             .AnyAsync(x => x.UserId == userId);
     }
 
+    public async Task<List<UserProfile>> GetAllAsync()
+    {
+        return await _context.UserProfiles
+            .Include(x => x.TouristeProfile)
+            .Include(x => x.CommercantProfile)
+            .Include(x => x.AdminProfile)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(UserProfile profile)
     {
         await _context.UserProfiles.AddAsync(profile);

@@ -24,6 +24,7 @@ public sealed class AdminProfileService : IAdminProfileService
     private readonly ICurrentUser _currentUser;
     private readonly IEmailClient _emailClient;
     private readonly IAuthClient _authClient;
+    private readonly ILogger<AdminProfileService> _logger;
 
     public AdminProfileService(
         IAdminProfileRepository repository,
@@ -33,7 +34,8 @@ public sealed class AdminProfileService : IAdminProfileService
         ICommercantProfileMapper commercantMapper,
         ICurrentUser currentUser,
         IEmailClient emailClient,
-        IAuthClient authClient)
+        IAuthClient authClient,
+        ILogger<AdminProfileService> logger)
     {
         _repository = repository;
         _userRepository = userRepository;
@@ -43,6 +45,7 @@ public sealed class AdminProfileService : IAdminProfileService
         _currentUser = currentUser;
         _emailClient = emailClient;
         _authClient = authClient;
+        _logger = logger;
     }
 
     public async Task<AdminProfileResponseDto> GetMyProfileAsync(CancellationToken ct)
@@ -208,8 +211,8 @@ public sealed class AdminProfileService : IAdminProfileService
         if (profile is null)
             throw new NotFoundException("Le profil commerçant est introuvable.");
 
-        if (profile.Status != CommercantStatus.Pending)
-            throw new ConflictException("Seuls les profils commerçants en attente peuvent être approuvés.");
+        if (profile.Status == CommercantStatus.Incomplete)
+            throw new ConflictException("Le profil commerçant est incomplet et ne peut pas être approuvé.");
 
         profile.Status = CommercantStatus.Approved;
         profile.ReviewedAt = DateTime.UtcNow;
@@ -218,7 +221,18 @@ public sealed class AdminProfileService : IAdminProfileService
 
         await _commercantRepository.SaveChangesAsync();
 
-        var roleGranted = await _authClient.GrantMerchantRoleAsync(profile.UserId, ct);
+        bool roleGranted;
+        try
+        {
+            roleGranted = await _authClient.GrantMerchantRoleAsync(profile.UserId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Exception lors de l’attribution du rôle Merchant pour {UserId}",
+                profile.UserId);
+            roleGranted = false;
+        }
 
         if (!roleGranted)
         {
@@ -228,7 +242,7 @@ public sealed class AdminProfileService : IAdminProfileService
 
             await _commercantRepository.SaveChangesAsync();
 
-            throw new Exception("Erreur lors de l’attribution du rôle Merchant.");
+            throw new Exception("Erreur lors de l’attribution du rôle Merchant. Vérifiez que le service d’authentification est disponible.");
         }
 
         var userProfile = await _userRepository.GetByUserIdAsync(profile.UserId);
@@ -242,10 +256,20 @@ public sealed class AdminProfileService : IAdminProfileService
 
         if (!string.IsNullOrWhiteSpace(destinationEmail))
         {
-            await _emailClient.SendMerchantApprovedEmailAsync(
-                destinationEmail,
-                safeFullName,
-                ct);
+            try
+            {
+                await _emailClient.SendMerchantApprovedEmailAsync(
+                    destinationEmail,
+                    safeFullName,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Échec envoi email d'approbation commerçant {CommercantId} vers {Email}",
+                    id,
+                    destinationEmail);
+            }
         }
 
         return _commercantMapper.ToResponseDto(userProfile, profile);
@@ -260,8 +284,8 @@ public sealed class AdminProfileService : IAdminProfileService
         if (profile is null)
             throw new NotFoundException("Le profil commerçant est introuvable.");
 
-        if (profile.Status != CommercantStatus.Pending)
-            throw new ConflictException("Seuls les profils commerçants en attente peuvent être rejetés.");
+        if (profile.Status == CommercantStatus.Incomplete || profile.Status == CommercantStatus.Rejected)
+            throw new ConflictException("Ce profil ne peut pas être rejeté dans son état actuel.");
 
         if (string.IsNullOrWhiteSpace(request.RejectionReason))
             throw new ConflictException("La raison du rejet est obligatoire.");
@@ -284,15 +308,61 @@ public sealed class AdminProfileService : IAdminProfileService
 
         if (!string.IsNullOrWhiteSpace(destinationEmail))
         {
-            await _emailClient.SendMerchantRejectedEmailAsync(
-                destinationEmail,
-                profile.RejectionReason!,
-                safeFullName,
-                ct);
+            try
+            {
+                await _emailClient.SendMerchantRejectedEmailAsync(
+                    destinationEmail,
+                    profile.RejectionReason!,
+                    safeFullName,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Échec envoi email de rejet commerçant {CommercantId} vers {Email}",
+                    id,
+                    destinationEmail);
+            }
         }
 
         return _commercantMapper.ToResponseDto(userProfile, profile);
     }
+    public async Task<IReadOnlyList<AdminUserListItemDto>> GetAllUsersAsync(CancellationToken ct)
+    {
+        var profiles = await _userRepository.GetAllAsync();
+
+        return profiles.Select(p =>
+        {
+            var profileType = p.AdminProfile is not null ? "Admin"
+                : p.CommercantProfile is not null ? "Commercant"
+                : p.TouristeProfile is not null ? "Touriste"
+                : "Aucun";
+
+            return new AdminUserListItemDto
+            {
+                UserId      = p.UserId,
+                Prenom      = p.Prenom,
+                Nom         = p.Nom,
+                IsActive    = p.IsActive,
+                CreatedAt   = p.CreatedAt,
+                ProfileType = profileType
+            };
+        }).ToList();
+    }
+
+    public async Task<bool> ToggleUserActiveAsync(Guid userId, CancellationToken ct)
+    {
+        var profile = await _userRepository.GetByUserIdAsync(userId);
+        if (profile is null) return false;
+
+        profile.IsActive    = !profile.IsActive;
+        profile.UpdatedAt   = DateTime.UtcNow;
+
+        _userRepository.Update(profile);
+        await _userRepository.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<AdminProfileStatusResponseDto> GetProfileStatusAsync(CancellationToken ct)
     {
         var userId = _currentUser.UserId;

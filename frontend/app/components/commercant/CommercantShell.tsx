@@ -8,7 +8,7 @@ type Props = {
 
 export default function CommercantShell({ children }: Props) {
   return (
-    <div className="h-screen overflow-hidden bg-[#04060b] text-white">
+    <div className="h-screen overflow-hidden bg-slate-100 text-slate-900 dark:bg-[#04060b] dark:text-white">
       <div className="flex h-full">
         <CommercantSidebar />
 
