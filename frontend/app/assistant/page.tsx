@@ -1,9 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { PanelRight, ChevronRight, Map, Sparkles, Navigation, RotateCcw } from "lucide-react";
+import {
+  PanelRight, ChevronRight, Map, Navigation, RotateCcw,
+  Menu, X, Zap, Moon, CalendarDays, Ticket, Coffee, UtensilsCrossed,
+  Users, Landmark, Plus, Route,
+} from "lucide-react";
 
 import {
   sendChat,
@@ -52,7 +57,7 @@ function uid() {
 function normalizeItem(dto: RecommendationItemDto): RecommendationItem {
   return {
     id: dto.id,
-    source: dto.source as "business" | "discovery" | "event",
+    source: dto.source as "business" | "discovery" | "event" | "culture",
     type: dto.type,
     name: dto.name,
     description: dto.description ?? undefined,
@@ -224,6 +229,7 @@ export default function AssistantPage() {
 
   // ── Layout state
   const [rightOpen, setRightOpen]         = useState(true);
+  const [sidebarOpen, setSidebarOpen]     = useState(true);
 
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -482,87 +488,172 @@ export default function AssistantPage() {
       {/* ── MAIN ROW: chat + desktop panel ─────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
+      {/* ── LEFT SIDEBAR ────────────────────────────────────────────────── */}
+      <AnimatePresence initial={false}>
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 220, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 34 }}
+            className="hidden lg:flex flex-col flex-shrink-0 overflow-hidden relative z-20"
+            style={{ background: 'rgba(8,8,12,0.98)', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+          >
+            {/* Logo */}
+            <div className="flex items-center gap-2.5 px-4 pt-5 pb-4 flex-shrink-0">
+              <div className="relative w-9 h-9 flex-shrink-0">
+                <Image src="/LogoGoMatch2030.png" alt="GoMatch" fill className="object-contain" priority />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-[13px] font-black text-white tracking-tight">GoMatch</span>
+                  <span
+                    className="text-[13px] font-black tracking-tight"
+                    style={{ background: 'linear-gradient(90deg,#facc15,#fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                  >
+                    AI
+                  </span>
+                </div>
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest">Assistant</p>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="ml-auto w-6 h-6 flex items-center justify-center rounded-lg text-zinc-700 hover:text-zinc-400 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* New chat */}
+            <div className="px-3 mb-4">
+              <button
+                onClick={resetChat}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-semibold transition-all"
+                style={{ background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.15)', color: '#facc15' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(250,204,21,0.14)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(250,204,21,0.08)' }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Nouveau chat
+              </button>
+            </div>
+
+            {/* Match context */}
+            {matchContext && (
+              <div className="mx-3 mb-4 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.12)' }}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <p className="text-[9px] uppercase tracking-widest text-green-500 font-bold">Match actif</p>
+                </div>
+                <p className="text-[11px] font-semibold text-white truncate">
+                  {matchContext.homeTeam} vs {matchContext.awayTeam}
+                </p>
+                {matchContext.kickoffTime && (
+                  <p className="text-[10px] text-zinc-500 mt-0.5">{matchContext.kickoffTime} · {matchContext.city}</p>
+                )}
+                {/* Ticket toggle */}
+                <button
+                  onClick={() => setUserContext(prev => ({ ...prev, hasTicket: !prev.hasTicket }))}
+                  className="mt-2 w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all"
+                  style={userContext.hasTicket
+                    ? { background: 'rgba(250,204,21,0.1)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }
+                    : { background: 'rgba(255,255,255,0.04)', color: '#71717a', border: '1px solid rgba(255,255,255,0.07)' }
+                  }
+                >
+                  <Ticket className="w-3 h-3" />
+                  {userContext.hasTicket ? 'Avec billet' : 'Sans billet'}
+                </button>
+              </div>
+            )}
+
+            {/* Shortcuts */}
+            <div className="px-3 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+              <p className="text-[9px] uppercase tracking-widest text-zinc-700 font-bold mb-2 px-1">Raccourcis</p>
+              {[
+                { icon: Zap,            label: 'Avant le match',   prompt: "Prépare-moi pour le match, propose des activités avant le coup d'envoi" },
+                { icon: Moon,           label: 'Après le match',   prompt: "Le match vient de se terminer, que faire ce soir ?" },
+                { icon: CalendarDays,   label: 'Journée complète', prompt: "Génère-moi un programme complet pour la journée" },
+                { icon: Users,          label: 'Fan zone',         prompt: "Trouve-moi une fan zone ou un endroit pour regarder le match" },
+                { icon: Coffee,         label: 'Café',             prompt: "Propose-moi un café ou salon de thé proche" },
+                { icon: UtensilsCrossed,label: 'Restaurant',       prompt: "Je cherche un restaurant marocain" },
+                { icon: Landmark,       label: 'Culture',          prompt: "Propose-moi des lieux culturels à visiter" },
+                { icon: Route,          label: 'Itinéraire',       prompt: "Trace-moi un itinéraire pour la journée" },
+              ].map(({ icon: Icon, label, prompt }) => (
+                <button
+                  key={label}
+                  onClick={() => sendMessage(prompt)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12px] text-zinc-400 hover:text-white transition-colors hover:bg-white/5 mb-0.5 text-left"
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0 text-zinc-600" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Results toggle if panel is closed */}
+            {!rightOpen && hasResults && (
+              <div className="px-3 pb-4 mt-2">
+                <button
+                  onClick={() => setRightOpen(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold transition-all"
+                  style={{ background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.15)', color: '#facc15' }}
+                >
+                  <PanelRight className="w-3.5 h-3.5" />
+                  Voir les résultats ({primaryItems.length + altItems.length})
+                </button>
+              </div>
+            )}
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
       {/* ── CHAT COLUMN ─────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
 
-        {/* Header */}
-        <header
-          className="flex items-center gap-3 px-5 py-3 flex-shrink-0 relative z-20"
-          style={{
-            background: 'rgba(6,6,10,0.92)',
-            backdropFilter: 'blur(24px)',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-          }}
+        {/* Thin top bar: sidebar toggle + match info (replaces old header) */}
+        <div
+          className="flex items-center gap-2 px-3 py-2 flex-shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(6,6,10,0.95)' }}
         >
-          {/* Logo */}
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(251,146,60,0.08))',
-              border: '1px solid rgba(250,204,21,0.22)',
-              boxShadow: '0 0 16px rgba(250,204,21,0.12)',
-            }}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-all flex-shrink-0"
           >
-            <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-          </div>
-
-          {/* Title */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[14px] font-black text-white tracking-tight">GoMatch</span>
-              <span
-                className="text-[14px] font-black tracking-tight"
-                style={{ background: 'linear-gradient(90deg, #facc15, #fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-              >
-                Assistant
-              </span>
-              <span
-                className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full"
-                style={{ background: 'rgba(250,204,21,0.1)', color: '#facc15', border: '1px solid rgba(250,204,21,0.18)' }}
-              >
-                IA
-              </span>
+            <Menu className="w-4 h-4" />
+          </button>
+          <div className="flex-1 min-w-0" />
+          {matchContext && (
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <p className="text-[11px] text-zinc-600 truncate">
+                {matchContext.homeTeam} vs {matchContext.awayTeam}
+                {matchContext.kickoffTime ? ` · ${matchContext.kickoffTime}` : ""}
+              </p>
             </div>
-            {matchContext && (
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-                <p className="text-[10px] text-zinc-600 truncate">
-                  {matchContext.homeTeam} vs {matchContext.awayTeam}
-                  {matchContext.kickoffTime ? ` · ${matchContext.kickoffTime}` : ""}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* New chat */}
-            <motion.button
-              onClick={resetChat}
-              whileTap={{ scale: 0.9 }}
-              title="Nouveau chat"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#71717a' }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#71717a'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
+          )}
+          <motion.button
+            onClick={resetChat}
+            whileTap={{ scale: 0.9 }}
+            title="Nouveau chat"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#52525b' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#fff' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#52525b' }}
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span className="hidden sm:inline">Nouveau</span>
+          </motion.button>
+          {!rightOpen && hasResults && (
+            <button
+              onClick={() => setRightOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+              style={{ background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.2)', color: '#facc15' }}
             >
-              <RotateCcw className="w-3 h-3" />
-              <span className="hidden sm:inline">Nouveau</span>
-            </motion.button>
-
-            {/* Results toggle */}
-            {!rightOpen && hasResults && (
-              <button
-                onClick={() => setRightOpen(true)}
-                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all"
-                style={{ background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.2)', color: '#facc15' }}
-              >
-                <PanelRight className="w-3 h-3" />
-                <span>Résultats</span>
-              </button>
-            )}
-          </div>
-        </header>
+              <PanelRight className="w-3 h-3" />
+              <span>Résultats</span>
+            </button>
+          )}
+        </div>
 
         {/* Messages — scrollable, centered content */}
         <div
@@ -600,15 +691,6 @@ export default function AssistantPage() {
             style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.3), transparent)' }} />
 
           <div className="max-w-2xl mx-auto w-full">
-            <FilterBar
-              activeMode={userContext.mode}
-              matchContext={matchContext}
-              isLoading={isLoading}
-              onSelect={(mode, prompt) => {
-                setUserContext((prev) => ({ ...prev, mode }));
-                sendMessage(prompt);
-              }}
-            />
             <AssistantInput
               onSend={sendMessage}
               isLoading={isLoading}
@@ -751,6 +833,7 @@ export default function AssistantPage() {
                   onAddToPlan={(item) => sendMessage(`Ajoute "${item.name}" à mon programme`)}
                   onViewOnMap={viewOnMap}
                   onViewDetails={(item) => setDetailItem(item)}
+                  onGetRoute={(item) => { savePlanToStorage({ title: item.name, summary: item.reason || '', mode: 'general', steps: [{ startTime: 'now', endTime: 'now', type: item.type, title: item.name, latitude: item.latitude, longitude: item.longitude, address: item.address, durationMinutes: 60, source: item.source }] }); router.push('/test-map'); }}
                   onQuickFilter={(filter) => sendMessage(filter)}
                 />
               )}

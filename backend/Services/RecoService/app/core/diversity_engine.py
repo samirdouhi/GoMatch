@@ -17,14 +17,16 @@ from app.models.domain_models import CandidateItem
 # ── Category normalization ────────────────────────────────────────────────────
 
 _CATEGORY_MAP = [
-    (["café", "cafe", "coffee", "salon de thé", "breakfast"], "cafe"),
-    (["restaurant", "resto", "food", "gastro", "tajine", "couscous", "cuisine"], "restaurant"),
-    (["hotel", "hôtel", "riad", "auberge", "maison d'hôtes", "hébergement"], "hotel"),
-    (["museum", "musée", "monument", "attraction", "culture", "patrimoine", "kasbah", "médina"], "culture"),
-    (["fanzone", "fan zone", "bar sport", "sports bar", "écran géant"], "fanzone"),
-    (["bar", "nightlife", "club", "discothèque", "boîte"], "nightlife"),
-    (["activity", "activité", "excursion", "balade", "viewpoint"], "activity"),
-    (["souk", "marché", "artisanat", "boutique", "artisan"], "souk"),
+    (["café", "cafe", "coffee", "salon de thé", "breakfast", "brunch"], "cafe"),
+    (["restaurant", "resto", "food", "gastro", "tajine", "couscous", "cuisine", "grill", "pizz"], "restaurant"),
+    (["hotel", "hôtel", "riad", "auberge", "maison d'hôtes", "hébergement", "gîte"], "hotel"),
+    (["museum", "musée", "monument", "attraction", "culture", "patrimoine", "kasbah", "médina",
+      "historique", "archéologie", "galerie", "art", "culturel"], "culture"),
+    (["fanzone", "fan zone", "bar sport", "sports bar", "écran géant", "watch party", "pub foot"], "fanzone"),
+    (["bar", "nightlife", "club", "discothèque", "boîte", "lounge", "pub"], "nightlife"),
+    (["activity", "activité", "excursion", "balade", "viewpoint", "promenade", "randonnée"], "activity"),
+    (["souk", "marché", "artisanat", "boutique", "artisan", "shop", "commerce local"], "souk"),
+    (["stade", "stadium", "arena"], "stadium"),
 ]
 
 
@@ -74,10 +76,11 @@ def apply_excluded_penalty(
 def diversify_primary(
     items: List[CandidateItem],
     n_primary: int = 3,
-    max_same_category: int = 2,
+    max_same_category: int = 1,
 ) -> List[CandidateItem]:
     """
     Select n_primary items ensuring at most max_same_category per broad category.
+    Default is max 1 per category to maximise diversity.
     Falls back to fill remaining slots if not enough variety.
     """
     sorted_items = sorted(items, key=lambda x: x.final_score, reverse=True)
@@ -94,7 +97,7 @@ def diversify_primary(
         else:
             overflow.append(item)
 
-    # Fill remaining slots if not enough variety
+    # Fill remaining slots if not enough variety (relax the constraint)
     for item in overflow:
         if len(selected) >= n_primary:
             break

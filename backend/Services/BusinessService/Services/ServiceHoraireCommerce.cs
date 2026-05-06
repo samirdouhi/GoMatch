@@ -140,7 +140,12 @@ namespace BusinessService.Services
             if (estFerme)
                 return;
 
-            if (heureOuverture >= heureFermeture)
+            // 00:00 = minuit fin de journée → traité comme 24h00
+            var fermeture = heureFermeture == TimeSpan.Zero
+                ? TimeSpan.FromHours(24)
+                : heureFermeture;
+
+            if (heureOuverture >= fermeture)
                 throw new ArgumentException("L'heure d'ouverture doit être strictement inférieure à l'heure de fermeture.");
         }
     }

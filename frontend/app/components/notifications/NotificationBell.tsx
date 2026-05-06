@@ -22,11 +22,13 @@ const TYPE_CONFIG: Record<NotificationType, {
 };
 
 function fmtRelTime(iso: string): string {
-  const diffSec = (Date.now() - new Date(iso).getTime()) / 1000;
+  // Ensure the date is parsed as UTC (server stores UTC, may omit 'Z' suffix)
+  const normalized = iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z';
+  const diffSec = (Date.now() - new Date(normalized).getTime()) / 1000;
   if (diffSec < 60)    return 'À l\'instant';
-  if (diffSec < 3600)  return `${Math.floor(diffSec / 60)} min`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
-  return `${Math.floor(diffSec / 86400)}j`;
+  if (diffSec < 3600)  return `Il y a ${Math.floor(diffSec / 60)} min`;
+  if (diffSec < 86400) return `Il y a ${Math.floor(diffSec / 3600)}h`;
+  return `Il y a ${Math.floor(diffSec / 86400)}j`;
 }
 
 // ─── Single notification row inside dropdown ────────────────────────────────────

@@ -38,6 +38,7 @@ export type Commerce = {
   proprietaireUtilisateurId: string;
   proprietaireEmail: string;
   estValide: boolean;
+  estActif: boolean;
   statut: string;
   raisonRejet?: string | null;
   dateCreation: string;
@@ -195,6 +196,16 @@ export async function getCommercesProches(
 
 // ── Commerçant ────────────────────────────────────────────────────────────────
 
+export async function getMyCommerces(): Promise<Commerce[]> {
+  const res = await authFetch("/business/api/commerces/mes-commerces");
+  const data = await parseJsonSafe(res);
+  if (!res.ok) {
+    console.error("getMyCommerces failed", { status: res.status, data });
+    throw new Error(extractMessage(data, "Erreur récupération commerces"));
+  }
+  return data as Commerce[];
+}
+
 export async function getMyCommerce(): Promise<Commerce | null> {
   const res = await authFetch("/business/api/commerces/me");
 
@@ -329,6 +340,20 @@ export async function validateCommerce(id: string): Promise<Commerce> {
   return data as Commerce;
 }
 
+export async function desactiverCommerce(id: string): Promise<Commerce> {
+  const res = await authFetch(`/business/api/commerces/${id}/desactiver`, { method: "PATCH" });
+  const data = await parseJsonSafe(res);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur désactivation commerce"));
+  return data as Commerce;
+}
+
+export async function reactiverCommerce(id: string): Promise<Commerce> {
+  const res = await authFetch(`/business/api/commerces/${id}/reactiver`, { method: "PATCH" });
+  const data = await parseJsonSafe(res);
+  if (!res.ok) throw new Error(extractMessage(data, "Erreur réactivation commerce"));
+  return data as Commerce;
+}
+
 export async function rejectCommerce(id: string, raison: string): Promise<Commerce> {
   const res = await authFetch(`/business/api/commerces/${id}/rejeter`, {
     method: "PATCH",
@@ -357,12 +382,15 @@ export function photoUrl(urlImage: string): string {
   if (!urlImage) return "";
 
   if (urlImage.startsWith("http://") || urlImage.startsWith("https://")) {
-    return urlImage;
+    return encodeURI(urlImage);
   }
 
-  return buildGatewayUrl(`/business${urlImage}`);
-}
+  if (urlImage.startsWith("/uploads/")) {
+    return encodeURI(buildGatewayUrl(urlImage));
+  }
 
+  return encodeURI(buildGatewayUrl(`/business${urlImage}`));
+}
 export async function getPhotos(commerceId: string): Promise<PhotoCommerce[]> {
   const url = buildGatewayUrl(`/business/api/commerces/${commerceId}/photos`);
   const res = await fetch(url, {

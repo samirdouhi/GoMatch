@@ -15,19 +15,25 @@ import {
   LogOut,
   AlertCircle,
   Bell,
+  BookOpen,
+  FolderOpen,
+  Tag,
 } from "lucide-react";
 import { getMyAdminProfileStatus } from "@/lib/adminProfileApi";
 import { logout } from "@/lib/logout";
 
 const menuItems = [
-  { label: "Dashboard",             href: "/admin",                icon: LayoutDashboard },
-  { label: "Demandes commerçants",  href: "/admin/commercants",    icon: Store },
-  { label: "Commerces",             href: "/admin/commerces",      icon: Building2 },
-  { label: "Catégories",            href: "/admin/categories",     icon: Tags },
-  { label: "Tags culturels",        href: "/admin/tagsculturels",  icon: Tags },
-  { label: "Utilisateurs",          href: "/admin/utilisateurs",   icon: Users },
-  { label: "Statistiques",          href: "/admin/statistiques",   icon: BarChart3 },
-  { label: "Notifications",         href: "/admin/notifications",  icon: Bell },
+  { label: "Dashboard",             href: "/admin",                       icon: LayoutDashboard, group: "general" },
+  { label: "Demandes commerçants",  href: "/admin/commercants",           icon: Store,           group: "commerce" },
+  { label: "Commerces",             href: "/admin/commerces",             icon: Building2,       group: "commerce" },
+  { label: "Catégories",            href: "/admin/categories",            icon: Tags,            group: "commerce" },
+  { label: "Tags culturels",        href: "/admin/tagsculturels",         icon: Tags,            group: "commerce" },
+  { label: "Utilisateurs",          href: "/admin/utilisateurs",          icon: Users,           group: "general" },
+  { label: "Statistiques",          href: "/admin/statistiques",          icon: BarChart3,       group: "general" },
+  { label: "Notifications",         href: "/admin/notifications",         icon: Bell,            group: "general" },
+  { label: "Contenus culturels",    href: "/admin/culture",               icon: BookOpen,        group: "culture" },
+  { label: "Catégories culture",    href: "/admin/culture/categories",    icon: FolderOpen,      group: "culture" },
+  { label: "Tags culture",          href: "/admin/culture/tags",          icon: Tag,             group: "culture" },
 ];
 
 const bottomBarItems = [
@@ -73,7 +79,17 @@ export default function AdminSidebar() {
   };
 
   function isActive(href: string) {
-    return pathname === href || (href !== "/admin" && pathname.startsWith(href));
+    if (pathname === href) return true;
+    if (href === "/admin") return false;
+    if (!pathname.startsWith(href + "/")) return false;
+    // Don't activate if a more specific menu item also matches
+    const hasMoreSpecific = menuItems.some(
+      item =>
+        item.href !== href &&
+        item.href.startsWith(href + "/") &&
+        (pathname === item.href || pathname.startsWith(item.href + "/"))
+    );
+    return !hasMoreSpecific;
   }
 
   return (
@@ -91,23 +107,38 @@ export default function AdminSidebar() {
           <p className="mt-1 text-sm text-zinc-500">Espace administration sécurisé</p>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
+        <nav className="flex-1 overflow-y-auto p-4">
+          {(["general", "commerce", "culture"] as const).map((group) => {
+            const items = menuItems.filter(i => i.group === group);
+            const groupLabel: Record<string, string> = { general: "", commerce: "Commerce", culture: "Culture" };
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                  active
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950"
-                    : "text-slate-600 hover:bg-black/[0.05] hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-white/[0.05] dark:hover:text-white"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </Link>
+              <div key={group} className="mb-2">
+                {groupLabel[group] && (
+                  <p className="mb-1 mt-3 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                    {groupLabel[group]}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                          active
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950"
+                            : "text-slate-600 hover:bg-black/[0.05] hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>

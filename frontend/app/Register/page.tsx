@@ -578,20 +578,20 @@ function RegisterContent() {
     setGlobalError("");
 
     try {
-      const res = await fetch("/api/gateway/register-complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: normalizeEmail(email),
-          password,
-          confirmPassword,
-          prenom: firstName.trim(),
-          nom: lastName.trim(),
-          nationalite: nationalite.trim(),
-          dateNaissance: birthDate,
-          genre: gender,
-        }),
-      });
+   const res = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_BASE_URL}/gateway/register-complete`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: normalizeEmail(email),
+    password,
+    confirmPassword,
+    prenom: firstName.trim(),
+    nom: lastName.trim(),
+    nationalite: nationalite.trim(),
+    dateNaissance: birthDate,
+    genre: gender,
+  }),
+});
 
       const payload = await readBodySmart(res);
       console.log("REGISTER STATUS:", res.status);

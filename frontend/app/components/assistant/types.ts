@@ -2,7 +2,7 @@
 
 export type Mode = 'before_match' | 'after_match' | 'day_plan' | 'general'
 export type Budget = 'low' | 'medium' | 'high'
-export type Source = 'business' | 'discovery' | 'event'
+export type Source = 'business' | 'discovery' | 'event' | 'culture'
 
 /** Strict match context — selectedMatchId is immutable once set. */
 export interface MatchContext {

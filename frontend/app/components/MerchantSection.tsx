@@ -73,9 +73,8 @@ export function MerchantSection() {
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-              <Button className="h-14 rounded-2xl bg-amber-500 px-8 text-xs font-black uppercase tracking-widest text-black hover:scale-105 transition-all shadow-xl shadow-amber-500/20">
-                <ArrowRight className="ml-2 h-4 w-4" />
-                <Link href="/ajouter-commerce">Inscrire mon commerce</Link>
+              <Button asChild className="h-14 rounded-2xl bg-amber-500 px-8 text-xs font-black uppercase tracking-widest text-black hover:scale-105 transition-all shadow-xl shadow-amber-500/20">
+                <Link href="/ajouter-commerce">Inscrire mon commerce <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
 
               <Button
@@ -83,7 +82,7 @@ export function MerchantSection() {
                 variant="outline"
                 className="h-14 rounded-2xl border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-white/5 px-8 text-xs font-black uppercase tracking-widest text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 backdrop-blur-md"
               >
-                <Link href="/businesses">Consulter l&apos;annuaire</Link>
+                <Link href="/explore">Consulter l&apos;annuaire</Link>
               </Button>
             </div>
 

@@ -53,16 +53,16 @@ export function DetailDrawer({ item, onClose, onAddToPlan, onViewOnMap }: Detail
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — above TopBar (z-[110]) */}
       <div
-        className="fixed inset-0 bg-black/70 z-40"
+        className="fixed inset-0 bg-black/70 z-[120]"
         style={{ backdropFilter: 'blur(4px)' }}
         onClick={onClose}
       />
 
-      {/* Slide-in drawer */}
+      {/* Slide-in drawer — above backdrop */}
       <div
-        className="fixed right-0 top-0 h-full z-50 flex flex-col border-l border-zinc-800 shadow-2xl overflow-hidden"
+        className="fixed right-0 top-0 h-full z-[130] flex flex-col border-l border-zinc-800 shadow-2xl overflow-hidden"
         style={{ width: 440, maxWidth: '100vw', background: '#0a0a0b' }}
       >
         {/* ── Hero image ── */}

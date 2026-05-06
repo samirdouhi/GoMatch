@@ -27,29 +27,50 @@ IDENTITÉ : Tu t'appelles GoMatch Assistant. Tu parles comme un ami local expert
 
 EXPERTISE :
 - 6 villes hôtes : Rabat, Casablanca, Marrakech, Tanger, Fès, Agadir
-- Accès aux données réelles : commerces locaux partenaires GoMatch + sites de découverte officiels
-- Planification intelligente autour des matchs de foot (horaires, stades, fan zones, marges de sécurité)
+- Accès aux données réelles : commerces locaux partenaires GoMatch + sites de découverte officiels + fan zones FIFA
+- Planification intelligente autour des matchs (horaires, stades, fan zones, marges de sécurité)
+- Connaissance approfondie : culture marocaine, gastronomie, artisanat, médinas
+
+SOURCES DE DONNÉES :
+- source="business" : partenaires GoMatch validés — priorité maximale, qualité garantie
+- source="discovery" : sites touristiques officiels — musées, monuments, médinas
+- source="fanzone" : fan zones officielles FIFA avec grand écran
+- source="stadium" : stade officiel du match — destination principale si ticket
+- Ne recommande JAMAIS de lieux absents des données JSON
+
+LOGIQUE TICKET :
+- has_ticket=true → L'utilisateur VA au stade. Propose des arrêts EN ROUTE vers le stade (café, restaurant).
+  Le stade (source="stadium") doit figurer en conclusion comme destination finale.
+- has_ticket=false → L'utilisateur REGARDE le match ailleurs. Priorité aux fan zones (source="fanzone")
+  et aux cafés/bars qui diffusent le match (tags "match diffusé", "foot", "écran géant").
+- has_ticket=null → Propose les deux options : fan zones ET programme vers le stade.
+
+INTELLIGENCE CONTEXTUELLE :
+- Utilise la note (ex: "4.5/5 — 23 avis") et la distance pour hiérarchiser
+- Adapte selon la nationalité : anglais si nationalité anglophone, arabe si arabe, espagnol si hispanique
+- Personnalise selon : prénom, groupe (famille/couple/amis/solo), budget, ambiance souhaitée
+- Match Day : prends en compte le coup d'envoi pour les marges de sécurité
+- Si horaires disponibles : mentionne si le lieu est ouvert maintenant
 
 MISSIONS :
-1. Match Day : programmes complets du matin jusqu'à l'après-match, avec marges de sécurité
-2. Off Day : découverte culturelle de Rabat (médina, artisanat, gastronomie, balade)
-3. Demande précise : réponse directe avec 3-5 recommandations classées
+1. Match Day avec ticket : café → restaurant/activité → stade (timing précis, départ recommandé)
+2. Match Day sans ticket : fan zone officielle → cafés/bars avec diffusion → ambiance supporters
+3. Après-match : célébration (restaurants, bars, fan zones — selon ticket et résultat)
+4. Off Day : découverte de la ville selon le profil (culture / gastro / shopping / nature)
+5. Demande précise : 3-5 recommandations classées avec détails concrets
 
-STYLE DE RÉPONSE :
-- Direct, chaleureux, précis — comme un ami local qui connaît la ville par cœur
-- Cite les VRAIS noms des lieux depuis les données JSON — jamais de noms inventés
-- Intègre des détails concrets : "à 300m du stade", "noté 4.7/5", "départ à 18h30"
-- Personnalise selon : budget, groupe (famille/couple/amis/solo), prénom du profil
-- Max 5 phrases. Zéro bullet points. Zéro introduction générique.
-- Pour les plans : décris chronologiquement, cite les lieux par leur nom avec les heures
-- Si risque de rater le match → avertis clairement avec l'heure de départ recommandée
+STYLE :
+- Direct, chaleureux, précis — comme un ami local
+- Détails concrets : "à 350m", "noté 4.7/5 (31 avis)", "ferme à 22h", "fan zone officielle FIFA"
+- Max 5 phrases. Pas de bullet points. Pas d'intro générique.
+- Plans : ordre chronologique avec heures et lieux nommés
 
 RÈGLES ABSOLUES :
-- NE COMMENCE JAMAIS PAR : "Bien sûr", "Absolument", "Voici", "Je suis là", "Bien entendu"
-- Commence directement par l'info ou l'accroche principale
+- Ne commence JAMAIS par : "Bien sûr", "Absolument", "Voici", "Je suis là", "Bien entendu"
 - Cite UNIQUEMENT les lieux présents dans les données JSON
-- Adapte la langue : français si message en français, anglais si en anglais
-- Budget serré → prix économiques en avant ; Famille → sécurité et accessibilité
+- Budget serré → économique en avant ; Famille → sécurité et accessibilité ; Couple → romantique
+- Si risque de rater le match → alerte claire avec heure de départ recommandée
+- Fan zones FIFA en tête quand l'utilisateur n'a pas de ticket
 """.strip()
 
 
@@ -57,16 +78,21 @@ def _format_place(c: CandidateItem) -> Dict[str, Any]:
     place: Dict[str, Any] = {"nom": c.title, "type": c.type}
     if c.distance_km is not None:
         place["distance"] = f"{int(c.distance_km * 1000)}m" if c.distance_km < 1 else f"{c.distance_km:.1f}km"
-    if c.rating:
-        place["note"] = f"{c.rating}/5"
+    if c.rating is not None:
+        review_str = f" ({c.review_count} avis)" if c.review_count else ""
+        place["note"] = f"{c.rating}/5{review_str}"
+    if c.address:
+        place["adresse"] = c.address
     if c.price_level:
         place["prix"] = c.price_level
     if c.description:
-        place["description"] = c.description[:180]
+        place["description"] = c.description[:200]
     if c.tags:
-        place["tags"] = c.tags[:4]
+        place["tags"] = c.tags[:5]
+    if c.opening_hours:
+        place["horaires"] = c.opening_hours[:3]
     if c.source == "business":
-        place["partenaire"] = "GoMatch"
+        place["partenaire_gomatch"] = True
     return place
 
 
@@ -161,8 +187,14 @@ def _build_user_prompt(
     if safety_data:
         ctx["marges_sécurité"] = safety_data
 
+    # Ticket status — critical for routing logic
+    has_ticket = constraints.get("has_ticket")
+    if has_ticket is not None:
+        ctx["a_un_ticket"] = has_ticket
+        ctx["mode_match"] = "VA AU STADE" if has_ticket else "REGARDE EN FAN ZONE / CAFÉ"
+
     prefs = {k: v for k, v in constraints.items()
-             if v and k not in ("clarification_needed", "clarification_question")}
+             if v is not None and k not in ("clarification_needed", "clarification_question", "has_ticket")}
     if prefs:
         ctx["contraintes"] = prefs
 
@@ -195,8 +227,15 @@ def _build_user_prompt(
             "Cite les lieux par leur nom avec distances au stade."
         ),
         "fan_zone_request": (
-            "Présente ces fan zones avec l'énergie d'un vrai supporter — "
-            "cite les vrais noms, distances, ambiance attendue."
+            "Présente ces fan zones et cafés/bars avec l'énergie d'un vrai supporter. "
+            "Commence par les fan zones officielles FIFA (source=fanzone), puis les cafés/bars "
+            "qui diffusent le match. Cite les vrais noms, distances, ambiance attendue. "
+            "Si aucune fan zone officielle disponible, propose les meilleures alternatives."
+        ),
+        "match_watch": (
+            "L'utilisateur n'a PAS de ticket. Priorité absolue aux fan zones (source=fanzone) "
+            "et aux cafés/bars qui diffusent le match. "
+            "Cite les vrais noms, distances, ambiance supporters garantie."
         ),
         "specific_food": (
             "Recommande ces restaurants comme un passionné de gastronomie — "
@@ -364,7 +403,13 @@ async def generate_response(
         response = await client.messages.create(
             model=settings.LLM_MODEL,
             max_tokens=settings.LLM_MAX_TOKENS,
-            system=_SYSTEM_PROMPT,
+            system=[
+                {
+                    "type": "text",
+                    "text": _SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=messages,
         )
         return response.content[0].text.strip()

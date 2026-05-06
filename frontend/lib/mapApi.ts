@@ -6,6 +6,7 @@ const GATEWAY_BASE_URL =
 const EVENT_MATCHES_ENDPOINT = `${GATEWAY_BASE_URL}/event-matches/matches/world-cup`;
 const BUSINESSES_ENDPOINT = `${GATEWAY_BASE_URL}/business/api/commerces`;
 const DISCOVERY_ENDPOINT = `${GATEWAY_BASE_URL}/decouverte/api/places`;
+const CULTURE_ENDPOINT = `${GATEWAY_BASE_URL}/culture/api/contenus-culturels`;
 
 type ApiHoraire = {
   id: string;
@@ -114,8 +115,19 @@ type DiscoveryApiItem = {
   popularite?: number | null;
 };
 
-export type RichMapItem = MapItem & {
-  source?: "business" | "discovery" | "event";
+export type RichMapItem = MapItem;
+
+type CultureApiItem = {
+  id?: string | number;
+  titre?: string;
+  description?: string;
+  lieu?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  statut?: string;
+  nomCategorie?: string;
+  tagsCulturels?: string[];
+  medias?: Array<{ type?: string; url?: string }>;
 };
 
 function isValidCoordinate(value: unknown): value is number {
@@ -697,6 +709,48 @@ function mapDiscoveryToMapItem(item: DiscoveryApiItem): RichMapItem | null {
   };
 }
 
+function mapCultureToMapItem(item: CultureApiItem): RichMapItem | null {
+  if (!isValidCoordinate(item.latitude) || !isValidCoordinate(item.longitude)) {
+    return null;
+  }
+
+  const name = safeString(item.titre) || "Site culturel";
+  const tags: string[] = Array.isArray(item.tagsCulturels)
+    ? item.tagsCulturels.filter((t): t is string => typeof t === "string" && t.length > 0)
+    : [];
+
+  const imageMedia = Array.isArray(item.medias)
+    ? item.medias.find((m) => m.type === "Image" && m.url)
+    : undefined;
+  const imageUrl = imageMedia?.url
+    ? imageMedia.url.startsWith("http")
+      ? imageMedia.url
+      : `${GATEWAY_BASE_URL}/culture${imageMedia.url}`
+    : undefined;
+
+  return {
+    id: `culture-${safeString(String(item.id)) ?? crypto.randomUUID()}`,
+    source: "culture",
+    name,
+    type: "culture",
+    position: [item.latitude as number, item.longitude as number],
+    description: safeString(item.description) || "Site culturel et patrimonial.",
+    adresse: safeString(item.lieu),
+    nomCategorie: safeString(item.nomCategorie) || "Culturel",
+    tagsCulturels: tags,
+    imageUrl,
+    note: null,
+    noteGlobale: null,
+    nombreAvis: null,
+    horaires: [],
+    avis: [],
+    prixMoyen: null,
+    popularite: null,
+    estOuvert: null,
+    horairesOuverture: null,
+  };
+}
+
 function spreadOverlappingItems(items: RichMapItem[]): RichMapItem[] {
   const groups = new Map<string, RichMapItem[]>();
 
@@ -758,10 +812,11 @@ async function readJsonSafe<T>(url: string): Promise<T[]> {
 }
 
 export async function fetchMapItems(): Promise<RichMapItem[]> {
-  const [matchesData, businessesData, discoveryData] = await Promise.all([
+  const [matchesData, businessesData, discoveryData, cultureData] = await Promise.all([
     readJsonSafe<EventMatchApiItem>(EVENT_MATCHES_ENDPOINT),
     readJsonSafe<BusinessApiItem>(BUSINESSES_ENDPOINT),
     readJsonSafe<DiscoveryApiItem>(DISCOVERY_ENDPOINT),
+    readJsonSafe<CultureApiItem>(`${CULTURE_ENDPOINT}?statut=Publié`),
   ]);
 
   const matchItems = matchesData.flatMap((match, index) =>
@@ -776,7 +831,12 @@ export async function fetchMapItems(): Promise<RichMapItem[]> {
     .map(mapDiscoveryToMapItem)
     .filter((item): item is RichMapItem => item !== null);
 
+  const cultureItems = cultureData
+    .filter((item) => item.statut === "Publié" || !item.statut)
+    .map(mapCultureToMapItem)
+    .filter((item): item is RichMapItem => item !== null);
+
   return ensureUniqueIds(
-    spreadOverlappingItems([...matchItems, ...businessItems, ...discoveryItems])
+    spreadOverlappingItems([...matchItems, ...businessItems, ...discoveryItems, ...cultureItems])
   );
 }

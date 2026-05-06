@@ -60,7 +60,7 @@ public class NotifService(NotificationDbContext db, NotifPrioritizer prioritizer
                 Title    = b.Title,
                 Message  = b.Message,
                 MetaJson = $"{{\"broadcastId\":\"{b.Id}\"}}",
-                CreatedAt = b.SentAt,
+                CreatedAt = DateTime.SpecifyKind(b.SentAt, DateTimeKind.Utc),
             })
             .ToList();
 

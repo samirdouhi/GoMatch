@@ -198,6 +198,7 @@ const getTypeLabel = (type: MapItemType) => {
     restaurant: "Restaurant",
     activity: "Activité",
     hotel: "Hôtel",
+    culture: "Culturel",
   };
 
   return labelMap[type];
@@ -210,6 +211,7 @@ const getTypeColor = (type: MapItemType) => {
     restaurant: "#10b981",
     activity: "#3b82f6",
     hotel: "#8b5cf6",
+    culture: "#a78bfa",
   };
 
   return colorMap[type];
@@ -278,6 +280,21 @@ const getMarkerConfig = (type: MapItemType) => {
         </svg>
       `,
     },
+    culture: {
+      bg: "#a78bfa",
+      border: "#ffffff",
+      icon: `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 22V11" />
+          <path d="M21 22V11" />
+          <path d="M2 11h20" />
+          <path d="M6 11V7" />
+          <path d="M18 11V7" />
+          <path d="M12 2L2 7h20L12 2z" />
+          <path d="M9 22v-5h6v5" />
+        </svg>
+      `,
+    },
   };
 
   return config[type];
@@ -332,6 +349,7 @@ const createClusterCustomIcon = (cluster: ClusterLike) => {
     restaurant: 0,
     activity: 0,
     hotel: 0,
+    culture: 0,
   };
 
   childMarkers.forEach((marker) => {
@@ -537,7 +555,7 @@ export default function ExperienceMap({
   center = [34.020882, -6.84165],
   zoom = 13,
   height = "500px",
-  visibleTypes = ["stadium", "fanzone", "restaurant", "activity", "hotel"],
+  visibleTypes = ["stadium", "fanzone", "restaurant", "activity", "hotel", "culture"],
   items = [],
   selectedItem = null,
   onSelectItem,

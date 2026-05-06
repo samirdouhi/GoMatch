@@ -44,6 +44,7 @@ const getTypeLabel = (type: MapItemType) => {
     restaurant: "Restaurant",
     activity: "Activité",
     hotel: "Hôtel",
+    culture: "Culturel",
   };
 
   return labelMap[type];
@@ -56,6 +57,7 @@ const getTypeColor = (type: MapItemType) => {
     restaurant: "bg-emerald-500",
     activity: "bg-blue-500",
     hotel: "bg-violet-500",
+    culture: "bg-purple-400",
   };
 
   return colorMap[type];

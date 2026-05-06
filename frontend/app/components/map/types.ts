@@ -3,7 +3,8 @@ export type MapItemType =
   | "fanzone"
   | "restaurant"
   | "activity"
-  | "hotel";
+  | "hotel"
+  | "culture";
 
 export type MapItem = {
   id: string;
@@ -11,7 +12,7 @@ export type MapItem = {
   type: MapItemType;
   position: [number, number];
 
-  source?: "business" | "discovery" | "event";
+  source?: "business" | "discovery" | "event" | "culture";
 
   description?: string;
   imageUrl?: string;
@@ -51,4 +52,5 @@ export const ALL_MAP_TYPES: MapItemType[] = [
   "restaurant",
   "activity",
   "hotel",
+  "culture",
 ];

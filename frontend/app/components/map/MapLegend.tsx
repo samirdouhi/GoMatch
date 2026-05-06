@@ -4,6 +4,7 @@ const legendItems = [
   { key: "restaurant", label: "Restaurant", color: "#10b981" },
   { key: "activity", label: "Activité", color: "#3b82f6" },
   { key: "hotel", label: "Hôtel", color: "#8b5cf6" },
+  { key: "culture", label: "Culturel", color: "#a78bfa" },
 ];
 
 export default function MapLegend() {

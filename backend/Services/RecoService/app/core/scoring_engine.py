@@ -45,7 +45,13 @@ _CULTURAL_KEYWORDS = [
 
 _FANZONE_KEYWORDS = [
     "fan zone", "fanzone", "bar sport", "sports bar", "foot", "football",
-    "supporter", "écran géant", "grand écran",
+    "supporter", "écran géant", "grand écran", "match diffusé", "retransmission",
+    "diffusion match", "ambiance sport", "watch party", "pub foot",
+]
+
+_SPORT_CULTURE_TAGS = [
+    "foot", "football", "sport", "match", "diffusion", "retransmission",
+    "supporter", "ambiance sport", "match diffusé", "fan zone",
 ]
 
 _AMBIANCE_TAGS: dict[str, list[str]] = {
@@ -249,24 +255,24 @@ def _context_match_score(item: CandidateItem, ctx: RecommendationContext) -> flo
 
 def _rating_score(item: CandidateItem) -> float:
     """
-    Normalized rating for business items. Neutral 0.55 for no data.
-    Applies confidence factor based on review count.
+    Normalized rating with confidence weighting.
     Weight: 0.15.
     """
     r = getattr(item, "rating", None)
-    count = getattr(item, "review_count", None)
+    count = getattr(item, "review_count", None) or 0
 
     if r is None:
-        return 0.55   # New place — don't penalize
+        return 0.50   # New place — neutral, not penalized
 
     try:
         normalized = min(max(float(r) / 5.0, 0.0), 1.0)
-        if count is not None and count > 0:
-            confidence = min(count / 20.0, 1.0)   # Full confidence at 20+ reviews
-            return normalized * confidence + 0.55 * (1.0 - confidence)
-        return normalized
+        if count > 0:
+            # Full confidence at 30+ reviews (higher bar for business partners)
+            confidence = min(count / 30.0, 1.0)
+            return normalized * confidence + 0.50 * (1.0 - confidence)
+        return normalized * 0.70 + 0.50 * 0.30  # No reviews: lean neutral
     except (TypeError, ValueError):
-        return 0.55
+        return 0.50
 
 
 def _opening_score(item: CandidateItem) -> float:
@@ -310,14 +316,76 @@ def _diversity_score(item: CandidateItem) -> float:
 
 def _local_impact_score(item: CandidateItem) -> float:
     """
-    Favor GoMatch local partners (source='business') and events.
+    Favor GoMatch local partners (source='business'), official fan zones and events.
     Weight: 0.05.
     """
     if item.source == "business":
         return 1.0
+    if item.source in ("fanzone", "stadium"):
+        return 1.0
     if item.source == "event":
         return 0.80
     return 0.0
+
+
+def _sport_relevance_score(item: CandidateItem, ctx: RecommendationContext) -> float:
+    """
+    Boost items whose culture tags signal they broadcast / celebrate matches.
+    Used for fan_zone_request and match_watch intents.
+    Weight applied externally.
+    """
+    _sport_intents = {"fan_zone_request", "match_watch", "pre_match_plan", "match_day_plan"}
+    if ctx.intent not in _sport_intents:
+        return 0.0
+
+    # Stadiums and official fan zones always score max
+    if item.source in ("stadium", "fanzone"):
+        return 1.0
+
+    b = _blob(item)
+    hits = sum(1 for kw in _SPORT_CULTURE_TAGS if kw in b)
+    return min(hits / 3.0, 1.0)
+
+
+def _popularity_score(item: CandidateItem) -> float:
+    """
+    Social proof from review count. Supplements the rating score.
+    Full score at 50+ reviews. Weight applied in final formula (0.05).
+    """
+    count = getattr(item, "review_count", None) or 0
+    if count == 0:
+        return 0.30
+    return min(count / 50.0, 1.0)
+
+
+def _cultural_tags_score(item: CandidateItem, ctx: RecommendationContext) -> float:
+    """
+    Boost items whose cultural tags match user profile preferences.
+    Tags from profile tagsCulturels + types_lieux. Weight applied in formula (0.05).
+    """
+    if not ctx.profile:
+        return 0.0
+
+    prefs = ctx.profile.get("preferences") or {}
+    pref_tags = set()
+
+    # User's preferred venue types
+    for t in (prefs.get("types_lieux") or []):
+        pref_tags.add(str(t).lower())
+
+    # User's saved cultural tags (if profile exposes them)
+    for t in (ctx.profile.get("tagsCulturels") or []):
+        pref_tags.add(str(t).lower())
+
+    if not pref_tags:
+        return 0.0
+
+    item_tags = {t.lower() for t in (item.tags or [])}
+    item_type = (item.type or "").lower()
+    all_item_tags = item_tags | {item_type}
+
+    matches = len(pref_tags & all_item_tags)
+    return min(matches / max(len(pref_tags), 1), 1.0)
 
 
 def _compute_budget(item: CandidateItem, ctx: RecommendationContext) -> float:
@@ -339,26 +407,43 @@ def _compute_budget(item: CandidateItem, ctx: RecommendationContext) -> float:
 def score_candidate(item: CandidateItem, ctx: RecommendationContext) -> CandidateItem:
     """
     Compute explainable score and store all components on the item.
-    Returns the same item (mutated) for chaining.
+
+    Formula:
+      distanceScore      * 0.25
+      intentMatchScore   * 0.25
+      contextMatchScore  * 0.13
+      ratingScore        * 0.13
+      openingScore       * 0.08
+      sportRelevance     * 0.06  (fan zones, sports culture tags)
+      popularityScore    * 0.04
+      localImpactScore   * 0.04
+      culturalTagsScore  * 0.02
     """
-    dist_s  = _distance_score(item)
-    intent_s = _intent_match_score(item, ctx)
-    ctx_s   = _context_match_score(item, ctx)
-    rating_s = _rating_score(item)
+    dist_s    = _distance_score(item)
+    intent_s  = _intent_match_score(item, ctx)
+    ctx_s     = _context_match_score(item, ctx)
+    rating_s  = _rating_score(item)
     opening_s = _opening_score(item)
-    div_s   = _diversity_score(item)
-    local_s = _local_impact_score(item)
+    div_s     = _diversity_score(item)
+    local_s   = _local_impact_score(item)
+    pop_s     = _popularity_score(item)
+    cult_s    = _cultural_tags_score(item, ctx)
+    sport_s   = _sport_relevance_score(item, ctx)
 
-    # Spec v3 component names
-    item.distance_score     = dist_s
-    item.intent_match_score = intent_s
+    # Hard boost for official fan zones and stadiums — they always surface first
+    if item.source in ("stadium", "fanzone"):
+        dist_s  = max(dist_s,  0.70)
+        intent_s = 1.0
+        opening_s = 1.0
+
+    item.distance_score      = dist_s
+    item.intent_match_score  = intent_s
     item.context_match_score = ctx_s
-    item.rating_score       = rating_s
-    item.opening_score      = opening_s
-    item.diversity_score    = div_s
-    item.local_impact_score = local_s
+    item.rating_score        = rating_s
+    item.opening_score       = opening_s
+    item.diversity_score     = div_s
+    item.local_impact_score  = local_s
 
-    # Legacy aliases (used by planners / response_builder)
     item.profile_score   = intent_s
     item.match_score     = ctx_s
     item.time_slot_score = ctx_s
@@ -369,15 +454,26 @@ def score_candidate(item: CandidateItem, ctx: RecommendationContext) -> Candidat
         else 0.0
     )
 
-    # Final score — distance × 0.40, rating × 0.30, match_relevance × 0.20, diversity × 0.10
-    item.final_score = (
-        dist_s    * 0.40
-        + rating_s  * 0.30
-        + intent_s  * 0.12
-        + ctx_s     * 0.08
-        + opening_s * 0.05
-        + div_s     * 0.03
-        + local_s   * 0.02
-    )
+    # Boost cultural tags score when user explicitly requested specific tags
+    requested_tags = set(str(t).lower() for t in (ctx.constraints.get("cultural_tags") or []))
+    if requested_tags:
+        item_tags_lower = {t.lower() for t in (item.tags or [])}
+        item_type_lower = (item.type or "").lower()
+        all_item_tags = item_tags_lower | {item_type_lower}
+        tag_hits = len(requested_tags & all_item_tags)
+        tag_boost = min(tag_hits / max(len(requested_tags), 1), 1.0)
+        cult_s = max(cult_s, tag_boost * 0.8)
+
+    item.final_score = min(1.0, (
+        dist_s    * 0.25
+        + intent_s  * 0.25
+        + ctx_s     * 0.13
+        + rating_s  * 0.13
+        + opening_s * 0.08
+        + sport_s   * 0.06
+        + pop_s     * 0.04
+        + local_s   * 0.04
+        + cult_s    * 0.02
+    ))
 
     return item

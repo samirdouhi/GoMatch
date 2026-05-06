@@ -40,7 +40,7 @@ export type ScoreBreakdown = {
 
 export type RecommendationItemDto = {
   id: string;
-  source: "business" | "discovery" | "event";
+  source: "business" | "discovery" | "event" | "culture";
   type: string;
   name: string;
   description?: string | null;

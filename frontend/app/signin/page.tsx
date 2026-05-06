@@ -24,6 +24,7 @@ import {
   type GoogleLoginResponse,
 } from "@/lib/authApi";
 import { getFirstRoute } from "@/lib/profile/profile.routing";
+import AuthRedirect from "@/app/components/AuthRedirect";
 
 declare global {
   interface Window {
@@ -849,6 +850,8 @@ function SignInContent() {
 export default function SignInPage() {
   return (
     <Suspense fallback={null}>
+      {/* Redirect already-authenticated users to their appropriate page */}
+      <AuthRedirect redirectAll />
       <SignInContent />
     </Suspense>
   );

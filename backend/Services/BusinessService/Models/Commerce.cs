@@ -13,6 +13,7 @@ namespace BusinessService.Models
         public Guid ProprietaireUtilisateurId { get; set; }
         public string ProprietaireEmail { get; set; } = string.Empty;
         public bool EstValide { get; set; } = false;
+        public bool EstActif { get; set; } = true;
         public string Statut { get; set; } = StatutCommerce.EnAttente;
         public string? RaisonRejet { get; set; }
         public DateTime DateCreation { get; set; } = DateTime.UtcNow;

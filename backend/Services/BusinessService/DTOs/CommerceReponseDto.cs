@@ -11,6 +11,7 @@
         public Guid ProprietaireUtilisateurId { get; set; }
         public string ProprietaireEmail { get; set; } = string.Empty;
         public bool EstValide { get; set; }
+        public bool EstActif { get; set; }
         public string Statut { get; set; } = string.Empty;
         public string? RaisonRejet { get; set; }
         public DateTime DateCreation { get; set; }

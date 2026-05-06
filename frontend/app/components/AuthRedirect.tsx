@@ -82,12 +82,16 @@ async function tryRefresh(): Promise<string | null> {
 
 /**
  * Composant silencieux (rendu invisible).
- * Au chargement de la page d'accueil, lit le localStorage :
- *  - token valide + rôle Admin   → redirige vers /admin
- *  - token expiré + refresh dispo → rafraîchit puis redirige si Admin
- *  - aucun token valide           → ne fait rien, la page reste visible
+ *
+ * Comportement selon la prop `redirectAll` :
+ *  - false (défaut) : utilisé sur la page d'accueil — redirige uniquement les Admins
+ *    vers /admin. Les Touristes et Commerçants restent sur la page d'accueil.
+ *  - true : utilisé sur la page signin — redirige TOUS les utilisateurs déjà
+ *    authentifiés vers leur espace (Admin→/admin, Commercant→/commercant, Touriste→/dashboard).
+ *
+ * Dans les deux cas : token expiré + refresh dispo → refresh silencieux avant redirection.
  */
-export default function AuthRedirect() {
+export default function AuthRedirect({ redirectAll = false }: { redirectAll?: boolean }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -110,9 +114,16 @@ export default function AuthRedirect() {
       if (cancelled) return;
 
       const roles = getRolesFromToken(token);
+
       if (roles.includes("Admin")) {
         router.replace("/admin");
+      } else if (redirectAll && roles.includes("Commercant")) {
+        router.replace("/commercant");
+      } else if (redirectAll) {
+        // Touriste ou tout autre rôle authentifié
+        router.replace("/dashboard");
       }
+      // redirectAll=false → Commercants et Touristes restent sur la page courante
     }
 
     void redirect();
@@ -120,7 +131,7 @@ export default function AuthRedirect() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, redirectAll]);
 
   return null;
 }

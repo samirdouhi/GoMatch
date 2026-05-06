@@ -9,6 +9,7 @@ namespace BusinessService.Mappers
         public static CommerceReponseDto ToResponse(Commerce commerce)
         {
             var notes = commerce.Avis?.Select(a => a.Note).ToList() ?? new List<int>();
+
             return new CommerceReponseDto
             {
                 Id = commerce.Id,
@@ -20,6 +21,7 @@ namespace BusinessService.Mappers
                 ProprietaireUtilisateurId = commerce.ProprietaireUtilisateurId,
                 ProprietaireEmail = commerce.ProprietaireEmail,
                 EstValide = commerce.EstValide,
+                EstActif = commerce.EstActif,
                 Statut = commerce.Statut,
                 RaisonRejet = commerce.RaisonRejet,
                 DateCreation = commerce.DateCreation,
@@ -28,7 +30,8 @@ namespace BusinessService.Mappers
                 TagsCulturels = commerce.TagsCulturels.Select(t => t.Nom).ToList(),
                 Horaires = commerce.Horaires.Select(HoraireCommerceMapper.ToResponse).ToList(),
                 Photos = commerce.Photos
-                    .OrderBy(p => p.Ordre).ThenBy(p => p.DateAjout)
+                    .OrderBy(p => p.Ordre)
+                    .ThenBy(p => p.DateAjout)
                     .Select(p => new PhotoCommerceReponseDto
                     {
                         Id = p.Id,
@@ -38,10 +41,16 @@ namespace BusinessService.Mappers
                         TailleFichier = p.TailleFichier,
                         Ordre = p.Ordre,
                         DateAjout = p.DateAjout,
-                        UrlImage = $"/api/commerces/{p.CommerceId}/photos/{p.Id}/image"
-                    }).ToList(),
+
+                        // Utilise CheminFichier si c'est un chemin relatif valide (uploads/...),
+                        // sinon recourt à l'endpoint API qui gère tous les formats de chemin.
+                        UrlImage = (!string.IsNullOrWhiteSpace(p.CheminFichier) && p.CheminFichier.StartsWith("uploads/"))
+                            ? $"/{p.CheminFichier}"
+                            : $"/api/commerces/{p.CommerceId}/photos/{p.Id}/image"
+                    })
+                    .ToList(),
                 NoteGlobale = notes.Count > 0 ? Math.Round(notes.Average(), 1) : null,
-                NombreAvis = notes.Count,
+                NombreAvis = notes.Count
             };
         }
 

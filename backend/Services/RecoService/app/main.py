@@ -20,11 +20,12 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 
 from app.clients.business_client import BusinessClient
+from app.clients.culture_client import CultureClient
 from app.clients.discovery_client import DiscoveryClient
 from app.clients.match_client import MatchClient
 from app.clients.profile_client import ProfileClient
 from app.config import settings
-from app.core.candidate_normalizer import normalize_business_item, normalize_discovery_item
+from app.core.candidate_normalizer import normalize_business_item, normalize_culture_item, normalize_discovery_item
 from app.core.constraint_extractor import extract_constraints
 from app.core.context_builder import RecommendationContext
 from app.core.diversity_engine import (
@@ -57,6 +58,7 @@ from app.utils.geo import compute_distance_km
 app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
 business_client  = BusinessClient()
+culture_client   = CultureClient()
 discovery_client = DiscoveryClient()
 match_client     = MatchClient()
 profile_client   = ProfileClient()
@@ -69,14 +71,46 @@ _INTENT_TO_PLACE_TYPE: dict[str, str] = {
     "specific_cafe":         "cafe",
     "specific_food":         "restaurant",
     "hotel_search":          "hotel",
-    "specific_activity":     "activity",
-    "cultural_plan":         "cultural",
-    "discovery_search":      "cultural",
+    "specific_activity":     "loisirs",
+    "cultural_plan":         "culture",
+    "discovery_search":      "culture",
     "fan_zone_request":      "fanzone",
     "match_watch":           "fanzone",      # "sans ticket" → fan zones
-    "local_commerce_search": "souk",
+    "local_commerce_search": "artisanat",
     # note: match_day_plan / off_day_plan / pre_match_plan / after_match_plan
     # intentionally left out — they generate multi-type programs
+}
+
+# Exact nomCategorie.lower() values for each resolved place type.
+# Business items are matched EXACTLY (no keyword fallback) to prevent cross-category contamination.
+_EXACT_CATEGORY_MAP: dict[str, list[str]] = {
+    "cafe":        ["café & salon de thé"],
+    "restaurant":  ["restaurant marocain"],
+    "street_food": ["street food & snacks"],
+    "dessert":     ["desserts & pâtisserie"],
+    "artisanat":   ["artisanat & souvenirs"],
+    "bien_etre":   ["bien-être traditionnel"],
+    "culture":     ["culture & expériences"],
+    "loisirs":     ["loisirs & visites"],
+    "terroir":     ["produits du terroir"],
+    "nightlife":   ["vie nocturne & rooftops"],
+}
+
+# Keyword fallback for non-business sources (discovery, culture items without nomCategorie)
+_NONBIZ_KEYWORDS: dict[str, list[str]] = {
+    "cafe":        ["cafe", "café", "coffee", "salon de thé", "thé", "breakfast", "brunch"],
+    "restaurant":  ["restaurant", "resto", "food", "gastro", "tajine", "couscous", "cuisine"],
+    "street_food": ["snack", "street food", "fast food", "sandwich", "wrap"],
+    "dessert":     ["pâtisserie", "patisserie", "gâteau", "dessert", "glace"],
+    "artisanat":   ["souk", "artisanat", "boutique", "artisan", "bijoux", "poterie"],
+    "bien_etre":   ["hammam", "spa", "massage", "bien-être", "détente"],
+    "culture":     ["museum", "musée", "monument", "culture", "patrimoine", "médina", "kasbah", "site"],
+    "loisirs":     ["activity", "attraction", "visite", "excursion", "randonnée", "parc", "loisir"],
+    "terroir":     ["terroir", "argan", "miel", "épices", "safran", "coopérative"],
+    "nightlife":   ["bar", "nightlife", "club", "discothèque", "soirée", "lounge", "pub", "rooftop"],
+    "hotel":       ["hotel", "hôtel", "riad", "auberge", "chambre", "hébergement"],
+    "fanzone":     ["fanzone", "fan zone", "bar sport", "écran géant", "foot", "supporter"],
+    "souk":        ["souk", "marché", "artisanat", "boutique", "artisan"],
 }
 
 # After-match: exclude cultural venues (closed at night) and hotels
@@ -135,65 +169,80 @@ def _filter_by_type(
     nightlife_explicit: bool,
 ) -> List[CandidateItem]:
     """
-    STRICT type filter. When requested_type is set, return ONLY matching items.
-    Fallback is minimal — avoids polluting results with irrelevant categories.
+    STRICT type filter respecting official GoMatch categories.
+
+    For official business categories (cafe, restaurant, street_food, dessert, artisanat,
+    bien_etre, culture, loisirs, terroir, nightlife): business items are matched by
+    EXACT nomCategorie (item.type) — no cross-category contamination.
+
+    Non-business items (discovery, culture source) use keyword fallback.
+
+    For special types (fanzone, hotel): keyword-only matching with smart fallback.
+
+    Returns an empty list when no exact match found for an official category
+    (caller should detect this and return a clarification response).
     """
     if not requested_type:
         return items
 
-    _checks = {
-        "cafe": lambda i: any(x in _blob(i) for x in [
-            "cafe", "café", "coffee", "salon de thé", "thé", "tea", "breakfast",
-            "petit déjeuner", "brunch", "snack",
-        ]),
-        "restaurant": lambda i: any(x in _blob(i) for x in [
-            "restaurant", "resto", "food", "gastro", "manger", "cuisine",
-            "tajine", "couscous", "repas", "grill", "pizz", "burger",
-            "brasserie", "fast food", "snack",
-        ]),
-        "hotel": lambda i: _is_hotel(i),
-        "activity": lambda i: (
-            not _is_hotel(i)
-            and (nightlife_explicit or not _is_nightlife(i))
-            and any(x in _blob(i) for x in [
-                "activity", "attraction", "museum", "musée", "monument",
-                "visite", "viewpoint", "culture", "médina", "site", "excursion",
-                "kasbah", "remparts", "patrimoine", "galerie",
-            ])
-        ),
-        "cultural": lambda i: (
-            not _is_hotel(i)
-            and any(x in _blob(i) for x in [
-                "museum", "musée", "monument", "attraction", "culture",
-                "patrimoine", "médina", "kasbah", "remparts", "galerie",
-                "historique", "archéologie", "site",
-            ])
-        ),
-        "fanzone": lambda i: any(x in _blob(i) for x in [
-            "fanzone", "fan zone", "bar sport", "sports bar", "foot",
-            "football", "écran géant", "grand écran", "supporter",
-            "watch party", "pub foot", "bar",
-        ]),
-        "nightlife": lambda i: not _is_hotel(i) and (
-            _is_nightlife(i)
-            or any(x in _blob(i) for x in ["bar", "soirée", "lounge", "pub"])
-        ),
-        "souk": lambda i: any(x in _blob(i) for x in [
-            "souk", "marché", "artisanat", "boutique", "artisan", "shop",
-        ]),
-    }
+    # ── Official business category: strict exact match ────────────────────────
+    exact_names = _EXACT_CATEGORY_MAP.get(requested_type)
+    if exact_names:
+        # Business items: must match exact nomCategorie
+        matched_business = [
+            i for i in items
+            if i.source == "business" and (i.type or "") in exact_names
+        ]
+        # Non-business items: keyword match (they have no nomCategorie)
+        nonbiz_kw = _NONBIZ_KEYWORDS.get(requested_type, [])
+        matched_other = [
+            i for i in items
+            if i.source != "business" and any(k in _blob(i) for k in nonbiz_kw)
+        ]
+        # Return combined — may be empty (triggers no-results fallback in _run_pipeline)
+        return matched_business + matched_other
 
-    check = _checks.get(requested_type)
-    if not check:
-        return items
+    # ── Hotel: keyword match (riad, auberge, etc. may not use exact category) ─
+    if requested_type == "hotel":
+        matched = [i for i in items if _is_hotel(i)]
+        return matched if matched else items[:6]
 
-    filtered = [i for i in items if check(i)]
-    if filtered:
-        return filtered
+    # ── Fan zone: stadium → explicit keywords → sport culture tags ────────────
+    if requested_type == "fanzone":
+        _FANZONE_PRIMARY = [
+            "fanzone", "fan zone", "bar sport", "sports bar",
+            "écran géant", "grand écran", "watch party", "pub foot",
+        ]
+        _FANZONE_SECONDARY = [
+            "foot", "football", "supporter", "match diffusé", "retransmission",
+            "diffusion", "ambiance sport", "sport", "pub", "bar",
+        ]
+        primary = [
+            i for i in items
+            if i.source in ("stadium", "fanzone")
+            or any(x in _blob(i) for x in _FANZONE_PRIMARY)
+        ]
+        if primary:
+            return primary
+        secondary = [i for i in items if any(x in _blob(i) for x in _FANZONE_SECONDARY)]
+        if secondary:
+            return secondary
+        # Last resort: bars/cafes near the stadium
+        bars = [
+            i for i in items
+            if not _is_hotel(i) and any(x in _blob(i) for x in ["café", "cafe", "bar", "pub"])
+        ]
+        return bars[:8] if bars else [i for i in items if not _is_hotel(i)][:8]
 
-    # Minimal fallback: only exclude hotels (never relevant as a fallback)
-    # and return at most 10 items so results are focused
-    if requested_type not in ("hotel", "souk"):
+    # ── Souk / generic keyword type ───────────────────────────────────────────
+    nonbiz_kw = _NONBIZ_KEYWORDS.get(requested_type, [])
+    if nonbiz_kw:
+        matched = [i for i in items if any(k in _blob(i) for k in nonbiz_kw)]
+        if matched:
+            return matched
+
+    # Generic fallback: exclude hotels
+    if requested_type not in ("hotel",):
         no_hotels = [i for i in items if not _is_hotel(i)]
         return no_hotels[:10] if no_hotels else items[:10]
 
@@ -227,8 +276,61 @@ def _apply_intent_filter(
     return items
 
 
+def _create_stadium_candidate(match: dict) -> Optional[CandidateItem]:
+    """Create a synthetic CandidateItem for the match stadium."""
+    stade_name = match.get("stade")
+    if not stade_name:
+        return None
+    equipe1 = match.get("equipe1", "?")
+    equipe2 = match.get("equipe2", "?")
+    kickoff = match.get("heure") or ""
+    return CandidateItem(
+        id=f"stadium_{match.get('id', 'x')}",
+        source="stadium",
+        type="stade",
+        title=stade_name,
+        description=(
+            f"Stade officiel — {equipe1} vs {equipe2}"
+            + (f" · coup d'envoi {kickoff}" if kickoff else "")
+        ),
+        address=match.get("stade_adresse"),
+        latitude=match.get("stade_latitude"),
+        longitude=match.get("stade_longitude"),
+        tags=["stade", "stadium", "foot", "football", "match", "coupe du monde", "coupe du monde 2026"],
+        opening_hours=[],
+        rating=5.0,
+        final_score=0.95,
+    )
+
+
+def _create_fanzone_candidates(match: dict) -> List[CandidateItem]:
+    """Convert match.fan_zones[] → CandidateItems so they appear in recommendations."""
+    fan_zones = match.get("fan_zones") or []
+    items: List[CandidateItem] = []
+    for i, fz in enumerate(fan_zones):
+        if not isinstance(fz, dict):
+            continue
+        name = fz.get("name") or fz.get("nom") or f"Fan Zone officielle {i + 1}"
+        items.append(CandidateItem(
+            id=f"fanzone_{match.get('id', 'x')}_{i}",
+            source="fanzone",
+            type="fanzone",
+            title=name,
+            description="Fan zone officielle FIFA — grand écran, ambiance supporters",
+            address=fz.get("address") or fz.get("adresse"),
+            latitude=fz.get("latitude") or fz.get("Latitude"),
+            longitude=fz.get("longitude") or fz.get("Longitude"),
+            tags=["fan zone", "fanzone", "écran géant", "foot", "football", "supporter", "match diffusé"],
+            opening_hours=[],
+            rating=4.5,
+            final_score=0.90,
+        ))
+    return items
+
+
 async def _fetch_candidates(ctx: RecommendationContext) -> List[CandidateItem]:
     city = ctx.city
+    intent = ctx.intent or ""
 
     async def _businesses():
         return await business_client.get_all_businesses()
@@ -239,8 +341,19 @@ async def _fetch_candidates(ctx: RecommendationContext) -> List[CandidateItem]:
             places = await discovery_client.get_places()
         return places
 
-    biz_raw, disc_raw = await asyncio.gather(
-        _businesses(), _places(), return_exceptions=True
+    async def _culture():
+        # Only fetch cultural content for relevant intents to avoid noise
+        _cultural_intents = {
+            "cultural_plan", "discovery_search", "off_day_plan", "day_plan",
+            "full_day_plan", "match_day_plan", "morning_plan", "multi_day_plan",
+            "family_plan", "route_plan", "short_plan", "nearby_request", "unknown",
+        }
+        if intent in _cultural_intents or not intent:
+            return await culture_client.get_published_contenus()
+        return []
+
+    biz_raw, disc_raw, cult_raw = await asyncio.gather(
+        _businesses(), _places(), _culture(), return_exceptions=True
     )
 
     candidates: List[CandidateItem] = []
@@ -248,6 +361,13 @@ async def _fetch_candidates(ctx: RecommendationContext) -> List[CandidateItem]:
         candidates.extend(normalize_business_item(item) for item in biz_raw)
     if isinstance(disc_raw, list):
         candidates.extend(normalize_discovery_item(item) for item in disc_raw)
+    if isinstance(cult_raw, list):
+        # Only add cultural items that have coordinates (needed for distance scoring)
+        candidates.extend(
+            normalize_culture_item(item)
+            for item in cult_raw
+            if item.get("latitude") and item.get("longitude")
+        )
 
     return candidates
 
@@ -303,6 +423,23 @@ async def _run_pipeline(req: RecommendationRequest) -> RecommendationResponse:
 
     candidates = await _fetch_candidates(ctx)
 
+    # ── Inject match-derived candidates ─────────────────────────────────────────
+    has_ticket = constraints.get("has_ticket")
+    _match_intents_inject = {
+        "match_day_plan", "pre_match_plan", "fan_zone_request",
+        "match_watch", "after_match_plan",
+    }
+    if current_match and intent in _match_intents_inject:
+        # Fan zones from match data — always inject for fanzone/watch requests
+        fz_candidates = _create_fanzone_candidates(current_match)
+        candidates = fz_candidates + candidates
+
+        # Stadium — inject only for ticket holders on match day / pre-match
+        if has_ticket is not False and intent in {"match_day_plan", "pre_match_plan"}:
+            stadium = _create_stadium_candidate(current_match)
+            if stadium:
+                candidates = [stadium] + candidates
+
     # Apply session exclusion with score penalty (don't hard-block)
     all_excluded = list(set(req.excluded_ids + req.session_recommended_ids))
     candidates = apply_excluded_penalty(candidates, all_excluded, penalty=0.25)
@@ -319,6 +456,35 @@ async def _run_pipeline(req: RecommendationRequest) -> RecommendationResponse:
         resolved_type,
         constraints.get("nightlife_explicit", False),
     )
+
+    # No-results fallback: exact category filter returned empty → ask user to widen search
+    if not candidates and resolved_type and resolved_type in _EXACT_CATEGORY_MAP:
+        category_label = {
+            "cafe": "Café & salon de thé",
+            "restaurant": "Restaurant marocain",
+            "street_food": "Street food & snacks",
+            "dessert": "Desserts & pâtisserie",
+            "artisanat": "Artisanat & souvenirs",
+            "bien_etre": "Bien-être traditionnel",
+            "culture": "Culture & expériences",
+            "loisirs": "Loisirs & visites",
+            "terroir": "Produits du terroir",
+            "nightlife": "Vie nocturne & rooftops",
+        }.get(resolved_type, resolved_type)
+        return build_clarification_response(
+            intent="no_exact_results",
+            question=(
+                f"Aucun résultat exact trouvé pour \"{category_label}\" "
+                f"dans cette zone. Voulez-vous élargir la recherche ?"
+            ),
+            followups=[
+                "Oui, montrez-moi des alternatives proches",
+                "Chercher dans une autre ville",
+                "Modifier ma recherche",
+            ],
+            memory_updates={**constraints, "last_intent": intent},
+        )
+
     candidates = _apply_intent_filter(
         candidates, intent, constraints.get("nightlife_explicit", False)
     )

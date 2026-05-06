@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import createGlobe from "cobe";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { ArrowRight, ShieldCheck, Sparkles, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -166,8 +167,8 @@ export function GlobeSection() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button className="h-12 w-full rounded-2xl bg-amber-500 px-6 text-black font-bold hover:bg-amber-400 sm:w-auto transition-all shadow-[0_10px_20px_-10px_rgba(245,158,11,0.5)]">
-                Découvrir autour de moi <ArrowRight className="ml-2 h-4 w-4 stroke-[3px]" />
+              <Button asChild className="h-12 w-full rounded-2xl bg-amber-500 px-6 text-black font-bold hover:bg-amber-400 sm:w-auto transition-all shadow-[0_10px_20px_-10px_rgba(245,158,11,0.5)]">
+                <Link href="/explore">Découvrir autour de moi <ArrowRight className="ml-2 h-4 w-4 stroke-[3px]" /></Link>
               </Button>
               <Button
                 variant="outline"

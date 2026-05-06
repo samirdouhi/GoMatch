@@ -13,6 +13,7 @@ const filterItems: { key: MapItemType; label: string }[] = [
   { key: "restaurant", label: "Restaurants" },
   { key: "activity", label: "Activités" },
   { key: "hotel", label: "Hôtels" },
+  { key: "culture", label: "Culturel" },
 ];
 
 export default function MapFilters({

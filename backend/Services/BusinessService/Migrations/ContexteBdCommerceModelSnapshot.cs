@@ -95,6 +95,11 @@ namespace BusinessService.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<bool>("EstActif")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("EstValide")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")

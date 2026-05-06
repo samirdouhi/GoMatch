@@ -21,9 +21,12 @@ import {
   getAllCommercesAdmin,
   validateCommerce,
   rejectCommerce,
+  desactiverCommerce,
+  reactiverCommerce,
   photoUrl,
   type Commerce,
 } from "@/lib/commercesApi";
+import { PowerOff, Power } from "lucide-react";
 
 const JOURS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 function formatHeure(v: string) { return v ? v.slice(0, 5) : "--:--"; }
@@ -143,11 +146,13 @@ function CommerceCard({
   commerce,
   onValidate,
   onReject,
+  onToggleActif,
   actionLoading,
 }: {
   commerce: Commerce;
   onValidate: (id: string) => void;
   onReject: (c: Commerce) => void;
+  onToggleActif: (c: Commerce) => void;
   actionLoading: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -173,8 +178,16 @@ function CommerceCard({
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-white">{commerce.nom}</h3>
+              <h3 className={`font-bold ${commerce.estActif === false ? "text-zinc-500 line-through" : "text-white"}`}>
+                {commerce.nom}
+              </h3>
               <StatutBadge statut={commerce.statut} />
+              {commerce.estActif === false && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold text-orange-400">
+                  <PowerOff className="h-2.5 w-2.5" />
+                  Désactivé
+                </span>
+              )}
             </div>
 
             <p className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
@@ -230,6 +243,25 @@ function CommerceCard({
                 Rejeter
               </button>
             </>
+          )}
+
+          {commerce.statut === "Approuve" && (
+            <button
+              type="button"
+              onClick={() => onToggleActif(commerce)}
+              disabled={isLoading}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50 ${
+                commerce.estActif
+                  ? "bg-orange-600 hover:bg-orange-500"
+                  : "bg-emerald-700 hover:bg-emerald-600"
+              }`}
+            >
+              {commerce.estActif ? (
+                <><PowerOff className="h-3.5 w-3.5" />{isLoading ? "..." : "Désactiver"}</>
+              ) : (
+                <><Power className="h-3.5 w-3.5" />{isLoading ? "..." : "Réactiver"}</>
+              )}
+            </button>
           )}
         </div>
       </div>
@@ -362,6 +394,7 @@ export default function AdminCommercesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Commerce | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [toggleActifLoading, setToggleActifLoading] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -415,6 +448,28 @@ export default function AdminCommercesPage() {
       setActionError(err instanceof Error ? err.message : "Erreur validation.");
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  async function handleToggleActif(commerce: Commerce) {
+    setActionError(null);
+    setSuccessMessage(null);
+    setToggleActifLoading(commerce.id);
+
+    try {
+      const updated = commerce.estActif
+        ? await desactiverCommerce(commerce.id)
+        : await reactiverCommerce(commerce.id);
+      setCommerces((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setSuccessMessage(
+        commerce.estActif
+          ? "Commerce désactivé. Il n'apparaît plus sur les pages touristes."
+          : "Commerce réactivé. Il est de nouveau visible."
+      );
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Erreur lors de l'opération.");
+    } finally {
+      setToggleActifLoading(null);
     }
   }
 
@@ -547,7 +602,8 @@ export default function AdminCommercesPage() {
               commerce={c}
               onValidate={handleValidate}
               onReject={setRejectTarget}
-              actionLoading={actionLoading}
+              onToggleActif={handleToggleActif}
+              actionLoading={toggleActifLoading === c.id ? c.id : actionLoading}
             />
           ))}
         </div>

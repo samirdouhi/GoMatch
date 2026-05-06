@@ -101,8 +101,8 @@ export function CommentCaMarcheSection() {
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button className="h-14 w-full rounded-2xl bg-amber-500 px-8 text-sm font-black uppercase tracking-widest text-black hover:scale-105 transition-transform sm:w-auto">
-              Commencer <ArrowRight className="ml-2 h-4 w-4" />
+            <Button asChild className="h-14 w-full rounded-2xl bg-amber-500 px-8 text-sm font-black uppercase tracking-widest text-black hover:scale-105 transition-transform sm:w-auto">
+              <Link href="/explore">Commencer <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
 
             <Button
@@ -110,7 +110,7 @@ export function CommentCaMarcheSection() {
               variant="outline"
               className="h-14 w-full rounded-2xl border-black/10 bg-black/5 px-8 text-sm font-black uppercase tracking-widest text-slate-700 hover:bg-black/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 sm:w-auto shadow-xl backdrop-blur-md"
             >
-              <Link href="/businesses">Voir les lieux</Link>
+              <Link href="/explore">Voir les lieux</Link>
             </Button>
           </div>
         </motion.div>
@@ -224,8 +224,8 @@ export function CommentCaMarcheSection() {
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row justify-center">
-              <Button className="h-14 rounded-2xl bg-amber-500 px-10 text-xs font-black uppercase tracking-widest text-black hover:scale-105 transition-all">
-                Explorer maintenant <ArrowRight className="ml-2 h-4 w-4" />
+              <Button asChild className="h-14 rounded-2xl bg-amber-500 px-10 text-xs font-black uppercase tracking-widest text-black hover:scale-105 transition-all">
+                <Link href="/explore">Explorer maintenant <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
 
               <Button

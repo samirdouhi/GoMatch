@@ -5,6 +5,7 @@ using BusinessService.Services;
 using BusinessService.Services.External;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Security.Claims;
@@ -23,11 +24,18 @@ builder.Services.AddControllers()
 // OpenAPI
 builder.Services.AddOpenApi();
 
-// Base de donn�es
+// Base de données
 builder.Services.AddDbContext<ContexteBdCommerce>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sql => sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
+        sql => sql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null
+        )
+    )
+    .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+);
 
 // Repositories
 builder.Services.AddScoped<ICommerceRepository, CommerceRepository>();
@@ -35,6 +43,7 @@ builder.Services.AddScoped<IHoraireCommerceRepository, HoraireCommerceRepository
 builder.Services.AddScoped<ICategorieRepository, CategorieRepository>();
 builder.Services.AddScoped<ITagCulturelRepository, TagCulturelRepository>();
 builder.Services.AddScoped<IPhotoCommerceRepository, PhotoCommerceRepository>();
+builder.Services.AddScoped<IAvisRepository, AvisRepository>();
 
 // Services
 builder.Services.AddScoped<IServiceCommerce, ServiceCommerce>();
@@ -42,7 +51,6 @@ builder.Services.AddScoped<IServiceHoraireCommerce, ServiceHoraireCommerce>();
 builder.Services.AddScoped<IServiceCategorie, ServiceCategorie>();
 builder.Services.AddScoped<IServiceTagCulturel, ServiceTagCulturel>();
 builder.Services.AddScoped<IServicePhotoCommerce, ServicePhotoCommerce>();
-builder.Services.AddScoped<IAvisRepository, AvisRepository>();
 builder.Services.AddScoped<IServiceAvis, ServiceAvis>();
 
 // HTTP client vers AuthService pour les emails
@@ -106,9 +114,18 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
+{
     app.UseHttpsRedirection();
+}
+
+// Sert les fichiers dans /app/wwwroot, donc /app/wwwroot/uploads devient /uploads
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
 app.Run();

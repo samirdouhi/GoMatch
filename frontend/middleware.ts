@@ -56,6 +56,25 @@ function clearAuthCookies(response: NextResponse) {
   response.cookies.delete("token");
 }
 
+// Routes always accessible without a token
+const PUBLIC_ROUTES = [
+  "/",
+  "/signin",
+  "/Register",
+  "/a-propos",
+  "/aide",
+  "/contact",
+  "/confirm-email",
+  "/merchant/confirm-email",
+  "/experience",
+];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(
+    r => pathname === r || (r !== "/" && pathname.startsWith(r + "/"))
+  );
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -69,43 +88,62 @@ export function middleware(request: NextRequest) {
   const isAdminPage = pathname.startsWith("/admin");
   const isCommercantPage = pathname.startsWith("/commercant");
 
+  // ── No token ────────────────────────────────────────────────────────────────
   if (!token) {
-    if (isAdminPage || isCommercantPage) {
-      return NextResponse.redirect(new URL("/signin", request.url));
+    if (!isPublicRoute(pathname)) {
+      // Admin pages always require a valid access token
+      if (isAdminPage) {
+        return NextResponse.redirect(new URL("/signin", request.url));
+      }
+
+      // For other protected pages, check if a refresh token exists.
+      // If so, let the client-side TokenKeepAlive handle the silent refresh
+      // instead of bouncing the user to signin prematurely.
+      const refreshToken =
+        request.cookies.get("refreshToken")?.value ||
+        request.cookies.get("refresh_token")?.value;
+
+      if (!refreshToken) {
+        return NextResponse.redirect(new URL("/signin", request.url));
+      }
+
+      return NextResponse.next();
     }
     return NextResponse.next();
   }
 
+  // ── Token expired ───────────────────────────────────────────────────────────
   if (isTokenExpired(token)) {
-    // Si le refresh token est encore présent en cookie, on laisse passer :
-    // le client va détecter l'expiry et appeler /auth/refresh silencieusement.
     const refreshToken =
       request.cookies.get("refreshToken")?.value ||
       request.cookies.get("refresh_token")?.value;
 
     if (isAuthPage) {
-      // Sur les pages auth, on nettoie juste les cookies expirés
       const response = NextResponse.next();
       if (!refreshToken) clearAuthCookies(response);
       return response;
     }
 
     if (refreshToken) {
-      // Access token expiré mais refresh token valide → laisser passer,
-      // le composant TokenKeepAlive ou authFetch gérera le refresh côté client.
+      // Access token expiré mais refresh valide → le client gère le refresh
       return NextResponse.next();
     }
 
-    // Ni access token valide ni refresh token → déconnexion forcée
     const response = NextResponse.redirect(new URL("/signin", request.url));
     clearAuthCookies(response);
     return response;
   }
 
+  // ── Token valid ─────────────────────────────────────────────────────────────
   const roles = getRolesFromToken(token);
 
   if (isAdminPage && !roles.includes("Admin")) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Admin is restricted to admin pages and public routes only
+  if (roles.includes("Admin") && !isAdminPage && !isPublicRoute(pathname) && !isAuthPage) {
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   if (isCommercantPage && !roles.includes("Commercant")) {
@@ -116,6 +154,9 @@ export function middleware(request: NextRequest) {
     if (roles.includes("Admin")) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
+    if (roles.includes("Commercant")) {
+      return NextResponse.redirect(new URL("/commercant", request.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -123,5 +164,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/commercant/:path*", "/signin", "/Register"],
+  // Run on every page route, skip Next.js internals and static files
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

@@ -105,7 +105,7 @@ def _to_recommendation_item(item: CandidateItem) -> RecommendationItemDto:
         noteGlobale=item.rating if item.source == "business" else None,
         nombreAvis=item.review_count if item.source == "business" else None,
         isOpen=(item.opening_score >= 1.0) if item.opening_hours else None,
-        scoreTotal=round(item.final_score * 100, 1),
+        scoreTotal=min(round(item.final_score * 100, 1), 100.0),
         scoreBreakdown=_build_score_breakdown(item),
         reason=_build_reason(item),
         callToAction="Voir sur la carte",

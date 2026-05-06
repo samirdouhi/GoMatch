@@ -5,38 +5,51 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Store,
-  Clock,
   LogOut,
   ShoppingBag,
   UserCircle2,
   ArrowLeft,
   PlusCircle,
+  Compass,
+  Map,
 } from "lucide-react";
 import { logout } from "@/lib/logout";
 
 const menuItems = [
   {
-    label: "Mon commerce",
+    label: "Mes commerces",
     href: "/commercant",
     icon: LayoutDashboard,
     exact: true,
+    group: "commerce",
   },
   {
-    label: "Créer mon commerce",
+    label: "Créer un commerce",
     href: "/commercant/create-commerce",
     icon: PlusCircle,
     exact: false,
-  },
-  {
-    label: "Horaires",
-    href: "/commercant/horaires",
-    icon: Clock,
-    exact: false,
+    group: "commerce",
   },
   {
     label: "Mon profil",
     href: "/commercant/profile",
     icon: UserCircle2,
+    exact: false,
+    group: "commerce",
+  },
+];
+
+const exploreItems = [
+  {
+    label: "Explorer les lieux",
+    href: "/explore",
+    icon: Compass,
+    exact: false,
+  },
+  {
+    label: "Carte interactive",
+    href: "/test-map",
+    icon: Map,
     exact: false,
   },
 ];
@@ -82,7 +95,7 @@ export default function CommercantSidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
-            Navigation
+            Mon commerce
           </p>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -105,13 +118,37 @@ export default function CommercantSidebar() {
 
           <div className="my-4 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
 
+          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+            Découverte
+          </p>
+          {exploreItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href, item.exact);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+                  active
+                    ? "bg-gradient-to-r from-blue-500/20 to-blue-500/5 text-blue-600 ring-1 ring-blue-500/30 dark:text-blue-300"
+                    : "text-slate-600 hover:bg-black/[0.04] hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-white"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${active ? "text-blue-500 dark:text-blue-400" : ""}`} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="my-4 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
+
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
             className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-black/[0.04] hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Espace touriste</span>
+            <span>Tableau de bord touriste</span>
           </button>
         </nav>
 
@@ -143,6 +180,24 @@ export default function CommercantSidebar() {
             >
               <Icon className="h-5 w-5" />
               <span className="truncate">{item.label.split(" ")[0]}</span>
+            </Link>
+          );
+        })}
+
+        {/* Explorer */}
+        {exploreItems.slice(0, 1).map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href, item.exact);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-semibold transition-colors ${
+                active ? "text-blue-500 dark:text-blue-400" : "text-slate-400 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span>Explorer</span>
             </Link>
           );
         })}

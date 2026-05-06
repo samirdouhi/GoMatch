@@ -27,7 +27,7 @@ namespace BusinessService.Services
         {
             var commerces = await _repository.ObtenirToutAsync();
             return commerces
-                .Where(c => c.Statut != StatutCommerce.Rejete)
+                .Where(c => c.Statut == StatutCommerce.Approuve && c.EstActif)
                 .Select(CommerceMapper.ToResponse);
         }
 
@@ -276,6 +276,30 @@ namespace BusinessService.Services
             return CommerceMapper.ToResponse(commerce);
         }
 
+        public async Task<CommerceReponseDto?> DesactiverAsync(Guid id)
+        {
+            var commerce = await _repository.ObtenirParIdAsync(id);
+            if (commerce == null) return null;
+
+            commerce.EstActif = false;
+            await _repository.SauvegarderAsync();
+
+            _logger.LogInformation("Commerce {CommerceId} désactivé par l'admin.", id);
+            return CommerceMapper.ToResponse(commerce);
+        }
+
+        public async Task<CommerceReponseDto?> ReactiverAsync(Guid id)
+        {
+            var commerce = await _repository.ObtenirParIdAsync(id);
+            if (commerce == null) return null;
+
+            commerce.EstActif = true;
+            await _repository.SauvegarderAsync();
+
+            _logger.LogInformation("Commerce {CommerceId} réactivé par l'admin.", id);
+            return CommerceMapper.ToResponse(commerce);
+        }
+
         public async Task<CommerceReponseDto?> ObtenirMonCommerceAsync(Guid utilisateurId)
         {
             var commerces = await _repository.ObtenirToutAsync();
@@ -286,6 +310,14 @@ namespace BusinessService.Services
                 return null;
 
             return CommerceMapper.ToResponse(commerce);
+        }
+
+        public async Task<IEnumerable<CommerceReponseDto>> ObtenirMesCommercesAsync(Guid utilisateurId)
+        {
+            var commerces = await _repository.ObtenirToutAsync();
+            return commerces
+                .Where(c => c.ProprietaireUtilisateurId == utilisateurId)
+                .Select(CommerceMapper.ToResponse);
         }
 
         private static double CalculerDistance(

@@ -1,295 +1,123 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  getMyCommerce, getPhotos, uploadPhoto, deletePhoto, photoUrl, getAvis,
-  type Commerce, type PhotoCommerce, type Avis,
+  getMyCommerces,
+  type Commerce,
 } from "@/lib/commercesApi";
 import {
-  MapPin, Clock, Tag, Store, ExternalLink,
-  CheckCircle2, AlertTriangle, XCircle,
-  Pencil, Calendar,
-  Camera, Trash2, ImagePlus, Loader2,
-  Star, MessageSquare,
+  Store, Plus, Pencil, Clock, CheckCircle2, AlertTriangle, XCircle,
+  MapPin, ArrowRight, Power,
 } from "lucide-react";
 
-const JOURS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-function formatHeure(v: string) { return v ? v.slice(0, 5) : "--:--"; }
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(d);
-}
-
-function StatutBadge({ statut }: { statut: string }) {
-  const map: Record<string, { icon: React.ElementType; label: string; cls: string }> = {
-    Approuve:  { icon: CheckCircle2,  label: "Commerce validé",          cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
-    EnAttente: { icon: AlertTriangle, label: "En attente de validation", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" },
-    Rejete:    { icon: XCircle,       label: "Commerce rejeté",          cls: "border-red-500/30 bg-red-500/10 text-red-300" },
+function StatutBadge({ statut, estActif }: { statut: string; estActif: boolean }) {
+  if (statut === "Approuve" && !estActif) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-600/30 bg-zinc-800/50 px-3 py-1 text-xs font-semibold text-zinc-400">
+        <Power className="h-3 w-3" />Désactivé
+      </span>
+    );
+  }
+  const map = {
+    Approuve:  { icon: CheckCircle2,  label: "Validé",     cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
+    EnAttente: { icon: AlertTriangle, label: "En attente", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" },
+    Rejete:    { icon: XCircle,       label: "Rejeté",     cls: "border-red-500/30 bg-red-500/10 text-red-300" },
   };
-  const cfg = map[statut] ?? map["EnAttente"];
+  const cfg = map[statut as keyof typeof map] ?? map.EnAttente;
   const Icon = cfg.icon;
   return (
-    <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${cfg.cls}`}>
-      <Icon className="h-4 w-4" />{cfg.label}
-    </div>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${cfg.cls}`}>
+      <Icon className="h-3 w-3" />{cfg.label}
+    </span>
   );
 }
 
-function CommerceMap({ lat, lng, nom }: { lat: number; lng: number; nom: string }) {
-  const delta = 0.006;
-  const src  = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - delta},${lat - delta},${lng + delta},${lat + delta}&layer=mapnik&marker=${lat},${lng}`;
-  const link = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10">
-      <iframe src={src} title={`Carte de ${nom}`} className="h-56 w-full" loading="lazy" referrerPolicy="no-referrer" />
-      <a href={link} target="_blank" rel="noopener noreferrer"
-        className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-zinc-800">
-        <ExternalLink className="h-3 w-3" />Voir sur OSM
-      </a>
-    </div>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string | number; color: string }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
-      <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl ${color}`}><Icon className="h-4 w-4" /></div>
-      <p className="text-2xl font-black text-white">{value}</p>
-      <p className="mt-1 text-xs text-zinc-500">{label}</p>
-    </div>
-  );
-}
-
-// ── Section Photos ────────────────────────────────────────────────────────────
-
-function PhotosSection({ commerceId }: { commerceId: string }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [photos,    setPhotos]    = useState<PhotoCommerce[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    getPhotos(commerceId)
-      .then((data) => { if (mounted) { setPhotos(data); setLoading(false); } })
-      .catch(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
-  }, [commerceId]);
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setError("Fichier trop volumineux (max 10 Mo)."); return; }
-    setUploading(true); setError(null);
-    try {
-      const photo = await uploadPhoto(commerceId, file);
-      setPhotos((prev) => [...prev, photo]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erreur upload.");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  async function handleDelete(photoId: string) {
-    try {
-      await deletePhoto(commerceId, photoId);
-      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erreur suppression.");
-    }
-  }
+function CommerceCard({ commerce }: { commerce: Commerce }) {
+  const joursOuverts = commerce.horaires.filter((h) => !h.estFerme).length;
 
   return (
-    <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Camera className="h-5 w-5 text-orange-400" />
+    <div className="flex flex-col gap-5 rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6 transition-colors hover:border-orange-500/20">
+      {/* En-tête */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/15">
+            <Store className="h-5 w-5 text-orange-400" />
+          </div>
           <div>
-            <h2 className="font-semibold text-white">Photos du commerce</h2>
-            <p className="text-xs text-zinc-500">Max 10 photos · jpg / png / webp · 10 Mo</p>
+            <h3 className="font-bold leading-tight text-white">{commerce.nom}</h3>
+            <p className="mt-0.5 text-xs text-zinc-500">{commerce.nomCategorie ?? "Sans catégorie"}</p>
           </div>
         </div>
+        <StatutBadge statut={commerce.statut} estActif={commerce.estActif} />
+      </div>
 
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading || photos.length >= 10}
-          className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+      {/* Adresse */}
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <MapPin className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{commerce.adresse}</span>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3 text-center">
+          <p className="text-base font-black text-amber-400">
+            {commerce.noteGlobale != null ? commerce.noteGlobale.toFixed(1) : "—"}
+          </p>
+          <p className="mt-0.5 text-[10px] text-zinc-600">Note</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3 text-center">
+          <p className="text-base font-black text-orange-400">{commerce.nombreAvis}</p>
+          <p className="mt-0.5 text-[10px] text-zinc-600">Avis</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3 text-center">
+          <p className="text-base font-black text-emerald-400">{joursOuverts}/7</p>
+          <p className="mt-0.5 text-[10px] text-zinc-600">Jours ouverts</p>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Link
+          href={`/commercant/${commerce.id}`}
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-2.5 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20"
         >
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <ImagePlus className="h-4 w-4" />
-          )}
-          {uploading ? "Upload…" : "Ajouter"}
-        </button>
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={handleUpload}
-        />
+          <ArrowRight className="h-4 w-4" />Gérer
+        </Link>
+        <Link
+          href={`/commercant/edit/${commerce.id}`}
+          title="Modifier"
+          className="flex items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 text-zinc-300 transition hover:bg-white/[0.07]"
+        >
+          <Pencil className="h-4 w-4" />
+        </Link>
+        <Link
+          href={`/commercant/horaires/${commerce.id}`}
+          title="Gérer les horaires"
+          className="flex items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 text-zinc-300 transition hover:bg-white/[0.07]"
+        >
+          <Clock className="h-4 w-4" />
+        </Link>
       </div>
-
-      {error && (
-        <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {error}
-        </p>
-      )}
-
-      {loading ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="aspect-square animate-pulse rounded-2xl bg-white/[0.04]" />
-          ))}
-        </div>
-      ) : photos.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-white/[0.07] py-10 text-center">
-          <Camera className="mx-auto h-10 w-10 text-zinc-700" />
-          <p className="mt-3 text-sm text-zinc-500">Aucune photo ajoutée</p>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="mt-3 text-sm font-medium text-orange-400 hover:underline"
-          >
-            Ajouter la première photo
-          </button>
-        </div>
-      ) : (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {photos.map((photo) => (
-            <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-2xl bg-zinc-900">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoUrl(photo.urlImage)}
-                alt={photo.nomFichier}
-                className="h-full w-full object-cover transition group-hover:scale-105"
-              />
-              <button
-                type="button"
-                onClick={() => handleDelete(photo.id)}
-                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-xl bg-black/60 text-red-400 opacity-0 backdrop-blur transition hover:bg-red-500/20 group-hover:opacity-100"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-              {photo.ordre === 0 && (
-                <span className="absolute bottom-2 left-2 rounded-lg bg-orange-500/80 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
-                  Principale
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Section Avis ─────────────────────────────────────────────────────────────
-
-function StarRating({ note }: { note: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`h-3.5 w-3.5 ${i <= note ? "fill-amber-400 text-amber-400" : "text-zinc-700"}`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function AvisSection({ commerceId }: { commerceId: string }) {
-  const [avis,    setAvis]    = useState<Avis[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    getAvis(commerceId)
-      .then((data) => { if (mounted) { setAvis(data); setLoading(false); } })
-      .catch(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
-  }, [commerceId]);
-
-  function formatDate(iso: string) {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(d);
-  }
-
-  return (
-    <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-      <div className="flex items-center gap-2 mb-5">
-        <MessageSquare className="h-5 w-5 text-orange-400" />
-        <div>
-          <h2 className="font-semibold">Avis clients</h2>
-          <p className="text-xs text-zinc-500">Retours laissés par les touristes</p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/[0.04]" />
-          ))}
-        </div>
-      ) : avis.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/[0.07] py-10 text-center">
-          <MessageSquare className="mx-auto h-10 w-10 text-zinc-700" />
-          <p className="mt-3 text-sm text-zinc-500">Aucun avis pour l'instant</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {avis.map((a) => (
-            <div key={a.id} className="rounded-2xl border border-white/[0.07] bg-black/20 px-5 py-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/15 text-xs font-bold text-orange-300">
-                    {(a.utilisateurEmail[0] ?? "?").toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{a.utilisateurEmail}</p>
-                    <StarRating note={a.note} />
-                  </div>
-                </div>
-                <span className="text-xs text-zinc-600">{formatDate(a.dateCreation)}</span>
-              </div>
-              {a.commentaire && (
-                <p className="mt-3 text-sm leading-relaxed text-zinc-400">{a.commentaire}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Page principale ───────────────────────────────────────────────────────────
-
-export default function CommercantDashboardPage() {
+export default function CommercantPage() {
   const router = useRouter();
-  const [commerce, setCommerce] = useState<Commerce | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [commerces, setCommerces] = useState<Commerce[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     async function load() {
       try {
-        setLoading(true); setError(null);
-        const data = await getMyCommerce();
+        setLoading(true);
+        const data = await getMyCommerces();
         if (!mounted) return;
-        if (!data) { router.replace("/commercant/create-commerce"); return; }
-        setCommerce(data);
+        setCommerces(data);
       } catch (err: unknown) {
         if (!mounted) return;
         setError(err instanceof Error ? err.message : "Erreur chargement.");
@@ -299,158 +127,73 @@ export default function CommercantDashboardPage() {
     }
     void load();
     return () => { mounted = false; };
-  }, [router]);
+  }, []);
 
-  const horairesTries = useMemo(
-    () => [...(commerce?.horaires ?? [])].sort((a, b) => a.jourSemaine - b.jourSemaine),
-    [commerce]
-  );
-  const joursOuverts = useMemo(() => horairesTries.filter((h) => !h.estFerme).length, [horairesTries]);
-  const statut = commerce?.statut ?? "EnAttente";
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-64 animate-pulse rounded-3xl bg-white/[0.04]" />
+        ))}
+      </div>
+    );
+  }
 
-  if (loading) return <div className="space-y-4">{[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-3xl bg-white/[0.04]"/>)}</div>;
-  if (error) return <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">{error}</div>;
-  if (!commerce) return null;
+  if (error) {
+    return (
+      <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-red-300">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-white">
       {/* Header */}
-      <div className="rounded-3xl border border-white/[0.07] bg-gradient-to-br from-white/[0.05] to-transparent p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Store className="h-6 w-6 text-orange-400" />
           <div>
-            <div className="flex items-center gap-2">
-              <Store className="h-5 w-5 text-orange-400" />
-              <h1 className="text-2xl font-black md:text-3xl">{commerce.nom}</h1>
-            </div>
-            <p className="mt-1 text-sm text-zinc-500">
-              {commerce.nomCategorie ?? "Catégorie non renseignée"} · Créé le {formatDate(commerce.dateCreation)}
+            <h1 className="text-2xl font-black">Mes commerces</h1>
+            <p className="text-sm text-zinc-500">
+              {commerces.length === 0
+                ? "Aucun commerce enregistré"
+                : `${commerces.length} commerce${commerces.length > 1 ? "s" : ""}`}
             </p>
           </div>
-          <div className="flex flex-col items-start gap-3 sm:items-end">
-            <StatutBadge statut={statut} />
-            <div className="flex gap-2">
-              <button type="button" onClick={() => router.push(`/commercant/edit/${commerce.id}`)}
-                className="inline-flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
-                <Pencil className="h-4 w-4" />Modifier
-              </button>
-              <button type="button" onClick={() => router.push('/commercant/promotions')}
-                className="inline-flex items-center gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-500/20">
-                <Tag className="h-4 w-4" />Campagnes
-              </button>
-            </div>
-          </div>
         </div>
-        {statut === "EnAttente" && (
-          <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
-            Votre commerce est en cours examen. Vous recevrez un email dès qu une décision sera prise (délai : 24h).
-          </div>
-        )}
-        {statut === "Rejete" && (
-          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-300">
-            <p className="font-semibold">Votre demande a été refusée.</p>
-            {commerce.raisonRejet && <p className="mt-1 text-red-400/70">Raison : {commerce.raisonRejet}</p>}
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => router.push("/commercant/create-commerce")}
+          className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-black text-white transition hover:bg-orange-400"
+        >
+          <Plus className="h-4 w-4" />Nouveau commerce
+        </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon={Star}      label="Note moyenne"   value={commerce.noteGlobale != null ? `${commerce.noteGlobale.toFixed(1)}/5` : "—"} color="bg-amber-500/15 text-amber-400" />
-        <StatCard icon={MessageSquare} label="Avis clients" value={commerce.nombreAvis}         color="bg-orange-500/15 text-orange-400" />
-        <StatCard icon={Calendar}  label="Jours ouverts"  value={`${joursOuverts}/7`}           color="bg-emerald-500/15 text-emerald-400" />
-        <StatCard icon={Tag}       label="Tags culturels" value={commerce.tagsCulturels.length} color="bg-purple-500/15 text-purple-400" />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-        {/* Infos */}
-        <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">Informations</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/[0.07] bg-black/20 p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Catégorie</p>
-              <p className="mt-2 font-medium text-white">{commerce.nomCategorie ?? "Non renseignée"}</p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.07] bg-black/20 p-4">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600"><MapPin className="h-3 w-3" />Adresse</p>
-              <p className="mt-2 font-medium text-white">{commerce.adresse}</p>
-            </div>
-          </div>
-          <div className="mt-3 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Description</p>
-            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-zinc-300">{commerce.description}</p>
-          </div>
-          <div className="mt-5">
-            <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
-              <MapPin className="h-3 w-3 text-orange-400" />Localisation
-            </p>
-            <CommerceMap lat={commerce.latitude} lng={commerce.longitude} nom={commerce.nom} />
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/[0.07] bg-black/20 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Latitude</p>
-                <p className="mt-1 font-mono text-sm text-orange-300">{commerce.latitude.toFixed(6)}</p>
-              </div>
-              <div className="rounded-xl border border-white/[0.07] bg-black/20 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Longitude</p>
-                <p className="mt-1 font-mono text-sm text-orange-300">{commerce.longitude.toFixed(6)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2"><Tag className="h-4 w-4 text-orange-400" /><h2 className="font-semibold">Tags culturels</h2></div>
-            <button type="button" onClick={() => router.push(`/commercant/edit/${commerce.id}`)}
-              className="text-xs font-medium text-orange-400 transition hover:text-orange-300">Gérer</button>
-          </div>
-          {commerce.tagsCulturels.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-white/[0.07] px-4 py-8 text-center text-sm text-zinc-500">Aucun tag</div>
-          ) : (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {commerce.tagsCulturels.map(tag => (
-                <span key={tag} className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300">{tag}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Photos */}
-      <PhotosSection commerceId={commerce.id} />
-
-      {/* Avis */}
-      <AvisSection commerceId={commerce.id} />
-
-      {/* Horaires */}
-      <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-orange-400" />
-            <div><h2 className="font-semibold">Horaires ouverture</h2><p className="text-xs text-zinc-500">Visibles par les touristes</p></div>
-          </div>
-          <button type="button" onClick={() => router.push(`/commercant/horaires/${commerce.id}`)}
-            className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
-            <Clock className="h-4 w-4" />Gérer
+      {/* Contenu */}
+      {commerces.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-white/[0.07] py-24 text-center">
+          <Store className="mx-auto h-16 w-16 text-zinc-700" />
+          <h2 className="mt-5 text-xl font-bold text-white">Aucun commerce</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Créez votre premier commerce pour commencer
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/commercant/create-commerce")}
+            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-6 py-3 text-sm font-black text-white transition hover:bg-orange-400"
+          >
+            <Plus className="h-4 w-4" />Créer mon commerce
           </button>
         </div>
-        {horairesTries.length === 0 ? (
-          <div className="mt-5 rounded-2xl border border-dashed border-white/[0.07] px-4 py-10 text-center text-sm text-zinc-500">Aucun horaire configuré</div>
-        ) : (
-          <div className="mt-5 overflow-hidden rounded-2xl border border-white/[0.07]">
-            <div className="divide-y divide-white/[0.05]">
-              {horairesTries.map(h => (
-                <div key={h.id} className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="font-medium text-white">{JOURS[h.jourSemaine] ?? `Jour ${h.jourSemaine}`}</span>
-                  <span className={`text-sm font-semibold ${h.estFerme ? "text-red-400" : "text-emerald-300"}`}>
-                    {h.estFerme ? "Fermé" : `${formatHeure(h.heureOuverture)} → ${formatHeure(h.heureFermeture)}`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {commerces.map((c) => (
+            <CommerceCard key={c.id} commerce={c} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

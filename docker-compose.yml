@@ -55,7 +55,7 @@ services:
       - pfa-network
     restart: on-failure
 
-  # ── Business Service (.NET 9) ───────────────────────────────────────────────
+   # ── Business Service (.NET 9) ───────────────────────────────────────────────
   businessservice:
     build:
       context: ./backend/Services/BusinessService
@@ -68,11 +68,13 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchBusinessDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=BusinessServiceDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
       Jwt__Key: "${JWT_KEY}"
       Jwt__Issuer: "GoMatch.AuthService"
       Jwt__Audience: "GoMatch.Users"
       Services__AuthService__BaseUrl: "http://authservice:8080"
+    volumes:
+      - business_uploads:/app/wwwroot/uploads
     ports:
       - "5002:8080"
     networks:
@@ -172,6 +174,29 @@ services:
       - pfa-network
     restart: on-failure
 
+  # ── Culture Service (.NET 9) ────────────────────────────────────────────────
+  cultureservice:
+    build:
+      context: ./backend/Services/CultureService
+    container_name: pfa-culture
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      authservice:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=GoMatchCultureDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "GoMatch.AuthService"
+      Jwt__Audience: "GoMatch.Users"
+    ports:
+      - "5009:8080"
+    networks:
+      - pfa-network
+    restart: on-failure
+
   # ── Reco Service (Python FastAPI) ───────────────────────────────────────────
   recoservice:
     build:
@@ -179,9 +204,10 @@ services:
     container_name: pfa-reco
     environment:
       GATEWAY_BASE_URL: "http://gateway:8080"
+      PUBLIC_ASSET_BASE_URL: "http://localhost:5006"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
       LLM_MODEL: "${LLM_MODEL:-claude-haiku-4-5-20251001}"
-      LLM_MAX_TOKENS: "${LLM_MAX_TOKENS:-350}"
+      LLM_MAX_TOKENS: "${LLM_MAX_TOKENS:-500}"
       VERIFY_SSL: "false"
     ports:
       - "5004:8000"
@@ -213,6 +239,7 @@ services:
       ReverseProxy__Clusters__reco-cluster__Destinations__destination1__Address: "http://recoservice:8000/"
       ReverseProxy__Clusters__service-decouverte-cluster__Destinations__destination1__Address: "http://decouverte:8080/"
       ReverseProxy__Clusters__notification-cluster__Destinations__destination1__Address: "http://notificationservice:8080/"
+      ReverseProxy__Clusters__culture-cluster__Destinations__destination1__Address: "http://cultureservice:8080/"
     ports:
       - "5006:8080"
     depends_on:
@@ -229,6 +256,8 @@ services:
       decouverte:
         condition: service_started
       notificationservice:
+        condition: service_started
+      cultureservice:
         condition: service_started
     networks:
       - pfa-network
@@ -256,11 +285,11 @@ services:
     networks:
       - pfa-network
     restart: on-failure
-
 volumes:
   sql_data:
   notification_data:
   profile_photos:
+  business_uploads:
 
 networks:
   pfa-network:

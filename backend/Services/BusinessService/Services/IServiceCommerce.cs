@@ -45,7 +45,10 @@ namespace BusinessService.Services
 
         Task<CommerceReponseDto?> ValiderAsync(Guid id, CancellationToken ct = default);
         Task<CommerceReponseDto?> RejeterAsync(Guid id, string raison, CancellationToken ct = default);
+        Task<CommerceReponseDto?> DesactiverAsync(Guid id);
+        Task<CommerceReponseDto?> ReactiverAsync(Guid id);
 
         Task<CommerceReponseDto?> ObtenirMonCommerceAsync(Guid utilisateurId);
+        Task<IEnumerable<CommerceReponseDto>> ObtenirMesCommercesAsync(Guid utilisateurId);
     }
 }

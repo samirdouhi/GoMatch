@@ -230,6 +230,40 @@ namespace BusinessService.Controllers
             return Ok(resultat);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpPatch("{id}/desactiver")]
+        public async Task<IActionResult> Desactiver(Guid id)
+        {
+            var resultat = await _service.DesactiverAsync(id);
+            if (resultat == null) return NotFound();
+            return Ok(resultat);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPatch("{id}/reactiver")]
+        public async Task<IActionResult> Reactiver(Guid id)
+        {
+            var resultat = await _service.ReactiverAsync(id);
+            if (resultat == null) return NotFound();
+            return Ok(resultat);
+        }
+
+        [Authorize]
+        [HttpGet("mes-commerces")]
+        public async Task<IActionResult> ObtenirMesCommerces()
+        {
+            var userIdClaim =
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("userId");
+
+            if (!Guid.TryParse(userIdClaim, out var utilisateurId))
+                return Unauthorized(new { message = "Utilisateur non authentifié." });
+
+            var commerces = await _service.ObtenirMesCommercesAsync(utilisateurId);
+            return Ok(commerces);
+        }
+
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> ObtenirMonCommerce()

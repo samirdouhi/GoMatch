@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useState } from "react";
 import {
@@ -212,13 +213,10 @@ export function MatchPlansSection() {
                 </div>
 
                 <div className="mt-10">
-                  <Button
+                  <Button asChild
                     className="h-14 w-full rounded-xl bg-red-600 px-10 text-white font-black uppercase italic tracking-widest hover:bg-red-700 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-red-600/20"
-                    onClick={() =>
-                      document.getElementById("comment-ca-marche")?.scrollIntoView({ behavior: "smooth" })
-                    }
                   >
-                    Découvrir l&apos;itinéraire <ArrowRight className="ml-2 h-5 w-5" />
+                    <Link href="/assistant">Découvrir l&apos;itinéraire <ArrowRight className="ml-2 h-5 w-5" /></Link>
                   </Button>
                 </div>
               </div>

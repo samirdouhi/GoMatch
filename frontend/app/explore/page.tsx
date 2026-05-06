@@ -22,6 +22,12 @@ import {
   Clock,
   Send,
   ChevronUp,
+  PlusCircle,
+  ShoppingBag,
+  Moon,
+  Users,
+  Landmark,
+  Zap,
 } from "lucide-react";
 import {
   getAllCommerces,
@@ -36,6 +42,7 @@ import { toggleFavorite, isFavorite } from "@/lib/favoritesStore";
 
 type SelectOption = { value: string; label: string };
 type SortOption = "rating" | "name" | "newest";
+type QuickFilter = "open_now" | "nocturne" | "culturel" | "familial" | "near_stadium";
 
 const JOURS = [
   "Lundi",
@@ -53,6 +60,76 @@ const SORT_LABELS: Record<SortOption, string> = {
   newest: "PLUS RÉCENTS",
 };
 
+// Morocco 2026 host city stadium reference points (Rabat, Casablanca, Marrakech, Agadir, Fès, Tanger)
+const STADIUMS_2026: [number, number][] = [
+  [34.0197, -6.8396],  // Stade Prince Moulay Abdellah, Rabat
+  [33.5610, -7.6318],  // Grand Stade Hassan II, Casablanca
+  [31.6258, -7.9832],  // Grand Stade de Marrakech
+  [30.4278, -9.5981],  // Stade d'Agadir
+  [34.0370, -5.0004],  // Stade de Fès
+  [35.7595, -5.8340],  // Grand Stade de Tanger
+];
+
+function haversineKm(a: [number, number], b: [number, number]): number {
+  const R = 6371;
+  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
+  const dLng = ((b[1] - a[1]) * Math.PI) / 180;
+  const sin1 = Math.sin(dLat / 2);
+  const sin2 = Math.sin(dLng / 2);
+  const c =
+    2 *
+    Math.asin(
+      Math.sqrt(
+        sin1 * sin1 +
+          Math.cos((a[0] * Math.PI) / 180) *
+            Math.cos((b[0] * Math.PI) / 180) *
+            sin2 * sin2
+      )
+    );
+  return R * c;
+}
+
+function isNearStadium(commerce: Commerce, radiusKm = 5): boolean {
+  if (!commerce.latitude || !commerce.longitude) return false;
+  const pos: [number, number] = [commerce.latitude, commerce.longitude];
+  return STADIUMS_2026.some((stadium) => haversineKm(pos, stadium) <= radiusKm);
+}
+
+function isOpenNow(commerce: Commerce): boolean {
+  if (!commerce.horaires?.length) return false;
+  const now = new Date();
+  const jsDay = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+  const todayHoraire = commerce.horaires.find((h) => {
+    // jourSemaine: 0=Mon...6=Sun → convert to JS day
+    const jsNormalized = h.jourSemaine === 6 ? 0 : h.jourSemaine + 1;
+    return jsNormalized === jsDay;
+  });
+  if (!todayHoraire || todayHoraire.estFerme) return false;
+  const [oH, oM] = (todayHoraire.heureOuverture || "00:00").split(":").map(Number);
+  const [cH, cM] = (todayHoraire.heureFermeture || "00:00").split(":").map(Number);
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const open = oH * 60 + oM;
+  const close = cH * 60 + cM;
+  if (close > open) return cur >= open && cur < close;
+  return cur >= open || cur < close; // crosses midnight
+}
+
+const NOCTURNE_KEYWORDS = ["bar", "nightlife", "boîte", "discothèque", "club", "lounge", "pub", "nocturne", "nuit"];
+const CULTUREL_KEYWORDS = ["culture", "culturel", "patrimoine", "musée", "museum", "historique", "art", "galerie", "artisanat", "médina", "kasbah"];
+const FAMILIAL_KEYWORDS = ["famille", "family", "familial", "enfants", "kids", "parc", "jardin"];
+
+function matchesKeywords(commerce: Commerce, keywords: string[]): boolean {
+  const blob = [
+    commerce.nom,
+    commerce.nomCategorie ?? "",
+    ...(commerce.tagsCulturels ?? []),
+    commerce.description ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  return keywords.some((k) => blob.includes(k));
+}
+
 function getStoredToken(): string {
   if (typeof window === "undefined") return "";
   return (
@@ -64,6 +141,23 @@ function getStoredToken(): string {
     localStorage.getItem("access_token") ||
     ""
   );
+}
+
+function getUserRole(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const token = getStoredToken();
+    if (!token) return "";
+    const parts = token.split(".");
+    if (parts.length !== 3) return "";
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const roleKey = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+    const role = payload[roleKey] || payload.role || payload.roles || "";
+    if (Array.isArray(role)) return role[0] ?? "";
+    return role;
+  } catch {
+    return "";
+  }
 }
 
 function StarsDisplay({ note, size = 14 }: { note: number; size?: number }) {
@@ -245,6 +339,9 @@ function CommerceDetailModal({
                 src={photoUrl(photos[activePhoto].urlImage)}
                 alt={`${commerce.nom} photo`}
                 className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
 
               <div className="absolute inset-0 bg-gradient-to-t from-[#07080d] via-[#07080d]/55 to-black/20" />
@@ -347,6 +444,7 @@ function CommerceDetailModal({
                   src={photoUrl(photo.urlImage)}
                   alt=""
                   className="h-full w-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
                 />
               </button>
             ))}
@@ -682,12 +780,18 @@ function CommerceCard({
             src={photoUrl(firstPhoto.urlImage)}
             alt={commerce.nom}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              e.currentTarget.nextElementSibling?.removeAttribute("hidden");
+            }}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-zinc-900">
-            <Building2 className="h-10 w-10 text-zinc-700" />
-          </div>
-        )}
+        ) : null}
+        <div
+          hidden={!!firstPhoto}
+          className="flex h-full w-full items-center justify-center bg-zinc-900"
+        >
+          <Building2 className="h-10 w-10 text-zinc-700" />
+        </div>
 
         <div className="absolute inset-0 bg-gradient-to-t from-[#0f1115] via-transparent to-transparent" />
 
@@ -825,6 +929,7 @@ function CustomSelect({
 }
 
 export default function ExplorePage() {
+  const router = useRouter();
   const [commerces, setCommerces] = useState<Commerce[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -837,9 +942,16 @@ export default function ExplorePage() {
     null
   );
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [quickFilters, setQuickFilters] = useState<QuickFilter[]>([]);
   const sortRef = useRef<HTMLDivElement | null>(null);
+  const [userRole, setUserRole] = useState("");
 
   const itemsPerPage = 6;
+  const isCommercant = userRole === "Commercant";
+
+  useEffect(() => {
+    setUserRole(getUserRole());
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -959,7 +1071,15 @@ export default function ExplorePage() {
       const matchTag =
         tagFilter === "all" || (c.tagsCulturels ?? []).includes(tagFilter);
 
-      return matchSearch && matchCat && matchTag;
+      if (!matchSearch || !matchCat || !matchTag) return false;
+
+      if (quickFilters.includes("open_now") && !isOpenNow(c)) return false;
+      if (quickFilters.includes("nocturne") && !matchesKeywords(c, NOCTURNE_KEYWORDS)) return false;
+      if (quickFilters.includes("culturel") && !matchesKeywords(c, CULTUREL_KEYWORDS)) return false;
+      if (quickFilters.includes("familial") && !matchesKeywords(c, FAMILIAL_KEYWORDS)) return false;
+      if (quickFilters.includes("near_stadium") && !isNearStadium(c)) return false;
+
+      return true;
     });
 
     if (sortBy === "rating") {
@@ -978,7 +1098,7 @@ export default function ExplorePage() {
       (a, b) =>
         new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime()
     );
-  }, [commerces, search, catFilter, tagFilter, sortBy]);
+  }, [commerces, search, catFilter, tagFilter, sortBy, quickFilters]);
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
@@ -1004,8 +1124,15 @@ export default function ExplorePage() {
     [allTags]
   );
 
+  function toggleQuickFilter(f: QuickFilter) {
+    setQuickFilters((prev) =>
+      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
+    );
+    resetPage();
+  }
+
   const hasFilters =
-    search.trim() !== "" || catFilter !== "all" || tagFilter !== "all";
+    search.trim() !== "" || catFilter !== "all" || tagFilter !== "all" || quickFilters.length > 0;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#050505] text-white selection:bg-[#ffbd13]/30">
@@ -1025,8 +1152,40 @@ export default function ExplorePage() {
           </h1>
           <p className="mt-4 max-w-2xl text-sm font-bold uppercase tracking-widest text-zinc-500">
             Découvrez les pépites locales validées autour des sites de la Coupe
-            du Monde 2030.
+            du Monde 2026.
           </p>
+
+          {/* Merchant quick-action banner */}
+          {isCommercant && (
+            <div className="mt-6 flex flex-wrap items-center gap-4 rounded-2xl border border-orange-500/20 bg-orange-500/8 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/15">
+                  <ShoppingBag className="h-4 w-4 text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-orange-300">Espace commerçant</p>
+                  <p className="text-xs text-zinc-500">Vous explorez en tant que commerçant</p>
+                </div>
+              </div>
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/commercant/create-commerce")}
+                  className="flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/15 px-4 py-2 text-xs font-bold text-orange-300 transition hover:bg-orange-500/25"
+                >
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  Créer un commerce
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/commercant")}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                >
+                  Mes commerces
+                </button>
+              </div>
+            </div>
+          )}
         </header>
 
         <div className="mb-16 space-y-8">
@@ -1102,6 +1261,7 @@ export default function ExplorePage() {
                   setSearch("");
                   setCatFilter("all");
                   setTagFilter("all");
+                  setQuickFilters([]);
                   resetPage();
                 }}
                 className="flex items-center gap-2 px-4 text-[10px] font-black uppercase tracking-widest text-red-500 transition-colors hover:text-white"
@@ -1110,6 +1270,36 @@ export default function ExplorePage() {
                 Effacer
               </button>
             )}
+          </div>
+
+          {/* Quick filter chips */}
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { key: "open_now" as QuickFilter,     label: "Ouvert maintenant", Icon: Zap },
+                { key: "nocturne" as QuickFilter,     label: "Nocturne",           Icon: Moon },
+                { key: "culturel" as QuickFilter,     label: "Culturel",           Icon: Landmark },
+                { key: "familial" as QuickFilter,     label: "Familial",           Icon: Users },
+                { key: "near_stadium" as QuickFilter, label: "Près d'un stade",    Icon: Trophy },
+              ]
+            ).map(({ key, label, Icon }) => {
+              const active = quickFilters.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleQuickFilter(key)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                    active
+                      ? "border-[#ffbd13] bg-[#ffbd13] text-black shadow-[0_0_10px_rgba(255,189,19,0.35)]"
+                      : "border-white/10 bg-[#0f1115] text-zinc-500 hover:border-[#ffbd13]/50 hover:text-zinc-300"
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

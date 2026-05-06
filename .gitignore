@@ -3,6 +3,8 @@ frontend/node_modules/
 frontend/.next/
 frontend/.env*
 !frontend/.env.example
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # BACKEND (.NET)
 **/bin/
@@ -12,10 +14,19 @@ frontend/.env*
 
 # ENV — fichiers secrets à ne jamais committer
 .env
+.env.*
 !.env.example
 backend/.env
 backend/.env.*
 !backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Appsettings secrets / fichiers locaux
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.Production.json
 
 # SQLite databases
 *.db
@@ -32,6 +43,9 @@ backend/.env.*
 # STORAGE
 backend/**/Storage/
 backend/**/wwwroot/uploads/
+
+# Local tools / IDE / assistants
+.claude/
 
 # OS
 .DS_Store

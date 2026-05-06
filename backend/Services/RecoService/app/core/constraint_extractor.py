@@ -23,30 +23,54 @@ _AMBIANCE_KEYWORDS = {
 }
 
 _PLACE_TYPE_KEYWORDS = {
+    # Official GoMatch categories (strict mapping to nomCategorie)
     "cafe": [
-        "café", "cafe", "coffee", "terrasse", "salon de thé", "thé", "tea",
-        "breakfast", "petit déjeuner", "brunch", "un café", "un coffee",
+        "café", "cafe", "coffee", "salon de thé", "thé", "tea",
+        "breakfast", "petit déjeuner", "brunch", "un café", "un coffee", "terrasse calme",
     ],
     "restaurant": [
         "restaurant", "resto", "manger", "déjeuner", "diner", "dîner",
-        "cuisine", "repas", "tajine", "couscous", "grill", "pizz", "burger",
-        "brasserie", "fast food", "snack", "faim", "j'ai faim",
-        "je veux manger", "trouver à manger",
+        "cuisine marocaine", "cuisine", "repas", "tajine", "couscous", "grill",
+        "brasserie", "faim", "j'ai faim", "je veux manger", "trouver à manger",
+    ],
+    "street_food": [
+        "snack", "street food", "fast food", "sandwich", "wrap", "msemen",
+        "sfenj", "briouate", "bourek", "shawarma", "manger vite", "vite fait",
+        "sur le pouce", "je veux grignoter", "grignoter",
+    ],
+    "dessert": [
+        "pâtisserie", "patisserie", "gâteau", "dessert", "glace", "crêpe",
+        "cornes de gazelle", "chebakia", "corne gazelle", "sucrerie", "douceurs",
+        "pâtisseries marocaines",
+    ],
+    "artisanat": [
+        "artisanat", "souvenir", "souvenirs", "bijoux", "poterie", "céramique",
+        "zellige", "babouche", "cuivre", "tissus", "tapis", "antiquités",
+        "artisan", "shop local", "boutique artisanale",
+    ],
+    "bien_etre": [
+        "hammam", "spa", "massage", "bien-être", "bien être", "détente",
+        "gommage", "rasul", "soins", "soin du corps", "relaxation",
+    ],
+    "culture": [
+        "musée", "musee", "monument", "attraction", "culture", "historique",
+        "patrimoine", "médina", "site", "kasbah", "remparts", "galerie",
+        "archéologie", "tradition", "exposition", "culturel",
+    ],
+    "loisirs": [
+        "activité", "activite", "activités", "sortie", "visite", "à faire",
+        "explorer", "découvrir", "découverte", "excursion", "randonnée",
+        "que faire", "quoi faire", "parc", "loisir", "loisirs",
+    ],
+    "terroir": [
+        "terroir", "argan", "huile d'argan", "miel", "épices", "safran",
+        "produits locaux", "coopérative", "produits du terroir", "local",
+        "artisanal alimentaire",
     ],
     "hotel": [
         "hotel", "hôtel", "hébergement", "hebergement", "riad", "dormir",
         "chambre", "nuitée", "séjour", "maison d'hôtes", "auberge", "gîte",
         "où dormir", "passer la nuit",
-    ],
-    "activity": [
-        "activité", "activite", "activités", "sortie", "visite", "à faire",
-        "explorer", "découvrir", "découverte", "excursion", "randonnée",
-        "que faire", "quoi faire",
-    ],
-    "cultural": [
-        "musée", "musee", "monument", "attraction", "culture", "historique",
-        "patrimoine", "médina", "site", "kasbah", "remparts", "galerie",
-        "archéologie", "tradition",
     ],
     "fanzone": [
         "fan zone", "fanzone", "bar foot", "bar sport", "sports bar",
@@ -56,10 +80,19 @@ _PLACE_TYPE_KEYWORDS = {
         "diffusion", "retransmission", "watch party",
     ],
     "nightlife": [
-        "bar", "nightlife", "club", "boîte", "boite", "discothèque",
-        "discotheque", "soirée", "après match", "fêter", "celebrer",
+        "rooftop", "bar", "nightlife", "club", "boîte", "boite", "discothèque",
+        "discotheque", "soirée", "après match", "fêter", "celebrer", "lounge",
+        "vie nocturne", "cocktail", "apéro",
     ],
 }
+
+# Official GoMatch cultural tags (used to refine results after category filter)
+_OFFICIAL_GOMATCH_TAGS = [
+    "animé", "artisanal", "authentique", "calme", "chaleureux", "chill",
+    "culturel", "économique", "familial", "festif", "haut de gamme", "historique",
+    "local", "match diffusé", "moderne", "moyen", "romantique", "supporters",
+    "touristique", "traditionnel", "rapide",
+]
 
 
 def _extract_budget(text: str, memory: dict) -> str | None:
@@ -104,6 +137,25 @@ def _extract_place_type(text: str, memory: dict) -> tuple[str | None, bool]:
                 nightlife_explicit = True
             return place_type, nightlife_explicit
     return memory.get("requested_place_type"), nightlife_explicit
+
+
+def _extract_cultural_tags(text: str) -> list[str]:
+    """Extract official GoMatch cultural tags mentioned explicitly in the message."""
+    found = []
+    for tag in _OFFICIAL_GOMATCH_TAGS:
+        if tag in text:
+            found.append(tag)
+    # Additional synonym mapping
+    _TAG_SYNONYMS: dict[str, str] = {
+        "animée": "animé", "festive": "festif", "calme": "calme",
+        "famille": "familial", "enfants": "familial", "pas cher": "économique",
+        "traditionnel": "traditionnel", "locale": "local", "historique": "historique",
+        "supporters": "supporters", "match diffusé": "match diffusé",
+    }
+    for synonym, tag in _TAG_SYNONYMS.items():
+        if synonym in text and tag not in found:
+            found.append(tag)
+    return found
 
 
 def _extract_city(text: str, memory: dict) -> str | None:
@@ -159,6 +211,7 @@ def extract_constraints(message: str, memory: dict | None = None) -> dict:
     ambiance = _extract_ambiance(text, memory)
     requested_place_type, nightlife_explicit = _extract_place_type(text, memory)
     city = _extract_city(text, memory)
+    cultural_tags = _extract_cultural_tags(text)
     clarification_needed, clarification_question = _needs_clarification(text, requested_place_type)
 
     # For follow-up messages, inherit city from memory if not found in message
@@ -166,7 +219,7 @@ def extract_constraints(message: str, memory: dict | None = None) -> dict:
         city = memory.get("city")
 
     # Defaults: activity without nightlife context gets calm ambiance
-    if requested_place_type == "activity" and not nightlife_explicit and ambiance is None:
+    if requested_place_type in ("loisirs", "culture") and not nightlife_explicit and ambiance is None:
         ambiance = "calm"
 
     return {
@@ -177,6 +230,7 @@ def extract_constraints(message: str, memory: dict | None = None) -> dict:
         "requested_place_type": requested_place_type,
         "nightlife_explicit": nightlife_explicit,
         "city": city,
+        "cultural_tags": cultural_tags,
         "clarification_needed": clarification_needed,
         "clarification_question": clarification_question,
     }

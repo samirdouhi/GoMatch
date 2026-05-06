@@ -24,6 +24,7 @@ import {
   Mail,
   BadgeCheck,
   User,
+  LayoutGrid,
 } from "lucide-react";
 import { logout } from "@/lib/logout";
 
@@ -60,27 +61,35 @@ const SECTIONS_AUTH: SectionMenu[] = [
   {
     titre: "Navigation",
     elements: [
-      { nom: "Accueil", icone: Home, lien: "/", description: "Page principale" },
-      { nom: "Matchs", icone: Calendar, lien: "/matches", description: "Calendrier" },
-      { nom: "Culture", icone: Landmark, lien: "/culture", description: "Patrimoine & histoires" },
-      { nom: "Carte", icone: CarteIcon, lien: "/map", description: "Explorer autour de toi" },
-      { nom: "Que faire ?", icone: Store, lien: "/businesses", description: "Commerces & sorties" },
+      { nom: "Accueil",     icone: Home,        lien: "/",           description: "Page principale" },
+      { nom: "Mon espace",  icone: LayoutGrid,  lien: "/dashboard",  description: "Tableau de bord personnel" },
+      { nom: "Matchs",      icone: Calendar,    lien: "/matches",    description: "Calendrier FIFA 2030" },
+      { nom: "Explore",     icone: Search,      lien: "/explore",    description: "Commerces & sorties" },
+      { nom: "Culture",     icone: Landmark,    lien: "/culture",    description: "Patrimoine & histoires" },
+      { nom: "Carte",       icone: CarteIcon,   lien: "/test-map",   description: "Carte interactive" },
+      { nom: "Expérience",  icone: Sparkles,    lien: "/experience", description: "Villes & ambiances 2030" },
     ],
   },
   {
     titre: "Intelligent",
     elements: [
-      { nom: "Assistant", icone: Brain, lien: "/assistant", description: "Aide & conseils", badge: "IA" },
-      { nom: "Recommandations", icone: Sparkles, lien: "/reco", description: "Suggestions" },
+      { nom: "Assistant IA", icone: Brain, lien: "/assistant", description: "Planification & conseils", badge: "IA" },
     ],
   },
   {
     titre: "Mon espace",
     elements: [
-      { nom: "Profil", icone: User, lien: "/profile", description: "Compte & infos" },
-      { nom: "Favoris", icone: Heart, lien: "/favorites", description: "Lieux enregistrés" },
-      { nom: "Historique", icone: History, lien: "/history", description: "Dernières visites" },
-      { nom: "Paramètres", icone: Settings, lien: "/settings", description: "Préférences" },
+      { nom: "Profil",       icone: User,     lien: "/profile",    description: "Compte & infos" },
+      { nom: "Favoris",      icone: Heart,    lien: "/favorites",  description: "Lieux enregistrés" },
+      { nom: "Paramètres",   icone: Settings, lien: "/Settings",   description: "Préférences" },
+    ],
+  },
+  {
+    titre: "Support",
+    elements: [
+      { nom: "Aide",      icone: HelpCircle, lien: "/aide",      description: "FAQ & support" },
+      { nom: "Contact",   icone: Mail,       lien: "/contact",   description: "Nous écrire" },
+      { nom: "À propos",  icone: Info,       lien: "/a-propos",  description: "Notre mission" },
     ],
   },
 ];
@@ -287,7 +296,7 @@ export function AppSidebar({ open, onClose }: Props) {
             <div className="mb-8 flex items-center justify-between">
               <Link href="/" onClick={onClose} className="relative h-10 w-32">
                 <Image
-                  src="/logoGoMatch2030.png"
+                  src="/LogoGoMatch2030.png"
                   alt="Logo"
                   fill
                   className="object-contain object-left"
